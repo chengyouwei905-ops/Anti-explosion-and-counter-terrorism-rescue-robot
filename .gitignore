@@ -1,0 +1,43 @@
+# CMake 编译目录
+/build/
+/cmake-build-*/
+
+# CMake 生成文件（防止误生成到根目录）
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+build.ninja
+.ninja_deps
+.ninja_log
+
+# 编译产物
+*.o
+*.obj
+*.d
+*.a
+*.lib
+*.elf
+*.hex
+*.bin
+*.map
+*.list
+*.lst
+
+# STM32CubeMX / STM32CubeIDE 本地缓存
+mx.scratch/
+.settings/
+
+# VS Code 本机配置
+.vscode/settings.json
+
+# 临时文件和日志
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+
+# Windows
+Thumbs.db
+Desktop.ini
