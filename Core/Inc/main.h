@@ -57,6 +57,14 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define Power_OUT2_EN_Pin GPIO_PIN_13
+#define Power_OUT2_EN_GPIO_Port GPIOC
+#define Power_OUT1_EN_Pin GPIO_PIN_14
+#define Power_OUT1_EN_GPIO_Port GPIOC
+#define Camera_RX_Pin GPIO_PIN_7
+#define Camera_RX_GPIO_Port GPIOE
+#define Camera_TX_Pin GPIO_PIN_8
+#define Camera_TX_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 
