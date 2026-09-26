@@ -44,10 +44,14 @@
 UART_HandleTypeDef huart7;
 
 /* USER CODE BEGIN PV */
-/* 联调阶段：每 500ms 把当前视觉目标回显到串口，便于用串口助手观察。
-   正式跑车时请把回显注释掉，或改到独立的调试串口，避免干扰视觉端。 */
-#define DEBUG_ECHO_PERIOD_MS   500U
-static uint32_t s_last_echo_tick = 0U;
+/* 发送示例周期：每 1s 主动发一帧，用于验证 STM32 -> 视觉 方向。不需要就删掉。 */
+#define TX_DEMO_PERIOD_MS       1000U
+static uint32_t s_tx_tick  = 0U;
+static uint16_t s_tx_count = 0U;
+
+/* 最近一次解析出来的整帧（调试时在 watch 窗口直接观察这个变量） */
+static proto_vision_frame_t s_rx_frame;
+static volatile bool        s_rx_frame_ready = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,7 +65,17 @@ static void MX_UART7_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+/**
+  * @brief  收到一整帧且校验通过时被调用
+  * @param  frame 解析出来的帧
+  * @note   在主循环上下文执行（app_vision_poll() 调用栈内），业务处理写在这里
+  */
+static void vision_on_frame(const proto_vision_frame_t *frame)
+{
+  /* 拷贝一份出来，避免被下一帧覆盖；处理完再把标志清掉 */
+  s_rx_frame = *frame;
+  s_rx_frame_ready = true;
+}
 /* USER CODE END 0 */
 
 /**
@@ -100,12 +114,15 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(Power_OUT2_EN_GPIO_Port,Power_OUT2_EN_Pin,GPIO_PIN_SET);
 
-  /* 初始化视觉链路：UART7 + 协议解析。
-     注意：需先在 CubeMX 中勾选 UART7 global interrupt，中断接收才会工作。 */
+  /* 初始化视觉链路：绑定 UART7 + 复位协议状态机 + 启动中断接收
+     （UART7 中断已在 CubeMX 中使能） */
   if (app_vision_init(&huart7) != RET_OK)
   {
     Error_Handler();
   }
+
+  /* 注册"收到一整帧"的回调 */
+  app_vision_set_rx_cb(vision_on_frame);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -115,19 +132,46 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    /* 1) 搬运串口数据并驱动协议解析（必须周期调用，否则接收缓冲会溢出） */
+    /* ===================== 接收 ===================== */
+
+    /* 搬运串口数据并驱动协议解析（必须周期调用，否则接收缓冲会溢出）。
+       凑齐一整帧后会自动回调 vision_on_frame()。 */
     app_vision_poll();
 
-    /* 2) 业务处理：底盘/任务状态机在这里读取视觉目标
-    const vision_target_t *target = app_vision_get_target();
-    if (target->valid) { ... 计算底盘目标速度 ... }
-    */
-
-    /* 3) 联调调试回显（正式跑车前请注释掉） */
-    if ((HAL_GetTick() - s_last_echo_tick) >= DEBUG_ECHO_PERIOD_MS)
+    /* 业务处理：使用解析出来的帧
+       （这里只做示例，调试时直接在 watch 窗口看 s_rx_frame） */
+    if (s_rx_frame_ready)
     {
-      s_last_echo_tick = HAL_GetTick();
-      app_vision_debug_echo(&huart7);
+      s_rx_frame_ready = false;
+
+      /* payload 的含义由业务自己定义，示例：
+         switch (s_rx_frame.cmd)
+         {
+           case PROTO_VISION_CMD_TARGET:
+             // 解释 s_rx_frame.payload[0 .. s_rx_frame.len - 1]
+             break;
+           default:
+             break;
+         }
+      */
+    }
+
+    /* ===================== 发送 ===================== */
+
+    /* 每 1s 主动发一帧示例数据，验证 STM32 -> 视觉 方向。不需要就把这段删掉。 */
+    if ((HAL_GetTick() - s_tx_tick) >= TX_DEMO_PERIOD_MS)
+    {
+      uint8_t payload[2];
+
+      s_tx_tick = HAL_GetTick();
+
+      /* 载荷：一个自增计数，方便对端观察丢帧 */
+      payload[0] = (uint8_t)(s_tx_count & 0xFFU);
+      payload[1] = (uint8_t)((s_tx_count >> 8) & 0xFFU);
+      s_tx_count++;
+
+      /* 组帧 + 发送由 App 层一步完成 */
+      (void)app_vision_send((uint8_t)PROTO_VISION_CMD_STATUS, payload, (uint8_t)sizeof(payload));
     }
   }
   /* USER CODE END 3 */

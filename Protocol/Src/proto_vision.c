@@ -73,11 +73,6 @@ const proto_vision_stat_t *proto_vision_get_stat(void)
     return &s_ctx.stat;
 }
 
-void proto_vision_notify_buf_error(void)
-{
-    s_ctx.stat.buf_errors++;
-}
-
 uint8_t proto_vision_pack(uint8_t cmd, const uint8_t *payload, uint8_t len,
                           uint8_t *out, uint8_t out_size)
 {
