@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app_vision.h"
+#include "app_chassis.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,16 +43,11 @@
 /* Private variables ---------------------------------------------------------*/
 
 UART_HandleTypeDef huart7;
+UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-/* 发送示例周期：每 1s 主动发一帧，用于验证 STM32 -> 视觉 方向。不需要就删掉。 */
-#define TX_DEMO_PERIOD_MS       1000U
-static uint32_t s_tx_tick  = 0U;
-static uint16_t s_tx_count = 0U;
 
-/* 最近一次解析出来的整帧（调试时在 watch 窗口直接观察这个变量） */
-static proto_vision_frame_t s_rx_frame;
-static volatile bool        s_rx_frame_ready = false;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,23 +55,14 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_UART7_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-/**
-  * @brief  收到一整帧且校验通过时被调用
-  * @param  frame 解析出来的帧
-  * @note   在主循环上下文执行（app_vision_poll() 调用栈内），业务处理写在这里
-  */
-static void vision_on_frame(const proto_vision_frame_t *frame)
-{
-  /* 拷贝一份出来，避免被下一帧覆盖；处理完再把标志清掉 */
-  s_rx_frame = *frame;
-  s_rx_frame_ready = true;
-}
+
 /* USER CODE END 0 */
 
 /**
@@ -111,18 +98,24 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_UART7_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  //除mcu外其他部分供电使能
   HAL_GPIO_WritePin(Power_OUT2_EN_GPIO_Port,Power_OUT2_EN_Pin,GPIO_PIN_SET);
-
-  /* 初始化视觉链路：绑定 UART7 + 复位协议状态机 + 启动中断接收
-     （UART7 中断已在 CubeMX 中使能） */
+  HAL_Delay(2000);    //等待其他设备稳定
+  //视觉链路初始化
   if (app_vision_init(&huart7) != RET_OK)
   {
     Error_Handler();
   }
-
-  /* 注册"收到一整帧"的回调 */
-  app_vision_set_rx_cb(vision_on_frame);
+  /* 注册视觉通信回调 */
+  //app_vision_set_rx_cb(vision_on_frame);
+  //底盘链路初始化
+  if (app_chassis_init(&huart1) != RET_OK)
+  {
+    Error_Handler();
+  }
+  app_chassis_move(0.0f, 0.0f, 0.0f);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -130,49 +123,15 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+  
     /* USER CODE BEGIN 3 */
-    /* ===================== 接收 ===================== */
-
-    /* 搬运串口数据并驱动协议解析（必须周期调用，否则接收缓冲会溢出）。
-       凑齐一整帧后会自动回调 vision_on_frame()。 */
-    app_vision_poll();
-
-    /* 业务处理：使用解析出来的帧
-       （这里只做示例，调试时直接在 watch 窗口看 s_rx_frame） */
-    if (s_rx_frame_ready)
-    {
-      s_rx_frame_ready = false;
-
-      /* payload 的含义由业务自己定义，示例：
-         switch (s_rx_frame.cmd)
-         {
-           case PROTO_VISION_CMD_TARGET:
-             // 解释 s_rx_frame.payload[0 .. s_rx_frame.len - 1]
-             break;
-           default:
-             break;
-         }
-      */
-    }
-
-    /* ===================== 发送 ===================== */
-
-    /* 每 1s 主动发一帧示例数据，验证 STM32 -> 视觉 方向。不需要就把这段删掉。 */
-    if ((HAL_GetTick() - s_tx_tick) >= TX_DEMO_PERIOD_MS)
-    {
-      uint8_t payload[2];
-
-      s_tx_tick = HAL_GetTick();
-
-      /* 载荷：一个自增计数，方便对端观察丢帧 */
-      payload[0] = (uint8_t)(s_tx_count & 0xFFU);
-      payload[1] = (uint8_t)((s_tx_count >> 8) & 0xFFU);
-      s_tx_count++;
-
-      /* 组帧 + 发送由 App 层一步完成 */
-      (void)app_vision_send((uint8_t)PROTO_VISION_CMD_STATUS, payload, (uint8_t)sizeof(payload));
-    }
+    app_chassis_move(100.0f, 0.0f, 0.0f);
+    HAL_Delay(2000);
+    app_chassis_move(0.0f, 100.0f, 0.0f);
+    HAL_Delay(2000);
+    app_chassis_move(0.0f, 0.0f, 0.0f);
+    HAL_Delay(2000);
+    
   }
   /* USER CODE END 3 */
 }
@@ -218,7 +177,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
@@ -272,6 +231,54 @@ static void MX_UART7_Init(void)
   /* USER CODE BEGIN UART7_Init 2 */
 
   /* USER CODE END UART7_Init 2 */
+
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
 
 }
 

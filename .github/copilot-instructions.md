@@ -42,6 +42,7 @@ App → Algorithm
 | 项 | 值 |
 | --- | --- |
 | MCU | STM32H723VGT6，HSI 64MHz（无外部晶振），VOS Scale3 |
+| UART1 | 底盘链路：**PA9 = TX、PA10 = RX**，115200-8-N-1，中断接收 |
 | UART7 | K230 视觉链路：**PE8 = TX、PE7 = RX**，115200-8-N-1，中断接收 |
 | `Power_OUT1_EN` / `Power_OUT2_EN` | PC14 / PC13，高电平使能 |
 

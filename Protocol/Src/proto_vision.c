@@ -19,10 +19,10 @@ typedef enum {
     PS_CMD,         /**< 命令字 */
     PS_PAYLOAD,     /**< 载荷 */
     PS_CRC,         /**< 校验 */
-} proto_state_t;
+} proto_vision_state_t;
 
 static struct {
-    proto_state_t           state;
+    proto_vision_state_t           state;
     proto_vision_frame_t    frame;      /**< 正在组装的帧 */
     uint8_t                 idx;        /**< 载荷写入下标 */
     uint8_t                 crc;        /**< 增量 CRC */

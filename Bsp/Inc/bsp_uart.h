@@ -23,7 +23,8 @@ extern "C" {
 
 /** @brief 逻辑串口编号（新增串口时在这里加一项，并在 bsp_uart.c 里 attach） */
 typedef enum {
-    BSP_UART_VISION = 0,    /**< UART7：PE8=TX / PE7=RX，视觉/上位机链路 */
+    BSP_UART_VISION = 0,    /**< UART7：PE8=TX / PE7=RX，视觉链路 */
+    BSP_UART_CHASSIS,       /**< UART1：PA9=TX / PA10=RX，底盘链路 */          
     BSP_UART_ID_MAX
 } bsp_uart_id_t;
 

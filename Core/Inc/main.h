@@ -65,6 +65,10 @@ void Error_Handler(void);
 #define Camera_RX_GPIO_Port GPIOE
 #define Camera_TX_Pin GPIO_PIN_8
 #define Camera_TX_GPIO_Port GPIOE
+#define Chassis_TX_Pin GPIO_PIN_9
+#define Chassis_TX_GPIO_Port GPIOA
+#define Chassis_RX_Pin GPIO_PIN_10
+#define Chassis_RX_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 
