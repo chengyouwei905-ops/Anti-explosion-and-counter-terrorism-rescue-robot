@@ -57,6 +57,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define Roboarm_RX_Pin GPIO_PIN_2
+#define Roboarm_RX_GPIO_Port GPIOE
+#define Roboarm_TX_Pin GPIO_PIN_3
+#define Roboarm_TX_GPIO_Port GPIOE
 #define Power_OUT2_EN_Pin GPIO_PIN_13
 #define Power_OUT2_EN_GPIO_Port GPIOC
 #define Power_OUT1_EN_Pin GPIO_PIN_14

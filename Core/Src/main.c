@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "app_vision.h"
 #include "app_chassis.h"
+#include "app_roboarm.h"
 #include "app_imu.h"
 /* USER CODE END Includes */
 
@@ -49,6 +50,7 @@ DMA_HandleTypeDef hdma_spi2_tx;
 
 UART_HandleTypeDef huart7;
 UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart10;
 
 /* USER CODE BEGIN PV */
 /* IMU 调试用：断点停在这里可以直接看返回值与解算结果 */
@@ -64,6 +66,7 @@ static void MX_DMA_Init(void);
 static void MX_UART7_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_SPI2_Init(void);
+static void MX_USART10_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -122,6 +125,7 @@ int main(void)
   MX_UART7_Init();
   MX_USART1_UART_Init();
   MX_SPI2_Init();
+  MX_USART10_UART_Init();
   /* USER CODE BEGIN 2 */
   //除mcu外其他部分供电使能
   HAL_GPIO_WritePin(Power_OUT2_EN_GPIO_Port,Power_OUT2_EN_Pin,GPIO_PIN_SET);
@@ -139,6 +143,13 @@ int main(void)
     Error_Handler();
   }
   app_chassis_move(0.0f, 0.0f, 0.0f);
+
+  /* 机械臂链路初始化（USART10：PE3=TX / PE2=RX）
+     ⚠️ 控制板固定 9600，CubeMX 里 USART10 的波特率不能是默认的 115200 */
+  if (app_roboarm_init(&huart10) != RET_OK)
+  {
+    Error_Handler();
+  }
 
   /* ---- IMU 初始化（BMI088 + SPI2/DMA + Mahony 姿态解算，含开机陀螺零偏标定）---- */
   /* 该函数会阻塞约 1 秒做零偏标定，期间板子必须静止 */
@@ -371,6 +382,54 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * @brief USART10 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART10_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART10_Init 0 */
+
+  /* USER CODE END USART10_Init 0 */
+
+  /* USER CODE BEGIN USART10_Init 1 */
+
+  /* USER CODE END USART10_Init 1 */
+  huart10.Instance = USART10;
+  huart10.Init.BaudRate = 9600;
+  huart10.Init.WordLength = UART_WORDLENGTH_8B;
+  huart10.Init.StopBits = UART_STOPBITS_1;
+  huart10.Init.Parity = UART_PARITY_NONE;
+  huart10.Init.Mode = UART_MODE_TX_RX;
+  huart10.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart10.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart10.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart10.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart10.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart10) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart10, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart10, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart10) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART10_Init 2 */
+
+  /* USER CODE END USART10_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -402,9 +461,9 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */

@@ -298,6 +298,50 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
     /* USER CODE END USART1_MspInit 1 */
   }
+  else if(huart->Instance==USART10)
+  {
+    /* USER CODE BEGIN USART10_MspInit 0 */
+
+    /* USER CODE END USART10_MspInit 0 */
+
+  /** Initializes the peripherals clock
+  */
+    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USART10;
+    PeriphClkInitStruct.Usart16ClockSelection = RCC_USART16910CLKSOURCE_D2PCLK2;
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    /* Peripheral clock enable */
+    __HAL_RCC_USART10_CLK_ENABLE();
+
+    __HAL_RCC_GPIOE_CLK_ENABLE();
+    /**USART10 GPIO Configuration
+    PE2     ------> USART10_RX
+    PE3     ------> USART10_TX
+    */
+    GPIO_InitStruct.Pin = Roboarm_RX_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF4_USART10;
+    HAL_GPIO_Init(Roboarm_RX_GPIO_Port, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = Roboarm_TX_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF11_USART10;
+    HAL_GPIO_Init(Roboarm_TX_GPIO_Port, &GPIO_InitStruct);
+
+    /* USART10 interrupt Init */
+    HAL_NVIC_SetPriority(USART10_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(USART10_IRQn);
+    /* USER CODE BEGIN USART10_MspInit 1 */
+
+    /* USER CODE END USART10_MspInit 1 */
+  }
 
 }
 
@@ -348,6 +392,26 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
     /* USER CODE BEGIN USART1_MspDeInit 1 */
 
     /* USER CODE END USART1_MspDeInit 1 */
+  }
+  else if(huart->Instance==USART10)
+  {
+    /* USER CODE BEGIN USART10_MspDeInit 0 */
+
+    /* USER CODE END USART10_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_USART10_CLK_DISABLE();
+
+    /**USART10 GPIO Configuration
+    PE2     ------> USART10_RX
+    PE3     ------> USART10_TX
+    */
+    HAL_GPIO_DeInit(GPIOE, Roboarm_RX_Pin|Roboarm_TX_Pin);
+
+    /* USART10 interrupt DeInit */
+    HAL_NVIC_DisableIRQ(USART10_IRQn);
+    /* USER CODE BEGIN USART10_MspDeInit 1 */
+
+    /* USER CODE END USART10_MspDeInit 1 */
   }
 
 }
