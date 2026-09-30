@@ -65,6 +65,8 @@ void Error_Handler(void);
 #define SPI2_CS0_GPIO_Port GPIOC
 #define SPI2_CS1_Pin GPIO_PIN_3
 #define SPI2_CS1_GPIO_Port GPIOC
+#define RGB_Pin GPIO_PIN_7
+#define RGB_GPIO_Port GPIOA
 #define Camera_RX_Pin GPIO_PIN_7
 #define Camera_RX_GPIO_Port GPIOE
 #define Camera_TX_Pin GPIO_PIN_8
