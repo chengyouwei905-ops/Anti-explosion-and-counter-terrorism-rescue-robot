@@ -88,20 +88,42 @@ typedef struct
     uint8_t val;
 } imu_reg_val_t;
 
-/* ========================= 加速器初始化表 ========================= */
-/* ACC_CONF = 0x80(必须置位) | 0x20(OSR2/归一化) | 0x0B(800Hz) = 0xAB */
+/* ========================= 加速度计初始化表 ========================= */
+/*
+ * ACC_CONF (0x40) = 0x80                     bit7 = 必须置位的标志位
+ *                 | (acc_bwp << 4)           bits[6:4] 过采样/带宽档位
+ *                 |  acc_odr                 bits[3:0] 输出数据率(刷新率)
+ *
+ *   acc_odr : 0x05 = 12.5Hz   0x06 = 25Hz    0x07 = 50Hz    0x08 = 100Hz
+ *             0x09 = 200Hz    0x0A = 400Hz   0x0B = 800Hz   0x0C = 1600Hz
+ *             ⚠️ 选 1600Hz 时 acc_bwp 只能是 OSR4(0x00)
+ *   acc_bwp : 0x00 = OSR4     0x10 = OSR2     0x20 = Normal(归一化)
+ *
+ * 当前：0x80 | 0x20(Normal) | 0x0B(800Hz) = 0xAB
+ */
 static const imu_reg_val_t s_accel_init_seq[] =
 {
     { IMU_ACC_PWR_CTRL,     0x04U },   /* 加速度计上电 */
     { IMU_ACC_PWR_CONF,     0x00U },   /* 退出挂起，进入正常模式 */
-    { IMU_ACC_CONF,         0xABU },   /* 0x80 | 归一化带宽 | 800Hz */
+    { IMU_ACC_CONF,         0xABU },   /* 800Hz ODR  ← 想改加速度刷新率就改这里 */
     { IMU_ACC_RANGE,        0x00U },   /* ±3g */
     { IMU_ACC_INT1_IO_CTRL, 0x08U },   /* INT1 使能、推挽、低有效 */
     { IMU_ACC_INT_MAP_DATA, 0x04U },   /* 数据就绪映射到 INT1 */
 };
 
 /* ========================= 陀螺仪初始化表 ========================= */
-/* GYRO_BANDWIDTH = 0x80(必须置位) | 0x02(1000Hz ODR / 116Hz 带宽) = 0x82 */
+/*
+ * GYRO_BANDWIDTH (0x10) = 0x80(必须置位的标志位) | 档位
+ *
+ *   档位（输出数据率_滤波带宽）：
+ *     0x00 = 2000Hz_532Hz   0x01 = 2000Hz_230Hz
+ *     0x02 = 1000Hz_116Hz   0x03 =  400Hz_47Hz
+ *     0x04 =  200Hz_23Hz    0x05 =  100Hz_12Hz
+ *     0x06 =  200Hz_64Hz    0x07 =  100Hz_32Hz
+ *
+ * 当前：0x80 | 0x02 = 0x82，即 ODR 1000Hz、带宽 116Hz
+ *       —— 和 app_imu_poll() 约 1kHz 的调用率对齐，每次都能拿到一帧新数据
+ */
 static const imu_reg_val_t s_gyro_init_seq[] =
 {
     { IMU_GYRO_RANGE,             0x00U },  /* ±2000 dps */

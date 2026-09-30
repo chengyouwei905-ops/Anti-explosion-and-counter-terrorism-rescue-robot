@@ -23,7 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "app_vision.h"
 #include "app_chassis.h"
-#include "bsp_imu.h"
+#include "app_imu.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,9 +51,9 @@ UART_HandleTypeDef huart7;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-/* IMU 调试用：断点停在这里可以直接看返回值与采样结果 */
-static ret_code_t     s_imu_ret;
-static bsp_imu_data_t s_imu_data;
+/* IMU 调试用：断点停在这里可以直接看返回值与解算结果 */
+static ret_code_t s_imu_ret;
+static float      s_imu_euler[3];   /* [roll, pitch, yaw]，单位弧度 */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,7 +70,20 @@ static void MX_SPI2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+/**
+  * @brief 阻塞等待 ms 毫秒，但期间持续跑 IMU 解算
+  * @note  不能直接用 HAL_Delay()：那样两次 app_imu_poll() 间隔超过解算层的 dt 上限
+  *        （0.1s），本次采样会被丢弃，表现为姿态一直不更新
+  */
+static void wait_ms_keep_imu(uint32_t ms)
+{
+  uint32_t t0 = HAL_GetTick();
 
+  while ((HAL_GetTick() - t0) < ms)
+  {
+    (void)app_imu_poll();
+  }
+}
 /* USER CODE END 0 */
 
 /**
@@ -127,14 +140,10 @@ int main(void)
   }
   app_chassis_move(0.0f, 0.0f, 0.0f);
 
-  /* ---- BMI088 陀螺仪初始化（硬件 SPI2 + DMA）---- */
-  /* 若 s_imu_ret != RET_OK，在该行断点后调用 bsp_imu_get_init_fail() 查失败现场 */
-  s_imu_ret = bsp_imu_init(&hspi2);
-  if (s_imu_ret == RET_OK)
-  {
-    /* 读一次，检查 s_imu_data 里的加速度/角速度/温度是否合理 */
-    s_imu_ret = bsp_imu_read(&s_imu_data);
-  }
+  /* ---- IMU 初始化（BMI088 + SPI2/DMA + Mahony 姿态解算，含开机陀螺零偏标定）---- */
+  /* 该函数会阻塞约 1 秒做零偏标定，期间板子必须静止 */
+  /* 若 s_imu_ret != RET_OK：断点后调用 bsp_imu_get_init_fail() 查失败现场 */
+  s_imu_ret = app_imu_init(&hspi2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -144,13 +153,16 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    /* IMU：每轮读一次并解算姿态。断点看 s_imu_euler，平放静止时 roll/pitch 应≈0 */
+    (void)app_imu_poll();
+    app_imu_get_euler(s_imu_euler);
+
     app_chassis_move(100.0f, 0.0f, 0.0f);
-    HAL_Delay(2000);
+    wait_ms_keep_imu(2000);
     app_chassis_move(0.0f, 100.0f, 0.0f);
-    HAL_Delay(2000);
+    wait_ms_keep_imu(2000);
     app_chassis_move(0.0f, 0.0f, 0.0f);
-    HAL_Delay(2000);
-    
+    wait_ms_keep_imu(2000);
   }
   /* USER CODE END 3 */
 }
@@ -414,6 +426,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : IMU__INT1_Pin IMU_INT3_Pin */
+  GPIO_InitStruct.Pin = IMU__INT1_Pin|IMU_INT3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*AnalogSwitch Config */
   HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PC3, SYSCFG_SWITCH_PC3_CLOSE);
