@@ -1,7 +1,11 @@
 /**
   ******************************************************************************
   * @file    bsp_imu.c
-  * @brief   BMI088 六轴 IMU 驱动：SPI2 + DMA 全双工收发 + 寄存器读写
+  * @brief   BMI088 六轴 IMU 驱动：SPI2 轮询收发 + 寄存器读写
+  *
+  * 实现照搬官方例程（gitee kit-miao/dm-mc02 → 例程/CtrBoard-H7_IMU）：
+  *   Device/BMI088/BMI088Middleware.c  —— 片选 / 延时 / 单字节收发
+  *   Device/BMI088/BMI088driver.c      —— 寄存器读写、初始化表、数据换算
   *
   * 数据流：
   *   bsp_imu_read()
@@ -12,6 +16,9 @@
   *   1. 加速度计：地址字节后必须再跟 1 个 dummy 字节，数据从第 3 个字节开始；
   *      陀螺仪：地址字节后直接就是数据。
   *   2. 读地址需要在寄存器地址上加 0x80。
+  *
+  * 另外加速度计上电处于 I²C 模式，必须靠 CSB1 的一个上升沿才切到 SPI，
+  * 所以 bsp_imu_init() 里对它的第一次读是“丢掉结果的 dummy 读”。
   ******************************************************************************
   */
 
@@ -20,8 +27,13 @@
 
 /* ========================= BMI088 寄存器地址 ========================= */
 
+/* ⚠️ 别把下面两对宏看混了：
+ *      IMU_xxx_CHIP_ID_REG   = WHO_AM_I 这个**寄存器**的地址（加速度计/陀螺仪都是 0x00）
+ *      IMU_xxx_CHIP_ID_VALUE = 读出来应该等于的**器件 ID**（加速度计 0x1E、陀螺仪 0x0F）
+ *    寄存器地址和器件 ID 是两回事，前者固定 0x00，后者才是数据手册 ID 列的值 */
+
 /* --- 加速度计 --- */
-#define IMU_ACC_CHIP_ID            0x00U    /**< WHO_AM_I */
+#define IMU_ACC_CHIP_ID_REG        0x00U    /**< WHO_AM_I 寄存器地址 */
 #define IMU_ACC_DATA               0x12U    /**< ACCEL_XOUT_L，连续 6 字节 */
 #define IMU_ACC_TEMP_M             0x22U    /**< 温度高字节，连续 2 字节 */
 #define IMU_ACC_CONF               0x40U
@@ -33,7 +45,7 @@
 #define IMU_ACC_SOFTRESET          0x7EU
 
 /* --- 陀螺仪 --- */
-#define IMU_GYRO_CHIP_ID           0x00U    /**< WHO_AM_I */
+#define IMU_GYRO_CHIP_ID_REG       0x00U    /**< WHO_AM_I 寄存器地址 */
 #define IMU_GYRO_BASE              0x00U    /**< 从 WHO_AM_I 起连续 8 字节 = ID + 状态 + 6 字节角速度 */
 #define IMU_GYRO_RANGE             0x0FU
 #define IMU_GYRO_BANDWIDTH         0x10U
@@ -43,9 +55,9 @@
 #define IMU_GYRO_INT3_INT4_IO_CONF 0x16U
 #define IMU_GYRO_INT3_INT4_IO_MAP  0x18U
 
-/* --- 期望的 WHO_AM_I 值 --- */
-#define IMU_ACC_CHIP_ID_VALUE      0x1EU
-#define IMU_GYRO_CHIP_ID_VALUE     0x0FU
+/* --- 期望的器件 ID（寄存器内容，不是寄存器地址）--- */
+#define IMU_ACC_CHIP_ID_VALUE      0x1EU    /**< 数据手册 ACC_CHIP_ID 复位值 = 0x1E */
+#define IMU_GYRO_CHIP_ID_VALUE     0x0FU    /**< 数据手册 GYRO_CHIP_ID 复位值 = 0x0F */
 
 #define IMU_SOFTRESET_VALUE        0xB6U
 
@@ -70,8 +82,8 @@
 #define IMU_GYRO_CS_PORT           SPI2_CS1_GPIO_Port
 #define IMU_GYRO_CS_PIN            SPI2_CS1_Pin
 
-/** @brief 单次 SPI 传输缓冲上限（最长 8 字节数据 + 2 字节头部） */
-#define IMU_XFER_BUF_SIZE          16U
+/** @brief 一次连续读的最大字节数（加速度 6 / 陀螺仪 8 / 温度 2，留点余量） */
+#define IMU_READ_MAX_LEN           8U
 
 /* ========================= 内部类型 ========================= */
 
@@ -138,12 +150,11 @@ static const imu_reg_val_t s_gyro_init_seq[] =
 
 static SPI_HandleTypeDef *s_hspi = NULL;
 
-static uint8_t s_tx[IMU_XFER_BUF_SIZE];
-static uint8_t s_rx[IMU_XFER_BUF_SIZE];
-
-static volatile bool s_xfer_done  = false;
-static volatile bool s_xfer_error = false;
-static bool          s_busy       = false;
+/**
+  * @brief 最近一次字节收发失败标记
+  * @note  轮询模式下只有超时/总线错才会置位；由事务级函数统一检查并转成返回码
+  */
+static bool s_xfer_error = false;
 
 static bool    s_ready        = false;
 static uint8_t s_acc_chip_id  = 0U;
@@ -155,8 +166,13 @@ static uint8_t s_fail_reg    = 0xFFU;
 static uint8_t s_fail_expect = 0U;
 static uint8_t s_fail_actual = 0U;
 
-/* ========================= 延时（不占用定时器，直接读 SysTick） ========================= */
+/* ========================= 延时 ========================= */
 
+/**
+  * @brief 微秒级延时（直接用 SysTick 计数器，不占用定时器）
+  * @note  例程里写死 ticks = us * 480，是给它 480MHz 的主频用的；
+  *        这里按 SystemCoreClock 算，换主频不用改
+  */
 static void imu_delay_us(uint32_t us)
 {
     uint32_t reload  = SysTick->LOAD + 1U;
@@ -194,79 +210,32 @@ static void imu_cs_write(imu_dev_t dev, GPIO_PinState state)
     }
 }
 
-/* ========================= SPI2 + DMA 收发 ========================= */
+/* ========================= SPI2 字节收发 ========================= */
 
 /**
-  * @brief SPI2 全双工 DMA 收发（同步等待完成）
-  * @note  片选由调用方在传输前后自己拉低/拉高，这里只管数据
+  * @brief 全双工收发一个字节
+  * @param  tx 要发出去的字节
+  * @retval 同一时刻收到的字节
+  *
+  * @note  与例程 BMI088Middleware.c 的 BMI088_read_write_byte() 一致：
+  *        用 HAL_SPI_TransmitReceive 轮询单字节，不用 DMA、不依赖任何中断。
+  *        片选由调用方在整个事务期间维持低电平，这里不管。
+  * @note  例程直接忽略 HAL 返回值，这里置 s_xfer_error，由
+  *        imu_read_regs() / imu_write_reg() 统一检查后转成返回码
   */
-static ret_code_t imu_spi_transfer(uint8_t *tx, uint8_t *rx, uint16_t len, uint32_t timeout_ms)
+static uint8_t imu_rw_byte(uint8_t tx)
 {
-    uint32_t start;
+    uint8_t rx = 0U;
 
-    if ((s_hspi == NULL) || (len == 0U) || (len > IMU_XFER_BUF_SIZE))
-    {
-        return RET_PARAM;
-    }
-    if (s_busy)
-    {
-        return RET_BUSY;
-    }
-
-    s_busy       = true;
-    s_xfer_done  = false;
-    s_xfer_error = false;
-
-    if (HAL_SPI_TransmitReceive_DMA(s_hspi, tx, rx, len) != HAL_OK)
-    {
-        s_busy = false;
-        return RET_ERROR;
-    }
-
-    start = HAL_GetTick();
-    while ((!s_xfer_done) && (!s_xfer_error))
-    {
-        if ((HAL_GetTick() - start) >= timeout_ms)
-        {
-            (void)HAL_SPI_Abort(s_hspi);
-            s_busy = false;
-            return RET_TIMEOUT;
-        }
-    }
-
-    s_busy = false;
-    return s_xfer_error ? RET_ERROR : RET_OK;
-}
-
-/**
-  * @brief SPI 传输完成回调（独占实现，其它文件不要再写）
-  */
-void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
-{
-    if (hspi->Instance == SPI2)
-    {
-        s_xfer_done = true;
-    }
-}
-
-/**
-  * @brief SPI 错误回调（独占实现，其它文件不要再写）
-  */
-void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
-{
-    if (hspi->Instance == SPI2)
+    if (HAL_SPI_TransmitReceive(s_hspi, &tx, &rx, 1U, IMU_SPI_TIMEOUT_MS) != HAL_OK)
     {
         s_xfer_error = true;
     }
+
+    return rx;
 }
 
 /* ========================= 寄存器读写 ========================= */
-
-/** @brief 读操作前面要发的头部字节数：加速度计多 1 个 dummy 字节 */
-static uint16_t imu_header_len(imu_dev_t dev)
-{
-    return (dev == IMU_DEV_ACCEL) ? 2U : 1U;
-}
 
 /**
   * @brief 连续读寄存器
@@ -274,60 +243,53 @@ static uint16_t imu_header_len(imu_dev_t dev)
   * @param  reg 起始寄存器地址（内部会自动加 0x80 读标志）
   * @param  out 数据输出缓冲
   * @param  len 读取字节数
+  *
+  * @note  与例程 BMI088_read_muli_reg() 的时序一致：
+  *          加速计：地址 -> dummy 字节 -> 数据
+  *          陀螺仪：地址 -> 数据（手册 §6.1.2：dummy 字节只作用于加速计）
   */
 static ret_code_t imu_read_regs(imu_dev_t dev, uint8_t reg, uint8_t *out, uint16_t len)
 {
-    uint16_t hdr   = imu_header_len(dev);
-    uint16_t total = (uint16_t)(hdr + len);
     uint16_t i;
-    ret_code_t ret;
 
-    if ((out == NULL) || (total > IMU_XFER_BUF_SIZE))
+    if ((out == NULL) || (len == 0U) || (len > IMU_READ_MAX_LEN) || (reg > 0x7FU))
     {
         return RET_PARAM;
     }
 
-    for (i = 0U; i < hdr; i++)
-    {
-        s_tx[i] = (uint8_t)(reg | 0x80U);   /* 读标志 */
-    }
-    for (i = hdr; i < total; i++)
-    {
-        s_tx[i] = 0x55U;                    /* 读阶段的填充字节，内容无所谓 */
-    }
+    s_xfer_error = false;
 
     imu_cs_write(dev, GPIO_PIN_RESET);
-    ret = imu_spi_transfer(s_tx, s_rx, total, IMU_SPI_TIMEOUT_MS);
-    imu_cs_write(dev, GPIO_PIN_SET);
+    (void)imu_rw_byte((uint8_t)(reg | 0x80U));
 
-    if (ret != RET_OK)
+    if (dev == IMU_DEV_ACCEL)
     {
-        return ret;
+        (void)imu_rw_byte(0x55U);      /* dummy，内容无所谓 */
     }
 
     for (i = 0U; i < len; i++)
     {
-        out[i] = s_rx[hdr + i];
+        out[i] = imu_rw_byte(0x55U);
     }
+    imu_cs_write(dev, GPIO_PIN_SET);
 
-    return RET_OK;
+    return s_xfer_error ? RET_ERROR : RET_OK;
 }
 
 /**
   * @brief 写单个寄存器
+  * @note  与例程 BMI088_write_single_reg() 一致：地址（不加 0x80）+ 数据
   */
 static ret_code_t imu_write_reg(imu_dev_t dev, uint8_t reg, uint8_t val)
 {
-    ret_code_t ret;
-
-    s_tx[0] = reg;      /* 写操作地址不加 0x80 */
-    s_tx[1] = val;
+    s_xfer_error = false;
 
     imu_cs_write(dev, GPIO_PIN_RESET);
-    ret = imu_spi_transfer(s_tx, s_rx, 2U, IMU_SPI_TIMEOUT_MS);
+    (void)imu_rw_byte(reg);
+    (void)imu_rw_byte(val);
     imu_cs_write(dev, GPIO_PIN_SET);
 
-    return ret;
+    return s_xfer_error ? RET_ERROR : RET_OK;
 }
 
 /* ========================= 初始化 ========================= */
@@ -345,16 +307,17 @@ static void imu_record_fail(imu_dev_t dev, uint8_t reg, uint8_t expect, uint8_t 
   */
 static ret_code_t imu_read_chip_id(imu_dev_t dev, uint8_t *id)
 {
+    uint8_t    reg = (dev == IMU_DEV_ACCEL) ? IMU_ACC_CHIP_ID_REG : IMU_GYRO_CHIP_ID_REG;
     ret_code_t ret;
 
-    ret = imu_read_regs(dev, 0x00U, id, 1U);
+    ret = imu_read_regs(dev, reg, id, 1U);
     if (ret != RET_OK)
     {
         return ret;
     }
     imu_delay_us(IMU_COM_WAIT_SENSOR_TIME);
 
-    ret = imu_read_regs(dev, 0x00U, id, 1U);
+    ret = imu_read_regs(dev, reg, id, 1U);
     if (ret != RET_OK)
     {
         return ret;
@@ -438,6 +401,11 @@ static ret_code_t imu_init_device(imu_dev_t dev,
         return RET_ERROR;
     }
 
+    /* WHO_AM_I 一验过就记下来：后面某个配置寄存器回读失败时，
+     * 调试器里的 bsp_imu_get_xxx_chip_id() 仍能证明"芯片通、地址对"，
+     * 直接把问题范围缩到那一个寄存器，而不是"整个陀螺仪没反应" */
+    *id_out = id;
+
     /* 4) 逐条写配置寄存器并回读校验 */
     for (i = 0U; i < seq_len; i++)
     {
@@ -448,7 +416,6 @@ static ret_code_t imu_init_device(imu_dev_t dev,
         }
     }
 
-    *id_out = id;
     return RET_OK;
 }
 
@@ -465,6 +432,7 @@ ret_code_t bsp_imu_init(SPI_HandleTypeDef *hspi)
     s_ready       = false;
     s_acc_chip_id = 0U;
     s_gyro_chip_id = 0U;
+    s_xfer_error  = false;
     s_fail_dev    = 0xFFU;
     s_fail_reg    = 0xFFU;
     s_fail_expect = 0U;

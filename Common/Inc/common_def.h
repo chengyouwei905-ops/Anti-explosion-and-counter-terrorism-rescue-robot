@@ -63,6 +63,7 @@ typedef enum {
     RET_PARAM    = -4,  /**< 参数非法 */
     RET_NOMEM    = -5,  /**< 空间不足 */
     RET_NOTREADY = -6,  /**< 尚未初始化 */
+    RET_IDLE     = -7,  /**< 本轮无需处理（如采样间隔未到），**不是错误** */
 } ret_code_t;
 
 #ifdef __cplusplus

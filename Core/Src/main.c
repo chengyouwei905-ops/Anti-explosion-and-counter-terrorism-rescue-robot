@@ -25,6 +25,7 @@
 #include "app_chassis.h"
 #include "app_roboarm.h"
 #include "app_imu.h"
+#include "stm32h7xx_hal.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -34,7 +35,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define IMU_TO_ANGLE 57.29578f   /**< 弧度转角度制的系数 */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -55,7 +56,14 @@ UART_HandleTypeDef huart10;
 /* USER CODE BEGIN PV */
 /* IMU 调试用：断点停在这里可以直接看返回值与解算结果 */
 static ret_code_t s_imu_ret;
-static float      s_imu_euler[3];   /* [roll, pitch, yaw]，单位弧度 */
+float yaw_deg=0;
+float gyro_radps[3];
+/* ---- 以下是 IMU 自检结果，方便直接在变量面板看（稳定后可删）---- */
+uint8_t imu_fail_dev    = 0xFFU;   /* 0=加速度计 1=陀螺仪 0xFF=没失败 */
+uint8_t imu_fail_reg    = 0xFFU;   /* 0x00 = WHO_AM_I 没过（器件没应答） */
+uint8_t imu_fail_expect = 0U;
+uint8_t imu_fail_actual = 0U;
+float   imu_rate_hz     = 0.0f;    /* 实测解算频率，正常接近 1000 */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -73,20 +81,7 @@ static void MX_USART10_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-/**
-  * @brief 阻塞等待 ms 毫秒，但期间持续跑 IMU 解算
-  * @note  不能直接用 HAL_Delay()：那样两次 app_imu_poll() 间隔超过解算层的 dt 上限
-  *        （0.1s），本次采样会被丢弃，表现为姿态一直不更新
-  */
-static void wait_ms_keep_imu(uint32_t ms)
-{
-  uint32_t t0 = HAL_GetTick();
 
-  while ((HAL_GetTick() - t0) < ms)
-  {
-    (void)app_imu_poll();
-  }
-}
 /* USER CODE END 0 */
 
 /**
@@ -144,17 +139,35 @@ int main(void)
   }
   app_chassis_move(0.0f, 0.0f, 0.0f);
 
-  /* 机械臂链路初始化（USART10：PE3=TX / PE2=RX）
-     ⚠️ 控制板固定 9600，CubeMX 里 USART10 的波特率不能是默认的 115200 */
+  /* 机械臂链路初始化（USART10：PE3=TX / PE2=RX）*/
   if (app_roboarm_init(&huart10) != RET_OK)
   {
     Error_Handler();
   }
 
-  /* ---- IMU 初始化（BMI088 + SPI2/DMA + Mahony 姿态解算，含开机陀螺零偏标定）---- */
+  /* ---- IMU 初始化（BMI088 + SPI2 轮询 + Mahony 姿态解算，含开机陀螺零偏标定）---- */
   /* 该函数会阻塞约 1 秒做零偏标定，期间板子必须静止 */
-  /* 若 s_imu_ret != RET_OK：断点后调用 bsp_imu_get_init_fail() 查失败现场 */
-  s_imu_ret = app_imu_init(&hspi2);
+  /* ===================== IMU 自检（调试用，稳定后可整段删掉） =====================
+   * 例程 main.c 是 while(BMI088_init()) 无限重试，这里只重试 3 次：
+   *   - 重试本身有意义：加速度计上电是 I²C 模式，要靠 CSB1 的上升沿才切到 SPI，
+   *     多来一次就多一次机会
+   *   - 但不无限等：板子真不通时不能卡死，失败现场留在下面几个全局变量里
+   * 看这几个变量就够定位：
+   *   s_imu_ret                          RET_OK 才算初始化成功
+   *   imu_fail_dev/reg/expect/actual     失败现场；reg==0x00 说明 WHO_AM_I 没过
+   *   imu_rate_hz                        实测解算频率，正常接近 1000
+   * =========================================================================== */
+  for (uint32_t i = 0U; i < 3U; i++)
+  {
+    s_imu_ret = app_imu_init(&hspi2);
+    if (s_imu_ret == RET_OK)
+    {
+      break;
+    }
+    HAL_Delay(50);   /* 失败就等一会儿重来（整个初始化会重跑一遍） */
+  }
+  /* 不管成没成功都把现场抄出来，这样在本文件就能看 */
+  app_imu_get_init_fail(&imu_fail_dev, &imu_fail_reg, &imu_fail_expect, &imu_fail_actual);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -164,16 +177,21 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    /* IMU：每轮读一次并解算姿态。断点看 s_imu_euler，平放静止时 roll/pitch 应≈0 */
-    (void)app_imu_poll();
-    app_imu_get_euler(s_imu_euler);
 
-    app_chassis_move(100.0f, 0.0f, 0.0f);
+    app_imu_poll();
+    float s_imu_euler[3];
+    app_imu_get_euler(s_imu_euler);
+    yaw_deg = s_imu_euler[AHRS_YAW] * IMU_TO_ANGLE;
+    app_imu_get_gyro(gyro_radps);
+    imu_rate_hz = app_imu_get_rate_hz();   /* 自检：应接近 1000 */
+    //HAL_Delay(500);
+
+/*     app_chassis_move(100.0f, 0.0f, 0.0f);
     wait_ms_keep_imu(2000);
     app_chassis_move(0.0f, 100.0f, 0.0f);
     wait_ms_keep_imu(2000);
     app_chassis_move(0.0f, 0.0f, 0.0f);
-    wait_ms_keep_imu(2000);
+    wait_ms_keep_imu(2000); */
   }
   /* USER CODE END 3 */
 }
@@ -506,7 +524,19 @@ static void MX_GPIO_Init(void)
   HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PC3, SYSCFG_SWITCH_PC3_CLOSE);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
-
+  /* ⚠️ 这里**故意不做** PC3 模拟开关的覆盖。
+   *
+   * 保持 CubeMX 上面那行的 CLOSE（= PC3SO 清零 = 复位默认值），效果等同于参考例程
+   * "根本不去碰这个位"（老版 CubeMX 对同样的 .ioc 不会生成那一句）。
+   *
+   * 依据：
+   *   - PC2_C（SPI2_MISO）是同一类双焊盘脚，CubeMX 同样没碰它，实测工作正常
+   *     → 说明"不碰 / 闭合"这种状态下 PC*_C 能正常当数字 I/O 用
+   *   - 曾经把它改成 OPEN 试过：那会让 PC3 从数字焊盘上断开，CSB2 永远拉不低，
+   *     陀螺仪读到全 0x00（加速度计不受影响）—— 正是当时的故障现象
+   *
+   * 想验证的话：在 MX_GPIO_Init() 执行之前读 SYSCFG->PMCR 的 bit27（PC3SO），
+   * 那个值就是复位默认值。 */
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
