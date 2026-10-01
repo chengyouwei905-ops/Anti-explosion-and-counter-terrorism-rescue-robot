@@ -25,6 +25,7 @@
 #include "app_chassis.h"
 #include "app_roboarm.h"
 #include "app_imu.h"
+#include "bsp_rgb.h"
 #include "stm32h7xx_hal.h"
 /* USER CODE END Includes */
 
@@ -58,12 +59,7 @@ UART_HandleTypeDef huart10;
 static ret_code_t s_imu_ret;
 float yaw_deg=0;
 float gyro_radps[3];
-/* ---- 以下是 IMU 自检结果，方便直接在变量面板看（稳定后可删）---- */
-uint8_t imu_fail_dev    = 0xFFU;   /* 0=加速度计 1=陀螺仪 0xFF=没失败 */
-uint8_t imu_fail_reg    = 0xFFU;   /* 0x00 = WHO_AM_I 没过（器件没应答） */
-uint8_t imu_fail_expect = 0U;
-uint8_t imu_fail_actual = 0U;
-float   imu_rate_hz     = 0.0f;    /* 实测解算频率，正常接近 1000 */
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -122,6 +118,8 @@ int main(void)
   MX_SPI2_Init();
   MX_USART10_UART_Init();
   /* USER CODE BEGIN 2 */
+  bsp_rgb_init();
+  bsp_rgb_set(255, 0, 0);   //上电后先亮红灯，表示系统初始化中
   //除mcu外其他部分供电使能
   HAL_GPIO_WritePin(Power_OUT2_EN_GPIO_Port,Power_OUT2_EN_Pin,GPIO_PIN_SET);
   HAL_Delay(2000);    //等待其他设备稳定
@@ -145,18 +143,6 @@ int main(void)
     Error_Handler();
   }
 
-  /* ---- IMU 初始化（BMI088 + SPI2 轮询 + Mahony 姿态解算，含开机陀螺零偏标定）---- */
-  /* 该函数会阻塞约 1 秒做零偏标定，期间板子必须静止 */
-  /* ===================== IMU 自检（调试用，稳定后可整段删掉） =====================
-   * 例程 main.c 是 while(BMI088_init()) 无限重试，这里只重试 3 次：
-   *   - 重试本身有意义：加速度计上电是 I²C 模式，要靠 CSB1 的上升沿才切到 SPI，
-   *     多来一次就多一次机会
-   *   - 但不无限等：板子真不通时不能卡死，失败现场留在下面几个全局变量里
-   * 看这几个变量就够定位：
-   *   s_imu_ret                          RET_OK 才算初始化成功
-   *   imu_fail_dev/reg/expect/actual     失败现场；reg==0x00 说明 WHO_AM_I 没过
-   *   imu_rate_hz                        实测解算频率，正常接近 1000
-   * =========================================================================== */
   for (uint32_t i = 0U; i < 3U; i++)
   {
     s_imu_ret = app_imu_init(&hspi2);
@@ -166,8 +152,8 @@ int main(void)
     }
     HAL_Delay(50);   /* 失败就等一会儿重来（整个初始化会重跑一遍） */
   }
-  /* 不管成没成功都把现场抄出来，这样在本文件就能看 */
-  app_imu_get_init_fail(&imu_fail_dev, &imu_fail_reg, &imu_fail_expect, &imu_fail_actual);
+  bsp_rgb_set(0, 255, 0);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -177,7 +163,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
+    app_vision_poll();
     app_imu_poll();
     float s_imu_euler[3];
     app_imu_get_euler(s_imu_euler);
@@ -186,12 +172,6 @@ int main(void)
     imu_rate_hz = app_imu_get_rate_hz();   /* 自检：应接近 1000 */
     //HAL_Delay(500);
 
-/*     app_chassis_move(100.0f, 0.0f, 0.0f);
-    wait_ms_keep_imu(2000);
-    app_chassis_move(0.0f, 100.0f, 0.0f);
-    wait_ms_keep_imu(2000);
-    app_chassis_move(0.0f, 0.0f, 0.0f);
-    wait_ms_keep_imu(2000); */
   }
   /* USER CODE END 3 */
 }
