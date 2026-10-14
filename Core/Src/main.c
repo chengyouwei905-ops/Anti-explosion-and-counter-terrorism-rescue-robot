@@ -21,12 +21,13 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stm32h7xx_hal.h"
 #include "app_vision.h"
 #include "app_chassis.h"
 #include "app_roboarm.h"
 #include "app_imu.h"
 #include "bsp_rgb.h"
-#include "stm32h7xx_hal.h"
+#include "app_chassis_closeloop.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,7 +37,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define IMU_TO_ANGLE 57.29578f   /**< 弧度转角度制的系数 */
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,20 +46,19 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-
 SPI_HandleTypeDef hspi2;
 DMA_HandleTypeDef hdma_spi2_rx;
 DMA_HandleTypeDef hdma_spi2_tx;
-
+TIM_HandleTypeDef htim6;
 UART_HandleTypeDef huart7;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart10;
 
+int s_imu_ret;   /**< app_imu_init() 的返回值，供 main.c 里调试用 */
+float testangle[3] = {0.0f, 0.0f, 0.0f};   /**< 测试imu用的角度值，供 main.c 里调试用 */
+float yawangle = 0.0f;
 /* USER CODE BEGIN PV */
-/* IMU 调试用：断点停在这里可以直接看返回值与解算结果 */
-static ret_code_t s_imu_ret;
-float yaw_deg=0;
-float gyro_radps[3];
+
 
 /* USER CODE END PV */
 
@@ -71,6 +71,7 @@ static void MX_UART7_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_USART10_UART_Init(void);
+static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -117,6 +118,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_SPI2_Init();
   MX_USART10_UART_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   bsp_rgb_init();
   bsp_rgb_set(255, 0, 0);   //上电后先亮红灯，表示系统初始化中
@@ -135,8 +137,8 @@ int main(void)
   {
     Error_Handler();
   }
-  app_chassis_move(0.0f, 0.0f, 0.0f);
-
+  app_chassis_move(0.0f, 0.0f, 0.0f);       //初始化底盘模块
+  app_chassis_closeloop_init();HAL_TIM_Base_Start_IT(&htim6); //开启角度闭环
   /* 机械臂链路初始化（USART10：PE3=TX / PE2=RX）*/
   if (app_roboarm_init(&huart10) != RET_OK)
   {
@@ -165,11 +167,9 @@ int main(void)
     /* USER CODE BEGIN 3 */
     app_vision_poll();
     app_imu_poll();
-    float s_imu_euler[3];
-    app_imu_get_euler(s_imu_euler);
-    yaw_deg = s_imu_euler[AHRS_YAW] * IMU_TO_ANGLE;
-    app_imu_get_gyro(gyro_radps);
-    imu_rate_hz = app_imu_get_rate_hz();   /* 自检：应接近 1000 */
+    app_chassis_closeloop_set_target(0.0f, 0.0f, 0.0f);
+    app_imu_get_euler(testangle);
+    yawangle = testangle[2]*57.29578f;
     //HAL_Delay(500);
 
   }
@@ -280,6 +280,44 @@ static void MX_SPI2_Init(void)
   /* USER CODE BEGIN SPI2_Init 2 */
 
   /* USER CODE END SPI2_Init 2 */
+
+}
+
+/**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 999;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 639;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
 
 }
 
@@ -504,24 +542,17 @@ static void MX_GPIO_Init(void)
   HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PC3, SYSCFG_SWITCH_PC3_CLOSE);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
-  /* ⚠️ 这里**故意不做** PC3 模拟开关的覆盖。
-   *
-   * 保持 CubeMX 上面那行的 CLOSE（= PC3SO 清零 = 复位默认值），效果等同于参考例程
-   * "根本不去碰这个位"（老版 CubeMX 对同样的 .ioc 不会生成那一句）。
-   *
-   * 依据：
-   *   - PC2_C（SPI2_MISO）是同一类双焊盘脚，CubeMX 同样没碰它，实测工作正常
-   *     → 说明"不碰 / 闭合"这种状态下 PC*_C 能正常当数字 I/O 用
-   *   - 曾经把它改成 OPEN 试过：那会让 PC3 从数字焊盘上断开，CSB2 永远拉不低，
-   *     陀螺仪读到全 0x00（加速度计不受影响）—— 正是当时的故障现象
-   *
-   * 想验证的话：在 MX_GPIO_Init() 执行之前读 SYSCFG->PMCR 的 bit27（PC3SO），
-   * 那个值就是复位默认值。 */
+  
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM6) {
+        app_chassis_closeloop_update();
+    }
+}
 /* USER CODE END 4 */
 
  /* MPU Configuration */

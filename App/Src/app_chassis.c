@@ -57,6 +57,10 @@ int app_chassis_init(UART_HandleTypeDef *huart)
     if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
         return RET_ERROR;
     }
+    frame_len = proto_chassis_pack(PROTO_CHASSIS_CMD_UPLOAD, "1,0,0", frame, sizeof(frame));/* 请求上传编码器数据 */
+    if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
+        return RET_ERROR;
+    }//只上传编码器total值，数据处理时注意达到total上限后会溢出，需自行处理
     /* 底盘数据初始化完成 */
 
     s_inited = true;

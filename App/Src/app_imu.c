@@ -6,8 +6,17 @@
   * 三块职责，互不耦合：
   *   1. 节拍：app_imu_poll() 用 DWT 实测 dt 自限速，**调用频率不敏感**
   *   2. 解算：bsp_imu_read() -> 减零偏 -> alg_ahrs_update()
-  *   3. 发布：每拍算好一条快照，用 seqlock 发布；读取侧 app_imu_get_xxx()
-  *            无锁、无线序要求，随便哪个上下文调都行
+  *   3. 发布：每拍把结果直接写进快照 s_snap；读取侧 app_imu_get_xxx() 直接读它，
+  *            无锁、不关中断，随便哪个上下文调都行
+  *
+  * 发布/读取约定（刻意保持最简单）：
+  *   - 只有 app_imu_poll() 写 s_snap，其它任何地方一律只读
+  *   - 读到的可能是上一拍的旧值（最多旧一个 poll 周期，约 1ms）——本项目可以接受
+  *   - 每个字段都是 32 位对齐标量，Cortex-M 上单次读写不会撕裂；极端情况下可能
+  *     读到"新 euler + 旧 gyro"这种跨两拍的组合，对业务无影响
+  *   - 所以不需要序号、不需要重试、不需要关中断
+  *   - 快照里的 yaw 是**连续角**：跨 ±180° 不跳变（179° -> 180° -> 181°），会一直
+  *     累加，不再限制在 (-180°, 180°]；roll / pitch 仍是 (-180°, 180°]
   *
   * 调用频率约定（app_imu_poll）：
   *   - 太快（间隔 < APP_IMU_MIN_DT_S）：返回 RET_IDLE，不算错误，也不会丢数据
@@ -46,16 +55,18 @@
   */
 #define APP_IMU_MAX_DT_S          1.0f
 
-/** @brief 编译器屏障，防止快照的写入顺序被优化打乱 */
-#define IMU_BARRIER()             __asm volatile ("" ::: "memory")
+/** @brief π / 2π：把两拍之间的 yaw 增量归一化到 (-π, π] 用 */
+#define IMU_PI_F                  3.14159265358979f
+#define IMU_TWO_PI_F              6.28318530717959f
 
 /**
-  * @brief 发布给读取侧的姿态快照（整条一起更新，保证读到的是同一拍的数据）
-  * @note  写入只发生在 app_imu_poll()；读取侧只读这里，不碰 s_ahrs
+  * @brief 发布给读取侧的姿态快照
+  * @note  只有 app_imu_poll() 写它。读取侧按 volatile 读，保证每次都从内存取最新值
+  *        （编译器不会把它缓存到寄存器里），不加锁、不改中断状态
   */
 typedef struct
 {
-    float euler[3];    /**< [roll, pitch, yaw]，弧度 */
+    float euler[3];    /**< [roll, pitch, yaw]，弧度；**yaw 是连续角**，见下 */
     float quat[4];     /**< [w, x, y, z] */
     float gyro[3];     /**< 已减零偏的角速度，rad/s */
     float accel[3];    /**< 加速度，m/s^2 */
@@ -71,8 +82,20 @@ static float         s_gyro_bias[3];
 static uint32_t      s_last_cycle;   /**< 上次采样的 DWT 周期计数 */
 static uint32_t      s_err_count;
 
-static app_imu_snapshot_t s_snap;
-static volatile uint32_t  s_snap_seq;   /**< seqlock 序号：奇数 = 正在写 */
+/**
+  * @brief 连续 yaw 的累计状态
+  * @note  alg_ahrs 给出的 yaw 被包在 (-π, π] 内，跨 ±180° 会跳变；本层在发布前把它
+  *        累计成连续角（179° -> 180° -> 181°）。累计是有状态的，所以只能在唯一的
+  *        写入者 app_imu_poll() 里做，读取侧才能保持无状态
+  * @note  这么做依赖一个前提：两拍之间的转动小于 180°（正常 1ms 节拍下最多约 0.5°，
+  *        完全安全）。只有在"长时间不调 poll（>0.3s）且期间转过半圈以上"时，
+  *        增量才会判错方向 —— 属于极端情况，正常使用不会碰到
+  */
+static float         s_yaw_cont;         /**< 连续 yaw（弧度），会一直累加 */
+static float         s_yaw_prev;         /**< 上一拍解算出的 (-π, π] yaw */
+static bool          s_yaw_cont_ready;   /**< false = 还没有基准拍 */
+
+static volatile app_imu_snapshot_t s_snap;   /**< 最新一次解算结果，读取侧直接读 */
 
 /**
   * @brief 开机陀螺零偏标定：静止采样取平均
@@ -124,10 +147,12 @@ int app_imu_init(SPI_HandleTypeDef *hspi)
 {
     ret_code_t ret;
 
-    s_ready      = false;
-    s_calibrated = false;
-    s_err_count  = 0U;
-    s_snap_seq   = 0U;
+    s_ready          = false;
+    s_calibrated     = false;
+    s_err_count      = 0U;
+    s_yaw_cont       = 0.0f;
+    s_yaw_prev       = 0.0f;
+    s_yaw_cont_ready = false;
 
     /* 快照清零：还没解算出姿态之前，读取侧拿到的是全 0 + valid = false */
     for (uint32_t k = 0U; k < 3U; k++) {
@@ -168,6 +193,22 @@ int app_imu_init(SPI_HandleTypeDef *hspi)
     s_ready      = true;
 
     return RET_OK;
+}
+
+/**
+  * @brief 把角度归一化到 (-π, π]
+  * @note  只用于处理"两拍之间的 yaw 增量"：输入必定落在 (-2π, 2π) 内，
+  *        所以一次加减就够，不需要反复缠绕
+  */
+static float wrap_pi(float a)
+{
+    if (a > IMU_PI_F) {
+        a -= IMU_TWO_PI_F;
+    }
+    if (a <= -IMU_PI_F) {
+        a += IMU_TWO_PI_F;
+    }
+    return a;
 }
 
 int app_imu_poll(void)
@@ -214,151 +255,115 @@ int app_imu_poll(void)
     /* ---- 4) 姿态解算：dt 用实测值，所以调用节奏不齐也不影响积分正确性 ---- */
     alg_ahrs_update(&s_ahrs, gyro, data.accel_mps2, dt_s);
 
-    /* ---- 5) 发布快照：整条一起写，读取侧绝不会读到"半新半旧"的姿态 ---- */
+    /* ---- 5) 发布：先把 yaw 连续化，再直接写快照；读取侧下一瞬间就能取到最新值 ----
+     *      连续化必须在写入侧做（唯一写者、约 1kHz）：1ms 内最多转约 0.5°，
+     *      所以两拍增量必定落在 (-π, π] 内，方向不会判错。
+     *      各字段是 32 位对齐标量，写入本身是原子的；读者最多读到旧一拍 */
     alg_ahrs_get_euler(&s_ahrs, euler);
 
-    s_snap_seq++;                       /* 奇数：写入中 */
-    IMU_BARRIER();
+    if (!s_yaw_cont_ready) {
+        s_yaw_cont       = euler[AHRS_YAW];     /* 第一帧：以此刻朝向为基准 */
+        s_yaw_prev       = euler[AHRS_YAW];
+        s_yaw_cont_ready = true;
+    } else {
+        s_yaw_cont += wrap_pi(euler[AHRS_YAW] - s_yaw_prev);
+        s_yaw_prev  = euler[AHRS_YAW];
+    }
+    euler[AHRS_YAW] = s_yaw_cont;               /* 快照里存的是连续角 */
+
     for (k = 0U; k < 3U; k++) {
         s_snap.euler[k] = euler[k];
         s_snap.gyro[k]  = gyro[k];
         s_snap.accel[k] = data.accel_mps2[k];
     }
-    alg_ahrs_get_quat(&s_ahrs, s_snap.quat);
+
+    /* 四元数先解到局部变量再逐个搬进快照：s_snap 是 volatile，
+     * 不能把它的成员地址直接传给 alg_ahrs_get_quat() */
+    float quat[4];
+    alg_ahrs_get_quat(&s_ahrs, quat);
+    for (k = 0U; k < 4U; k++) {
+        s_snap.quat[k] = quat[k];
+    }
+
     s_snap.temp_c  = data.temp_c;
     s_snap.rate_hz = 1.0f / dt_s;
     s_snap.valid   = true;
-    IMU_BARRIER();
-    s_snap_seq++;                       /* 偶数：写完 */
 
     return RET_OK;
 }
 
-/**
-  * @brief 读一份一致的快照（seqlock，读取侧无锁）
-  * @note  写入方只有 app_imu_poll()。若拷贝期间被打断（序号变了）就重来一次，
-  *        代价只是多拷 60 多个字节，比关中断更划算
-  * @retval true 数据有效
-  */
-static bool imu_snapshot_read(app_imu_snapshot_t *out)
-{
-    const volatile uint8_t *src = (const volatile uint8_t *)&s_snap;
-    uint8_t                *dst = (uint8_t *)out;
-    uint32_t                s0;
-    uint32_t                s1;
-    uint32_t                i;
-
-    for (;;) {
-        s0 = s_snap_seq;
-        if ((s0 & 1U) != 0U) {
-            continue;               /* 写者正在写，等它写完 */
-        }
-        IMU_BARRIER();
-        for (i = 0U; i < sizeof(s_snap); i++) {
-            dst[i] = src[i];
-        }
-        IMU_BARRIER();
-        s1 = s_snap_seq;
-        if (s0 == s1) {
-            break;
-        }
-    }
-
-    return out->valid;
-}
-
 bool app_imu_get_euler(float euler_rad[3])
 {
-    app_imu_snapshot_t snap;
-
     if (euler_rad == NULL) {
         return false;
     }
-    if (!imu_snapshot_read(&snap)) {
+    if (!s_snap.valid) {
         euler_rad[AHRS_ROLL]  = 0.0f;
         euler_rad[AHRS_PITCH] = 0.0f;
         euler_rad[AHRS_YAW]   = 0.0f;
         return false;
     }
 
-    euler_rad[AHRS_ROLL]  = snap.euler[AHRS_ROLL];
-    euler_rad[AHRS_PITCH] = snap.euler[AHRS_PITCH];
-    euler_rad[AHRS_YAW]   = snap.euler[AHRS_YAW];
+    euler_rad[AHRS_ROLL]  = s_snap.euler[AHRS_ROLL];
+    euler_rad[AHRS_PITCH] = s_snap.euler[AHRS_PITCH];
+    euler_rad[AHRS_YAW]   = s_snap.euler[AHRS_YAW];
     return true;
 }
 
 bool app_imu_get_quat(float quat[4])
 {
-    app_imu_snapshot_t snap;
+    bool ok;
 
     if (quat == NULL) {
         return false;
     }
-    if (!imu_snapshot_read(&snap)) {
-        for (uint32_t k = 0U; k < 4U; k++) {
-            quat[k] = 0.0f;
-        }
-        return false;
-    }
 
+    /* valid 只读一次：避免在"写 0"和"返回 true"之间被 poll 更新，出现返回有效却是 0 的组合 */
+    ok = s_snap.valid;
     for (uint32_t k = 0U; k < 4U; k++) {
-        quat[k] = snap.quat[k];
+        quat[k] = ok ? s_snap.quat[k] : 0.0f;
     }
-    return true;
+    return ok;
 }
 
 bool app_imu_get_gyro(float gyro_radps[3])
 {
-    app_imu_snapshot_t snap;
+    bool ok;
 
     if (gyro_radps == NULL) {
         return false;
     }
-    if (!imu_snapshot_read(&snap)) {
-        for (uint32_t k = 0U; k < 3U; k++) {
-            gyro_radps[k] = 0.0f;
-        }
-        return false;
-    }
 
+    ok = s_snap.valid;
     for (uint32_t k = 0U; k < 3U; k++) {
-        gyro_radps[k] = snap.gyro[k];
+        gyro_radps[k] = ok ? s_snap.gyro[k] : 0.0f;
     }
-    return true;
+    return ok;
 }
 
 bool app_imu_get_accel(float accel_mps2[3])
 {
-    app_imu_snapshot_t snap;
+    bool ok;
 
     if (accel_mps2 == NULL) {
         return false;
     }
-    if (!imu_snapshot_read(&snap)) {
-        for (uint32_t k = 0U; k < 3U; k++) {
-            accel_mps2[k] = 0.0f;
-        }
-        return false;
-    }
 
+    ok = s_snap.valid;
     for (uint32_t k = 0U; k < 3U; k++) {
-        accel_mps2[k] = snap.accel[k];
+        accel_mps2[k] = ok ? s_snap.accel[k] : 0.0f;
     }
-    return true;
+    return ok;
 }
 
 float app_imu_get_temp(void)
 {
-    app_imu_snapshot_t snap;
-
-    return imu_snapshot_read(&snap) ? snap.temp_c : 0.0f;
+    return s_snap.valid ? s_snap.temp_c : 0.0f;
 }
 
 float app_imu_get_rate_hz(void)
 {
-    app_imu_snapshot_t snap;
-
-    return imu_snapshot_read(&snap) ? snap.rate_hz : 0.0f;
+    return s_snap.valid ? s_snap.rate_hz : 0.0f;
 }
 
 bool app_imu_is_ready(void)

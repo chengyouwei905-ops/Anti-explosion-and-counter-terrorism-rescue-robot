@@ -1,5 +1,28 @@
-#include "stm32f10x.h"                  // Device header
-#include "PID.h"
+#include "alg_pid.h"
+#include <stddef.h>
+
+void PID_Init(PID_t *p, float kp, float ki, float kd, float out_min, float out_max)
+{
+	if (p == NULL)
+	{
+		return;
+	}
+
+	p->Target = 0.0f;
+	p->Actual = 0.0f;
+	p->Out = 0.0f;
+
+	p->Kp = kp;
+	p->Ki = ki;
+	p->Kd = kd;
+
+	p->Error0 = 0.0f;
+	p->Error1 = 0.0f;
+	p->ErrorInt = 50.0f;
+
+	p->OutMin = out_min;
+	p->OutMax = out_max;
+}
 
 void PID_Update(PID_t *p)
 {
