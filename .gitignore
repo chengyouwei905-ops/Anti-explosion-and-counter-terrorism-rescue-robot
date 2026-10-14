@@ -1,8 +1,13 @@
-# CMake 编译目录
+# ==================== 构建目录 ====================
+# CMake 预设的 binaryDir = build/<presetName>，整个目录都是生成物
 /build/
 /cmake-build-*/
+# STM32CubeIDE 工程的本机输出目录（若用 IDE 打开会生成在根目录）
+/Debug/
+/Release/
 
-# CMake 生成文件（防止误生成到根目录）
+# ==================== CMake 生成文件 ====================
+# 防止 configure 时误把中间文件生成到源码根目录
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
@@ -10,11 +15,15 @@ compile_commands.json
 build.ninja
 .ninja_deps
 .ninja_log
+# 本机私有预设（编译器等本地路径），只提交 CMakePresets.json
+CMakeUserPresets.json
 
-# 编译产物
+# ==================== 编译产物 ====================
 *.o
 *.obj
 *.d
+# 静态库：包含 Drivers/CMSIS/DSP/Lib 下的 ARM 预编译库，
+# 它们由 CubeMX 随 CMSIS 包一起复制，体积大且可随时重新生成，不入库
 *.a
 *.lib
 *.elf
@@ -24,20 +33,38 @@ build.ninja
 *.list
 *.lst
 
-# STM32CubeMX / STM32CubeIDE 本地缓存
+# ==================== STM32CubeMX / STM32CubeIDE 本机缓存 ====================
 mx.scratch/
 .settings/
+*.launch
 
-# VS Code 本机配置
+# ==================== VS Code ====================
+# settings.json 含本机路径，其余 (.vscode/c_cpp_properties.json / launch.json) 需要提交
 .vscode/settings.json
+.vscode/ipch/
+.vscode/.browse.*
+.vscode/*.local.json
 
-# 临时文件和日志
+# ==================== clangd 索引缓存 ====================
+.cache/
+
+# ==================== Python 工具脚本 ====================
+__pycache__/
+*.pyc
+
+# ==================== 临时文件和日志 ====================
 *.log
 *.tmp
 *.bak
 *.swp
+*.swo
 *~
+*.orig
+*.rej
+*.autosave
 
-# Windows
+# ==================== 操作系统 ====================
+.DS_Store
+._*
 Thumbs.db
 Desktop.ini
