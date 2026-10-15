@@ -17,11 +17,17 @@ void alg_chassis_invert(const Chassis_State_t *state, float wheel_speed[WHEEL_NU
     wheel_speed[RIGHT_REAR_WHELL]  =  sx + sy + kw;
 }
 
-/* 麦轮底盘运动学正解 */
+/* 麦轮底盘运动学正解（逆解的逆）：四轮行程 -> 底盘中心位移，正方向约定同 alg_chassis_invert()
+ * ⚠️ 运动学是线性的：输入"行程增量(mm)"时，输出的就是"位移增量(mm)"，
+ *    轮序取 Wheel_ID_t，正 = 轮子驱动底盘前进 */
 void alg_chassis_forward(const float wheel_speed[WHEEL_NUMBERS], Chassis_State_t *state)
 {
-    state->speed_x = 0;
-    state->speed_y = 0;
-    state->omega = 0;
-    /* 待补充 */
+    float lf = wheel_speed[LEFT_FRONT_WHELL];
+    float rf = wheel_speed[RIGHT_FRONT_WHELL];
+    float lr = wheel_speed[LEFT_REAR_WHELL];
+    float rr = wheel_speed[RIGHT_REAR_WHELL];
+
+    state->speed_x = (lf - rf - lr + rr) * 0.25f;
+    state->speed_y = (lf + rf + lr + rr) * 0.25f;
+    state->omega   = (rf + rr - lf - lr) * 0.25f / CHASSIS_K_MM;
 }

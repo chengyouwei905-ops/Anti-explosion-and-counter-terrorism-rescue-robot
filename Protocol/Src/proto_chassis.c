@@ -325,14 +325,19 @@ int proto_chassis_parse(const char *text, char *cmd, uint8_t cmd_size,
         while ((*p != '\0') && (*p != (char)PROTO_CHASSIS_EOF)) {
             bool    neg       = false;
             bool    has_digit = false;
-            int32_t val       = 0;
+            int64_t val       = 0;
 
             if (*p == '-') {
                 neg = true;
                 p++;
             }
             while ((*p >= '0') && (*p <= '9')) {
-                val = (val * 10) + (int32_t)(*p - '0');
+                /* 用 int64 攒数字：编码器 total 回绕时会贴着 int32 边界
+                   （-2147483648），int32 域累加会溢出 */
+                val = (val * 10) + (int64_t)(*p - '0');
+                if (val > (INT32_MAX + 1LL)) {
+                    return RET_ERROR;   /* 已超 int32 范围，不用再看了 */
+                }
                 has_digit = true;
                 p++;
             }
@@ -340,10 +345,16 @@ int proto_chassis_parse(const char *text, char *cmd, uint8_t cmd_size,
                 /* 空字段 / 字母 / 小数点都会落到这里 */
                 return RET_ERROR;
             }
+            if (neg) {
+                val = -val;
+            }
+            if ((val < (int64_t)INT32_MIN) || (val > (int64_t)INT32_MAX)) {
+                return RET_ERROR;       /* 超范围：宁可整帧报错，不返回被截断的数值 */
+            }
             if ((args == NULL) || (ai >= arg_max)) {
                 return RET_NOMEM;       /* 参数太多或没给数组 */
             }
-            args[ai] = neg ? -val : val;
+            args[ai] = (int32_t)val;
             ai++;
 
             if (*p == (char)PROTO_CHASSIS_COMMA) {
