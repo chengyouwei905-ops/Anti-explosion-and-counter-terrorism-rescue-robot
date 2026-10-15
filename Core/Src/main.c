@@ -122,7 +122,7 @@ int main(void)
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   bsp_rgb_init();
-  bsp_rgb_set(255, 0, 0);   //上电后先亮红灯，表示系统初始化中
+  bsp_rgb_set(99, 0, 0);   //上电后先亮红灯，表示系统初始化中
   //除mcu外其他部分供电使能
   HAL_GPIO_WritePin(Power_OUT2_EN_GPIO_Port,Power_OUT2_EN_Pin,GPIO_PIN_SET);
   HAL_Delay(2000);    //等待其他设备稳定
@@ -155,7 +155,7 @@ int main(void)
     }
     HAL_Delay(50);   /* 失败就等一会儿重来（整个初始化会重跑一遍） */
   }
-  bsp_rgb_set(0, 255, 0);
+  bsp_rgb_set(0, 99, 0);
 
   /* USER CODE END 2 */
 
