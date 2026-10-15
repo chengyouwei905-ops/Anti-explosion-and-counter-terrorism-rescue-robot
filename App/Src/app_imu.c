@@ -36,7 +36,7 @@
 #include "bsp_dwt.h"
 
 /** @brief 开机零偏标定的采样次数（配合下面的 1ms 间隔，约 1 秒） */
-#define APP_IMU_CALI_SAMPLES      1000U
+#define APP_IMU_CALI_SAMPLES      3000U
 /** @brief 标定采样间隔（ms），BMI088 陀螺 ODR 是 1kHz，刚好每次拿到新数据 */
 #define APP_IMU_CALI_INTERVAL_MS  1U
 /** @brief 标定期间允许的零偏抖动峰峰值（rad/s）。超过就说明板子在被晃，标定作废 */

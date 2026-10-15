@@ -22,6 +22,7 @@ typedef struct{
 } Chassis_State_t;
 
 void alg_chassis_invert(const Chassis_State_t *state, float wheel_speed[WHEEL_NUMBERS]);
+/* 正解：四轮行程/线速度 -> 底盘中心位移/速度（线性，输出单位随输入） */
 void alg_chassis_forward(const float wheel_speed[WHEEL_NUMBERS], Chassis_State_t *state);
 
 #endif /* __ALG_CHASSIS_KINEMATICS_H__ */

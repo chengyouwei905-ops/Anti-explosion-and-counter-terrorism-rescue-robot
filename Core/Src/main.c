@@ -57,6 +57,7 @@ UART_HandleTypeDef huart10;
 int s_imu_ret;   /**< app_imu_init() 的返回值，供 main.c 里调试用 */
 float testangle[3] = {0.0f, 0.0f, 0.0f};   /**< 测试imu用的角度值，供 main.c 里调试用 */
 float yawangle = 0.0f;
+float distance = 0.0f;   /**< 测试底盘里程用的值，供 main.c 里调试用 */
 /* USER CODE BEGIN PV */
 
 
@@ -165,12 +166,17 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    app_vision_poll();
-    app_imu_poll();
-    app_chassis_closeloop_set_target(0.0f, 0.0f, 0.0f);
-    app_imu_get_euler(testangle);
-    yawangle = testangle[2]*57.29578f;
-    //HAL_Delay(500);
+    //app_vision_poll();
+    app_chassis_poll();         //解析底盘编码器上报帧，累积里程（app_chassis_get_distance 取值）
+    distance = app_chassis_get_distance();
+    //app_imu_poll();
+    //app_chassis_closeloop_set_target(0.0f, 0.0f, 0.0f);
+    //app_imu_get_euler(testangle);
+    //yawangle = testangle[2]*57.29578f;
+/*     bsp_rgb_set(0, 0, 255);
+    HAL_Delay(500);
+    bsp_rgb_set(0, 255, 0);
+    HAL_Delay(500); */
 
   }
   /* USER CODE END 3 */
