@@ -48,7 +48,7 @@ extern "C" {
   * @brief  初始化 IMU：跑 BSP 驱动 + 开机陀螺零偏标定 + 复位姿态解算
   * @param  hspi SPI 句柄（本工程为 &hspi2），需已由 MX_SPI2_Init() 初始化
   * @retval RET_OK 成功；其它见 ret_code_t
-  * @note   本函数会阻塞约 1 秒做零偏标定，期间板子必须**静止**
+  * @note   本函数会阻塞至少约 3 秒做零偏标定，期间板子必须**静止**
   *         （标定失败不致命：零偏按 0 处理，可用 app_imu_is_calibrated() 查询）
   */
 int app_imu_init(SPI_HandleTypeDef *hspi);

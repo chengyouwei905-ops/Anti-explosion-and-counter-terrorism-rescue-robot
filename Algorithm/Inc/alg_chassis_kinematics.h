@@ -1,8 +1,6 @@
 #ifndef __ALG_CHASSIS_KINEMATICS_H__
 #define __ALG_CHASSIS_KINEMATICS_H__
 
-#include "stm32h7xx_hal.h"
-
 #define WHEEL_NUMBERS 4
 #define CHASSIS_K_MM 105.0f  /* 底盘几何参数*/
 

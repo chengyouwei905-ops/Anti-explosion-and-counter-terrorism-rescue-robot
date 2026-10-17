@@ -1,45 +1,53 @@
 #include "app_chassis_closeloop.h"
+#include "app_chassis.h"
+#include "app_imu.h"
+#include "alg_pid.h"
 #include <math.h>
 
-int16_t basic_speed = 0;
-/* 增益与限幅统一在 app_chassis_closeloop_init() 里配置，这里不再重复初始化 */
-static PID_t angle_pid_t;
+/* 原来0.1(rad/s)/deg的比例增益换算为(rad/s)/rad；实车仍需验证。 */
+#define CHASSIS_YAW_KP_RAD (0.1f * 57.29578f)
+#define CHASSIS_MAX_OMEGA_RADPS 5.0f
 
-Chassis_CloseLoop_State_t chassis_closeloop_state ={0.0f,0.0f,0.0f};
+static PID_t angle_pid_t;
+static Chassis_CloseLoop_State_t chassis_closeloop_state;
 
 void app_chassis_closeloop_init(void)
 {
-    /* 初始化 PID 控制器 */
-    PID_Init(&angle_pid_t, 0.1f, 0.0f, 0.0f, -5.0f, 5.0f);
+    PID_Init(&angle_pid_t, CHASSIS_YAW_KP_RAD, 0.0f, 0.0f,
+             -CHASSIS_MAX_OMEGA_RADPS, CHASSIS_MAX_OMEGA_RADPS);
+    chassis_closeloop_state = (Chassis_CloseLoop_State_t){0};
 }
 
-void app_chassis_closeloop_set_target(float_t vx, float_t vy,float_t yawangle)
+void app_chassis_closeloop_set_target(float vx, float vy, float yawangle)
 {
+    app_chassis_closeloop_set_target_ff(vx, vy, yawangle, 0.0f);
+}
+
+void app_chassis_closeloop_set_target_ff(float vx, float vy, float yawangle, float omega_ff)
+{
+    if (!isfinite(vx) || !isfinite(vy) || !isfinite(yawangle) || !isfinite(omega_ff)) {
+        return;
+    }
     chassis_closeloop_state.speed_x = vx;
     chassis_closeloop_state.speed_y = vy;
     chassis_closeloop_state.yaw = yawangle;
+    chassis_closeloop_state.omega_ff = omega_ff;
 }
 
-/* 定时中断中定周期调用  需注意，底盘控制板已经完成了速度闭环，此处只需完成yaw角度闭环即可*/
 void app_chassis_closeloop_update(void)
 {
-    //角度闭环流程
     float current_yaw[3];
-    if(!app_imu_get_euler(current_yaw))
-    {
+    if (!app_imu_get_euler(current_yaw) || !isfinite(current_yaw[2])) {
+        (void)app_chassis_move(0.0f, 0.0f, 0.0f);
         return;
     }
-    angle_pid_t.Actual = current_yaw[2]*57.29578f;
+    /* IMU和目标均为连续弧度角；不取最短角，允许执行指定方向的多圈转动。 */
+    angle_pid_t.Actual = current_yaw[2];
     angle_pid_t.Target = chassis_closeloop_state.yaw;
     PID_Update(&angle_pid_t);
 
-    /* 获取 PID 输出 */
-    /* x和y直接输入目标值即可，下层已做速度闭环，角速度需要输入pid后的值 */
-    float output_x, output_y, omega;
-    output_x = chassis_closeloop_state.speed_x;
-    output_y = chassis_closeloop_state.speed_y;
-    omega = angle_pid_t.Out;
-
-    /* 将 PID 输出转换为底盘速度指令 */
-    app_chassis_move(output_x, output_y, omega);
+    float omega = chassis_closeloop_state.omega_ff + angle_pid_t.Out;
+    omega = fmaxf(-CHASSIS_MAX_OMEGA_RADPS, fminf(omega, CHASSIS_MAX_OMEGA_RADPS));
+    (void)app_chassis_move(chassis_closeloop_state.speed_x,
+                          chassis_closeloop_state.speed_y, omega);
 }

@@ -66,7 +66,8 @@ void app_chassis_poll(void);
   * @param  speed_x 右向速度(mm/s)
   * @param  speed_y 前向速度(mm/s)
   * @param  omega   自转角速度(rad/s，俯视逆时针为正)
-  * @retval ret_code_t
+  * @retval RET_OK 已启动中断发送；RET_BUSY 串口上一帧未完成，本帧未发送。
+  *         其余为参数/初始化错误。主循环调用；源帧已复制，不等待发送完成。
   */
 int  app_chassis_move(float speed_x, float speed_y, float omega);
 

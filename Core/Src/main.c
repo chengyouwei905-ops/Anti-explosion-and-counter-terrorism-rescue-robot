@@ -28,6 +28,8 @@
 #include "app_imu.h"
 #include "bsp_rgb.h"
 #include "app_chassis_closeloop.h"
+#include "app_chassis_motion.h"
+#include "stm32h7xx_hal_tim.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -37,7 +39,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define CHASSIS_MOTION_UPDATE_PERIOD 1U   //每10ms更新一次
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -58,6 +60,7 @@ int s_imu_ret;   /**< app_imu_init() 的返回值，供 main.c 里调试用 */
 float testangle[3] = {0.0f, 0.0f, 0.0f};   /**< 测试imu用的角度值，供 main.c 里调试用 */
 float yawangle = 0.0f;
 float distance = 0.0f;   /**< 测试底盘里程用的值，供 main.c 里调试用 */
+volatile uint8_t chassis_motion_count = 0U;   /**< 底盘运动规划周期计数 */
 /* USER CODE BEGIN PV */
 
 
@@ -139,7 +142,6 @@ int main(void)
     Error_Handler();
   }
   app_chassis_move(0.0f, 0.0f, 0.0f);       //初始化底盘模块
-  app_chassis_closeloop_init();HAL_TIM_Base_Start_IT(&htim6); //开启角度闭环
   /* 机械臂链路初始化（USART10：PE3=TX / PE2=RX）*/
   if (app_roboarm_init(&huart10) != RET_OK)
   {
@@ -155,6 +157,13 @@ int main(void)
     }
     HAL_Delay(50);   /* 失败就等一会儿重来（整个初始化会重跑一遍） */
   }
+  if (s_imu_ret != RET_OK)
+  {
+    Error_Handler();
+  }
+  (void)app_imu_poll();
+  app_chassis_motion_init();
+  HAL_TIM_Base_Start_IT(&htim6);
   bsp_rgb_set(0, 99, 0);
 
   /* USER CODE END 2 */
@@ -166,18 +175,19 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    //app_vision_poll();
-    app_chassis_poll();         //解析底盘编码器上报帧，累积里程（app_chassis_get_distance 取值）
+    (void)app_imu_poll();
+    app_vision_poll();
+    app_chassis_poll();
     distance = app_chassis_get_distance();
-    //app_imu_poll();
-    //app_chassis_closeloop_set_target(0.0f, 0.0f, 0.0f);
-    //app_imu_get_euler(testangle);
-    //yawangle = testangle[2]*57.29578f;
-/*     bsp_rgb_set(0, 0, 255);
-    HAL_Delay(500);
-    bsp_rgb_set(0, 255, 0);
-    HAL_Delay(500); */
+    app_imu_get_euler(testangle);
+    yawangle = testangle[2];
 
+    /* 规划先更新目标，闭环随后启动非阻塞的串口中断发送。 */
+    if (chassis_motion_count >= CHASSIS_MOTION_UPDATE_PERIOD) {
+      chassis_motion_count = 0U;
+      app_chassis_motion_update(0.01f);
+      app_chassis_closeloop_update();
+    }
   }
   /* USER CODE END 3 */
 }
@@ -553,12 +563,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-    if (htim->Instance == TIM6) {
-        app_chassis_closeloop_update();
-    }
-}
 /* USER CODE END 4 */
 
  /* MPU Configuration */
