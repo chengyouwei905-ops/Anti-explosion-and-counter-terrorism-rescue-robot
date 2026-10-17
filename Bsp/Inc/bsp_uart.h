@@ -32,6 +32,9 @@ typedef enum {
 /** @brief 每个串口接收环形缓冲区容量，必须为 2 的幂 */
 #define BSP_UART_RX_BUFSIZE     512U
 
+/** @brief 单次中断发送的最大长度，BSP 内部保存一帧。 */
+#define BSP_UART_TX_BUFSIZE     128U
+
 /** @brief 收到 1 字节的回调（中断上下文，禁止 printf/延时等耗时操作） */
 typedef void (*bsp_uart_rx_cb_t)(bsp_uart_id_t id, uint8_t byte);
 
@@ -58,6 +61,15 @@ void     bsp_uart_set_rx_cb(bsp_uart_id_t id, bsp_uart_rx_cb_t cb);
   * @retval ret_code_t
   */
 int      bsp_uart_send(bsp_uart_id_t id, const uint8_t *data, uint16_t len, uint32_t timeout_ms);
+
+/**
+  * @brief  非阻塞中断发送，复制数据后立即返回，源缓冲区可立即复用。
+  * @retval RET_OK 已启动发送（尚未发送完成）；RET_BUSY 上一帧未完成，本帧未接收。
+  *         长度必须为 1..BSP_UART_TX_BUFSIZE；无排队或自动重发。
+  * @note   同一串口的 attach/send/send_it 只允许在主循环串行调用，不可重入。
+  *         HAL 在发送完成后自动恢复 READY；在此之前不覆盖内部缓冲区。
+  */
+int      bsp_uart_send_it(bsp_uart_id_t id, const uint8_t *data, uint16_t len);
 
 /** @brief 从接收缓冲区取出数据，返回实际取出字节数 */
 uint16_t bsp_uart_read(bsp_uart_id_t id, uint8_t *data, uint16_t len);

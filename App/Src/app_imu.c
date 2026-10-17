@@ -35,8 +35,8 @@
 #include "bsp_imu.h"
 #include "bsp_dwt.h"
 
-/** @brief 开机零偏标定的采样次数（配合下面的 1ms 间隔，约 1 秒） */
-#define APP_IMU_CALI_SAMPLES      3000U
+/** @brief 开机零偏标定的采样次数（配合下面的 1ms 间隔，至少约 3 秒） */
+#define APP_IMU_CALI_SAMPLES      7000U     //此处给7s的采样时间，保证低零飘
 /** @brief 标定采样间隔（ms），BMI088 陀螺 ODR 是 1kHz，刚好每次拿到新数据 */
 #define APP_IMU_CALI_INTERVAL_MS  1U
 /** @brief 标定期间允许的零偏抖动峰峰值（rad/s）。超过就说明板子在被晃，标定作废 */
@@ -137,6 +137,9 @@ static ret_code_t imu_calibrate_gyro(void)
         if ((vmax[k] - vmin[k]) > APP_IMU_CALI_MAX_SPREAD) {
             return RET_ERROR;   /* 标定期间板子在动，这一组数据不能用 */
         }
+    }
+    /* 全部轴通过后才提交，避免失败时只更新部分轴的零偏。 */
+    for (k = 0U; k < 3U; k++) {
         s_gyro_bias[k] = sum[k] / (float)APP_IMU_CALI_SAMPLES;
     }
 

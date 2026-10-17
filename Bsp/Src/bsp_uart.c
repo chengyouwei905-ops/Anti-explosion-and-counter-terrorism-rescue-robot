@@ -10,10 +10,13 @@
 
 #include "bsp_uart.h"
 #include "common_def.h"
+#include "stm32h7xx_hal_uart.h"
 #include <stddef.h>
+#include <string.h>
 
 typedef struct {
     UART_HandleTypeDef *huart;                          /**< HAL 句柄 */
+    uint8_t             tx_storage[BSP_UART_TX_BUFSIZE];/**< IT 发送期间保持不变 */
     ring_buffer_t       rx_rb;                          /**< 接收环形缓冲 */
     uint8_t             rx_storage[BSP_UART_RX_BUFSIZE];/**< 环形缓冲存储区 */
     uint8_t             rx_byte;                        /**< 中断单字节暂存 */
@@ -92,11 +95,31 @@ int bsp_uart_send(bsp_uart_id_t id, const uint8_t *data, uint16_t len, uint32_t 
     if ((dev == NULL) || (!dev->attached) || (data == NULL) || (len == 0U)) {
         return RET_PARAM;
     }
-    if (HAL_UART_Transmit(dev->huart, (uint8_t *)(uintptr_t)data, len, timeout_ms) != HAL_OK) {
-        return RET_TIMEOUT;
-    }
+    HAL_StatusTypeDef status = HAL_UART_Transmit(dev->huart, data, len, timeout_ms);
+    if (status == HAL_BUSY) { return RET_BUSY; }
+    if (status == HAL_TIMEOUT) { return RET_TIMEOUT; }
+    return (status == HAL_OK) ? RET_OK : RET_ERROR;
+}
 
-    return RET_OK;
+int bsp_uart_send_it(bsp_uart_id_t id, const uint8_t *data, uint16_t len)
+{
+    bsp_uart_dev_t *dev = bsp_uart_dev(id);
+    if ((dev == NULL) || (data == NULL) || (len == 0U) ||
+        (len > BSP_UART_TX_BUFSIZE)) {
+        return RET_PARAM;
+    }
+    if (!dev->attached) {
+        return RET_NOTREADY;
+    }
+    /* 必须先判断 READY 再复制，避免忙时破坏 HAL 正在读取的缓冲区。
+     * 本接口与阻塞发送均限定为主循环单写者，ISR 只负责 HAL 的发送推进。 */
+    if (dev->huart->gState != HAL_UART_STATE_READY) {
+        return RET_BUSY;
+    }
+    memcpy(dev->tx_storage, data, len);
+    HAL_StatusTypeDef status = HAL_UART_Transmit_IT(dev->huart, dev->tx_storage, len);
+    if (status == HAL_BUSY) { return RET_BUSY; }
+    return (status == HAL_OK) ? RET_OK : RET_ERROR;
 }
 
 uint16_t bsp_uart_read(bsp_uart_id_t id, uint8_t *data, uint16_t len)

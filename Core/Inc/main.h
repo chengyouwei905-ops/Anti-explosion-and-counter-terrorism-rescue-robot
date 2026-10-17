@@ -36,7 +36,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+extern volatile uint8_t chassis_motion_count;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

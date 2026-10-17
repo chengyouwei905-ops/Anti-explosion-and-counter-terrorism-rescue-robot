@@ -82,3 +82,5 @@ uint32_t app_vision_get_rx_overflow(void)
 {
     return bsp_uart_get_rx_overflow(BSP_UART_VISION);
 }
+
+

@@ -181,11 +181,9 @@ int app_chassis_move(float speed_x, float speed_y, float omega)
     char frame[PROTO_CHASSIS_MAX_FRAME + 1U];
     uint8_t frame_len;
     frame_len = proto_chassis_pack_spd(wheel_speed_id, frame, sizeof(frame));
-    if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
-        return RET_ERROR;
-    } /* 命令下放 */
-
-    return RET_OK;
+    /* BSP 先复制帧，再由中断发送；忙时不覆盖旧帧，返回 RET_BUSY。
+     * 周期闭环下一拍发送最新目标，不积压过时的速度指令。 */
+    return bsp_uart_send_it(BSP_UART_CHASSIS, (const uint8_t *)frame, frame_len);
 }
 
 void app_chassis_poll(void)
