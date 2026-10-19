@@ -1,0 +1,71 @@
+<div id="arm-ik-explainer">
+  <div class="viz-row">
+    <span>侧视图 · 长度单位 mm</span>
+    <button class="btn" type="button" id="arm-ik-switch">切换另一组解</button>
+  </div>
+  <svg id="arm-ik-diagram" role="img" aria-label="同一目标与俯仰角对应两种弯肘姿态，A为关节一，B为关节二，C为关节三，P为抓取中心" style="display:block;width:100%;height:290px;color:var(--foreground)"></svg>
+  <div class="tabular-nums" id="arm-ik-values" aria-live="polite"></div>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('arm-ik-explainer');
+  const svg = root.querySelector('#arm-ik-diagram');
+  const values = root.querySelector('#arm-ik-values');
+  const button = root.querySelector('#arm-ik-switch');
+  let branch = window.openai?.widgetState?.modelContent?.branch === -1 ? -1 : 1;
+  const ns = 'http://www.w3.org/2000/svg';
+  function draw() {
+    const width = Math.max(280, root.clientWidth || 600);
+    svg.setAttribute('viewBox', `0 0 ${width} 290`);
+    svg.replaceChildren();
+    const scale = Math.min((width - 40) / 310, 1.1);
+    const left = (width - 250 * scale) / 2;
+    const bottom = 240;
+    function point(r, z) { return [left + r * scale, bottom - z * scale]; }
+    function node(tag, attrs, content) {
+      const el = document.createElementNS(ns, tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      if (content) el.textContent = content;
+      svg.appendChild(el);
+      return el;
+    }
+    function line(a, b, color, thickness, dash) {
+      node('line', { x1:a[0], y1:a[1], x2:b[0], y2:b[1], stroke:color, 'stroke-width':thickness, ...(dash ? {'stroke-dasharray':dash} : {}) });
+    }
+    function label(p, text, dx=0, dy=0, anchor='start') {
+      node('text', { x:p[0]+dx, y:p[1]+dy, fill:'var(--foreground)', 'text-anchor':anchor }, text);
+    }
+    const q2 = branch * Math.PI / 2;
+    const q1 = Math.atan2(130,80) - Math.atan2(130*Math.sin(q2),80+130*Math.cos(q2));
+    const q3 = Math.PI/2-q1-q2;
+    const A=point(0,50), B=point(80*Math.sin(q1),50+80*Math.cos(q1)), C=point(130,130), P=point(210,130);
+    line(point(-20,0), point(250,0), 'var(--border)', 1);
+    line(point(0,-10), point(0,185), 'var(--border)', 1);
+    label(point(248,0),'r',0,20);
+    label(point(0,185),'z',-15,0);
+    line(A,C,'var(--muted-foreground)',1,'5 5');
+    line(A,B,'var(--viz-series-1)',5);
+    line(B,C,'var(--viz-series-1)',5);
+    line(C,P,'var(--viz-series-2)',5);
+    for(const p of [A,B,C,P]) node('circle',{cx:p[0],cy:p[1],r:5,fill:'var(--foreground)'});
+    label(A,'A',-13,5,'end');
+    label(B,'B',0,branch===1?-15:22,'middle');
+    label(C,'C',0,-15,'middle');
+    label(P,'P',10,5);
+    label(point(170,130),'80',0,24,'middle');
+    label(point(65,90),'D',0,18,'middle');
+    values.textContent = `θ₁ = ${(q1*180/Math.PI).toFixed(1)}° · θ₂ = ${branch*90}° · θ₃ = ${(q3*180/Math.PI).toFixed(1)}°`;
+  }
+  button.addEventListener('click', () => {
+    branch = -branch;
+    draw();
+    window.openai?.setWidgetState?.({modelContent:{branch},privateContent:null})?.catch(()=>{});
+  });
+  window.addEventListener('openai:set_globals', event => {
+    const saved = event.detail?.globals?.widgetState?.modelContent?.branch;
+    if (saved === 1 || saved === -1) { branch=saved; draw(); }
+  });
+  new ResizeObserver(draw).observe(root);
+  draw();
+})();
+</script>
