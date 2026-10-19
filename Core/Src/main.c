@@ -40,6 +40,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define CHASSIS_MOTION_UPDATE_PERIOD 1U   //每10ms更新一次
+/* 调参完成默认关闭自动转角；置1可复测原来的0/90度、每10秒切换。 */
+#ifndef CHASSIS_YAW_STEP_TEST
+#define CHASSIS_YAW_STEP_TEST 1
+#endif
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -60,7 +64,10 @@ int s_imu_ret;   /**< app_imu_init() 的返回值，供 main.c 里调试用 */
 float testangle[3] = {0.0f, 0.0f, 0.0f};   /**< 测试imu用的角度值，供 main.c 里调试用 */
 float yawangle = 0.0f;
 float distance = 0.0f;   /**< 测试底盘里程用的值，供 main.c 里调试用 */
+
 volatile uint8_t chassis_motion_count = 0U;   /**< 底盘运动规划周期计数 */
+volatile uint16_t angle_pid_test_slowdown = 0;
+volatile uint8_t chassis_state = 0U;   /**< 底盘运动规划周期计数 */
 /* USER CODE BEGIN PV */
 
 
@@ -125,7 +132,7 @@ int main(void)
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   bsp_rgb_init();
-  bsp_rgb_set(99, 0, 0);   //上电后先亮红灯，表示系统初始化中
+  bsp_rgb_set(50, 0, 0);   //上电后先亮红灯，表示系统初始化中
   //除mcu外其他部分供电使能
   HAL_GPIO_WritePin(Power_OUT2_EN_GPIO_Port,Power_OUT2_EN_Pin,GPIO_PIN_SET);
   HAL_Delay(2000);    //等待其他设备稳定
@@ -164,7 +171,7 @@ int main(void)
   (void)app_imu_poll();
   app_chassis_motion_init();
   HAL_TIM_Base_Start_IT(&htim6);
-  bsp_rgb_set(0, 99, 0);
+  bsp_rgb_set(0, 50, 0);
 
   /* USER CODE END 2 */
 
@@ -185,9 +192,26 @@ int main(void)
     /* 规划先更新目标，闭环随后启动非阻塞的串口中断发送。 */
     if (chassis_motion_count >= CHASSIS_MOTION_UPDATE_PERIOD) {
       chassis_motion_count = 0U;
+#if !CHASSIS_YAW_STEP_TEST
       app_chassis_motion_update(0.01f);
+#endif
       app_chassis_closeloop_update();
     }
+#if CHASSIS_YAW_STEP_TEST
+    if (angle_pid_test_slowdown >= 1000) {    //每10s改变一次angle角度
+      angle_pid_test_slowdown = 0;
+      if (chassis_state == 0U) {
+        chassis_state = 1U;
+        app_chassis_closeloop_set_target(0.0f, 0.0f, 1.5708f);   //切到90度
+      }
+      else
+      {
+        chassis_state = 0U;
+        app_chassis_closeloop_set_target(0.0f, 0.0f, 0);   //回到0度
+      }
+    }
+#endif
+
   }
   /* USER CODE END 3 */
 }

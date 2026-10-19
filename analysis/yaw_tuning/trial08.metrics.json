@@ -1,0 +1,85 @@
+{
+  "config": {
+    "trial": 8,
+    "kp": 4.0,
+    "ki": 0,
+    "kd": 90.0,
+    "limit": 1.2
+  },
+  "rows": 2552,
+  "bad_lines": [],
+  "states": [
+    1,
+    2
+  ],
+  "max_gap_s": 0.02,
+  "gaps_over_100ms": 0,
+  "nonzero_tx_status_rows": 0,
+  "max_imu_errors": 0,
+  "steps": [
+    {
+      "segment": 1,
+      "samples": 501,
+      "duration_s": 10.0,
+      "start_deg": 0.0,
+      "target_deg": 90.01166961505233,
+      "time_90percent_s": 1.28,
+      "rise_10_90_s": 0.94,
+      "overshoot_deg": 0.0,
+      "settle_2deg_s": 2.36,
+      "tail_mean_error_deg": 0.11459155902616476,
+      "tail_std_deg": 1.4210854715202004e-14,
+      "tail_peak_to_peak_deg": 0.0,
+      "peak_gyro_radps": 1.754,
+      "saturation_fraction": 0.09381237524950099
+    },
+    {
+      "segment": 2,
+      "samples": 500,
+      "duration_s": 9.98,
+      "start_deg": 89.89707805602616,
+      "target_deg": 0.0,
+      "time_90percent_s": 1.26,
+      "rise_10_90_s": 0.8400000000000001,
+      "overshoot_deg": 0.057295779513082325,
+      "settle_2deg_s": 2.14,
+      "tail_mean_error_deg": 0.05729577951308233,
+      "tail_std_deg": 6.938893903907228e-18,
+      "tail_peak_to_peak_deg": 0.0,
+      "peak_gyro_radps": 2.027,
+      "saturation_fraction": 0.094
+    },
+    {
+      "segment": 3,
+      "samples": 499,
+      "duration_s": 9.96,
+      "start_deg": -0.057295779513082325,
+      "target_deg": 90.01166961505233,
+      "time_90percent_s": 1.16,
+      "rise_10_90_s": 0.7799999999999999,
+      "overshoot_deg": 0.34377467707849424,
+      "settle_2deg_s": 2.16,
+      "tail_mean_error_deg": -0.2864788975654182,
+      "tail_std_deg": 1.4210854715202004e-14,
+      "tail_peak_to_peak_deg": 0.0,
+      "peak_gyro_radps": 2.0140000000000002,
+      "saturation_fraction": 0.08617234468937876
+    },
+    {
+      "segment": 4,
+      "samples": 501,
+      "duration_s": 10.0,
+      "start_deg": 90.29814851261774,
+      "target_deg": 0.0,
+      "time_90percent_s": 1.1,
+      "rise_10_90_s": 0.78,
+      "overshoot_deg": 1.3750987083139758,
+      "settle_2deg_s": 1.42,
+      "tail_mean_error_deg": 1.3750987083139756,
+      "tail_std_deg": 2.220446049250313e-16,
+      "tail_peak_to_peak_deg": 0.0,
+      "peak_gyro_radps": 2.04,
+      "saturation_fraction": 0.07784431137724551
+    }
+  ]
+}

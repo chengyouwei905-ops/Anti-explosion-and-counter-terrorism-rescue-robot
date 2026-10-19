@@ -4,16 +4,20 @@
 #include "alg_pid.h"
 #include <math.h>
 
-/* 原来0.1(rad/s)/deg的比例增益换算为(rad/s)/rad；实车仍需验证。 */
-#define CHASSIS_YAW_KP_RAD (0.1f * 57.29578f)
-#define CHASSIS_MAX_OMEGA_RADPS 5.0f
+/* 实车0/90度往返和15度小阶跃调参；控制周期10ms。
+ * PID_Update的D使用误差差分，不除dt；Kd=90对应10ms下约0.9的连续微分系数。
+ * 修改控制周期或角速度限幅后需重新验证。 */
+#define CHASSIS_YAW_KP_RAD 4.0f
+#define CHASSIS_YAW_KI 0.0f
+#define CHASSIS_YAW_KD 90.0f
+#define CHASSIS_MAX_OMEGA_RADPS 1.2f
 
 static PID_t angle_pid_t;
 static Chassis_CloseLoop_State_t chassis_closeloop_state;
 
 void app_chassis_closeloop_init(void)
 {
-    PID_Init(&angle_pid_t, CHASSIS_YAW_KP_RAD, 0.0f, 0.0f,
+    PID_Init(&angle_pid_t, CHASSIS_YAW_KP_RAD, CHASSIS_YAW_KI, CHASSIS_YAW_KD,
              -CHASSIS_MAX_OMEGA_RADPS, CHASSIS_MAX_OMEGA_RADPS);
     chassis_closeloop_state = (Chassis_CloseLoop_State_t){0};
 }

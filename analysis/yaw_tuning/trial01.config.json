@@ -1,0 +1,10 @@
+{
+  "trial": 1,
+  "kp": 0.8,
+  "ki": 0,
+  "kd": 0,
+  "limit": 0.6,
+  "small": 15.0,
+  "large": 0,
+  "segment_ms": 4000
+}
