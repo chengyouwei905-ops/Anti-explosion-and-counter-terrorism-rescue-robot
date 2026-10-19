@@ -197,9 +197,8 @@ static void test_motion(void)
     near_value(out_vy, 0.0f, 1e-6f);
     near_value(out_omega, 0.0f, 1e-6f);
     imu_valid = true;
-    float recovered_yaw = imu_yaw;
     tick(0.01f);
-    near_value(out_omega, -0.1f * 57.29578f * recovered_yaw, 1e-5f);
+    near_value(out_omega, -1.2f, 1e-5f); /* PD restart is limited after the missing IMU. */
 }
 
 static void test_closed_loop(void)
@@ -210,7 +209,9 @@ static void test_closed_loop(void)
     app_chassis_closeloop_update(); /* no set_target required: hold the default 0 rad */
     near_value(out_vx, 0.0f, 1e-6f);
     near_value(out_vy, 0.0f, 1e-6f);
-    near_value(out_omega, -0.1f * 57.29578f * 0.1f, 1e-5f);
+    near_value(out_omega, -1.2f, 1e-5f); /* First error step includes D and reaches the limit. */
+    app_chassis_closeloop_update();
+    near_value(out_omega, -0.4f, 1e-5f); /* Constant 0.1 rad error: D=0, tuned Kp=4. */
     reset(1.2f);
     app_chassis_closeloop_set_target_ff(0.0f, 0.0f, 1.2f, -0.4f);
     app_chassis_closeloop_update();
@@ -220,11 +221,11 @@ static void test_closed_loop(void)
     near_value(out_omega, 0.0f, 1e-6f); /* feedforward cleared */
     app_chassis_closeloop_set_target_ff(0.0f, 0.0f, 10.0f, 10.0f);
     app_chassis_closeloop_update();
-    near_value(out_omega, 5.0f, 1e-6f);
+    near_value(out_omega, 1.2f, 1e-6f);
     app_chassis_closeloop_set_target(NAN, 0.0f, 0.0f);
     app_chassis_closeloop_update();
     near_value(out_vx, 0.0f, 1e-6f);
-    near_value(out_omega, 5.0f, 1e-6f); /* invalid input leaves the previous target unchanged */
+    near_value(out_omega, 1.2f, 1e-6f); /* invalid input leaves the previous target unchanged */
 }
 
 int main(void)

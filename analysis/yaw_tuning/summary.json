@@ -1,0 +1,33 @@
+{
+  "selected_gains": {
+    "kp_rad": 4.0,
+    "ki": 0.0,
+    "kd_discrete": 90.0,
+    "nominal_period_s": 0.01,
+    "omega_limit_radps": 1.2
+  },
+  "independent_90deg_runs": [
+    7,
+    8
+  ],
+  "n_90deg_steps": 8,
+  "90deg_max_overshoot_deg": 1.3750987083139758,
+  "90deg_settle_2deg_range_s": [
+    1.42,
+    2.36
+  ],
+  "90deg_max_abs_tail_mean_error_deg": 1.3750987083139756,
+  "15deg_steps": 4,
+  "15deg_max_overshoot_deg": 0.7448451336700702,
+  "15deg_settle_2deg_range_s": [
+    0.72,
+    1.06
+  ],
+  "final_firmware_sha256": "6dadc8809e57a7820d4af7f03f6151b3b81cba7f92fb3fc4e12c1c76fd3aef67",
+  "measurement_reference": "BMI088/AHRS continuous relative yaw, no independent absolute heading reference",
+  "automatic_step_test_default": false,
+  "final_source_files": [
+    "App/Src/app_chassis_closeloop.c",
+    "Core/Src/main.c"
+  ]
+}
