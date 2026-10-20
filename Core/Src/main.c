@@ -42,7 +42,7 @@
 #define CHASSIS_MOTION_UPDATE_PERIOD 1U   //每10ms更新一次
 /* 调参完成默认关闭自动转角；置1可复测原来的0/90度、每10秒切换。 */
 #ifndef CHASSIS_YAW_STEP_TEST
-#define CHASSIS_YAW_STEP_TEST 1
+#define CHASSIS_YAW_STEP_TEST 0
 #endif
 /* USER CODE END PD */
 
