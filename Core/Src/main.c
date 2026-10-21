@@ -40,10 +40,6 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define CHASSIS_MOTION_UPDATE_PERIOD 1U   //每10ms更新一次
-/* 调参完成默认关闭自动转角；置1可复测原来的0/90度、每10秒切换。 */
-#ifndef CHASSIS_YAW_STEP_TEST
-#define CHASSIS_YAW_STEP_TEST 1
-#endif
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -170,8 +166,12 @@ int main(void)
   }
   (void)app_imu_poll();
   app_chassis_motion_init();
-  HAL_TIM_Base_Start_IT(&htim6);
+  //HAL_TIM_Base_Start_IT(&htim6);  //闭环开启区域
   bsp_rgb_set(0, 50, 0);
+
+  HAL_Delay(3000);
+  app_roboarm_servo_move_to(160.0,210.0,110.0,0.0);
+  HAL_Delay(3000);
 
   /* USER CODE END 2 */
 
@@ -192,26 +192,9 @@ int main(void)
     /* 规划先更新目标，闭环随后启动非阻塞的串口中断发送。 */
     if (chassis_motion_count >= CHASSIS_MOTION_UPDATE_PERIOD) {
       chassis_motion_count = 0U;
-#if !CHASSIS_YAW_STEP_TEST
       app_chassis_motion_update(0.01f);
-#endif
       app_chassis_closeloop_update();
     }
-#if CHASSIS_YAW_STEP_TEST
-    if (angle_pid_test_slowdown >= 1000) {    //每10s改变一次angle角度
-      angle_pid_test_slowdown = 0;
-      if (chassis_state == 0U) {
-        chassis_state = 1U;
-        app_chassis_closeloop_set_target(0.0f, 0.0f, 1.5708f);   //切到90度
-      }
-      else
-      {
-        chassis_state = 0U;
-        app_chassis_closeloop_set_target(0.0f, 0.0f, 0);   //回到0度
-      }
-    }
-#endif
-
   }
   /* USER CODE END 3 */
 }
