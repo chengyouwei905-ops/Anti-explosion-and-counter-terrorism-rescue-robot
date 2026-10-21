@@ -23,23 +23,35 @@ void alg_roboarm_init(void)
 Roboarm_Kinematics_Status_t alg_roboarm_forward(const Roboarm_State_t *roboarm_state, End_Effector_Pos_t *end_effector_pos)
 {
     Roboarm_State_t roboarm_state_calculate = *roboarm_state;
-    /* angle合法性检查，手动标定,PI / 2为还未标定的值 */
-    if (roboarm_state_calculate.yaw_angle < -PI / 2 || roboarm_state_calculate.yaw_angle > PI / 2)
+    /* angle合法性检查，手动标定 */
+    /* 检查yawservo的输入参数合法性 */
+    if ((roboarm_state->yaw_angle < (-(0.16666666667 * PI)))  || (roboarm_state->yaw_angle > (0.5*PI)))    //-30°~+90°      yaw_servo通过一个1：2的减速齿轮组实现yaw转动
     {
         return ROBOARM_KINEMATICS_ERR;
     }
-    if (roboarm_state_calculate.joint1_angle < -PI / 2 || roboarm_state_calculate.joint1_angle > PI / 2)
+    /* 先检查joint2 */
+    if ((roboarm_state->joint2_angle < (-(0.333333333 * PI))) || (roboarm_state->joint2_angle > (0.6666666667 * PI)))      //+60°~+120°
     {
         return ROBOARM_KINEMATICS_ERR;
     }
-    if (roboarm_state_calculate.joint2_angle < -PI / 2 || roboarm_state_calculate.joint2_angle > PI / 2)
+    /* 再检查joint1和joint2的连杆是否几何冲突 */
+    if (((roboarm_state->joint2_angle - roboarm_state->joint1_angle) < (0.166666667 * PI)) || ((roboarm_state->joint2_angle - roboarm_state->joint1_angle) > (0.66666666667 * PI)))      //连杆几何限制
     {
         return ROBOARM_KINEMATICS_ERR;
     }
-    if (roboarm_state_calculate.joint3_angle < -PI / 2 || roboarm_state_calculate.joint3_angle > PI / 2)
+    /* 最后检查joint1本身角度限制 */
+    if ((roboarm_state->joint1_angle < (-0.38888889 * PI)) || (roboarm_state->joint1_angle > (0.3888888889 * PI)))      //-70°~+70°     joint1本身角度限制
     {
         return ROBOARM_KINEMATICS_ERR;
     }
+    /* 检查joint3（pitch角度）本身角度限制 */
+    if ((roboarm_state->joint3_angle < (-PI / 18)) || (roboarm_state->joint3_angle > (0.333334 * PI)))      //-10°~+60°
+    {
+        return ROBOARM_KINEMATICS_ERR;
+    }
+
+    /* yaw_servo齿轮组的减速比为1：2 */
+    roboarm_state_calculate.yaw_angle = roboarm_state_calculate.yaw_angle / 2.0;
 
     end_effector_pos->z = ALG_ROBOARM_KINEMATICS_L0 
     + ALG_ROBOARM_KINEMATICS_L1 * cos(roboarm_state_calculate.joint1_angle) 
@@ -82,23 +94,36 @@ Roboarm_Kinematics_Status_t alg_roboarm_invert(const End_Effector_Pos_t *end_eff
     roboarm_state->joint2_angle = temp_alpha + roboarm_state->joint1_angle;
     roboarm_state->joint3_angle = PI / 2 - roboarm_state->joint2_angle - end_effector_pos->pitch;
 
-    /* angle合法性检查，手动标定,PI / 2为还未标定的值 */
-    if (roboarm_state->yaw_angle < -PI / 2 || roboarm_state->yaw_angle > PI / 2)
+    /* angle合法性检查，手动标定 */
+    /* 检查yawservo的输入参数合法性 */
+    if ((roboarm_state->yaw_angle < (-(0.16666666667 * PI)))  || (roboarm_state->yaw_angle > (0.5*PI)))    //-30°~+90°      yaw_servo通过一个1：2的减速齿轮组实现yaw转动
     {
         return ROBOARM_KINEMATICS_ERR;
     }
-    if (roboarm_state->joint1_angle < -PI / 2 || roboarm_state->joint1_angle > PI / 2)
+    /* 先检查joint2 */
+    if ((roboarm_state->joint2_angle < (-(0.333333333 * PI))) || (roboarm_state->joint2_angle > (0.6666666667 * PI)))      //+60°~+120°
     {
         return ROBOARM_KINEMATICS_ERR;
     }
-    if (roboarm_state->joint2_angle < -PI / 2 || roboarm_state->joint2_angle > PI / 2)
+    /* 再检查joint1和joint2的连杆是否几何冲突 */
+    if (((roboarm_state->joint2_angle - roboarm_state->joint1_angle) < (0.166666667 * PI)) || ((roboarm_state->joint2_angle - roboarm_state->joint1_angle) > (0.66666666667 * PI)))      //连杆几何限制
     {
         return ROBOARM_KINEMATICS_ERR;
     }
-    if (roboarm_state->joint3_angle < -PI / 2 || roboarm_state->joint3_angle > PI / 2)
+    /* 最后检查joint1本身角度限制 */
+    if ((roboarm_state->joint1_angle < (-0.38888889 * PI)) || (roboarm_state->joint1_angle > (0.3888888889 * PI)))      //-70°~+70°     joint1本身角度限制
     {
         return ROBOARM_KINEMATICS_ERR;
     }
+    /* 检查joint3（pitch角度）本身角度限制 */
+    if ((roboarm_state->joint3_angle < (-PI / 18)) || (roboarm_state->joint3_angle > (0.333334 * PI)))      //-10°~+60°
+    {
+        return ROBOARM_KINEMATICS_ERR;
+    }
+
+
+    /* yaw的减速比为1：2 */
+    roboarm_state->yaw_angle = roboarm_state->yaw_angle * 2;
 
     return ROBOARM_KINEMATICS_OK;
 }

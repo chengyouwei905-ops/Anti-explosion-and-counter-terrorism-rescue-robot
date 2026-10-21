@@ -29,6 +29,7 @@
 #ifndef __APP_ROBOARM_H
 #define __APP_ROBOARM_H
 
+#include <math.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -38,6 +39,35 @@ extern "C" {
 #include "stm32h7xx_hal.h"
 #include "common_def.h"
 #include "proto_roboarm.h"
+#include "alg_roboarm_kinematics.h"
+
+#define ROBOARM_DOF 4   //4自由度机械臂
+
+typedef enum{
+  YAW_SERVO = 1,
+  JOINT1 = 2,
+  JOINT2 = 3,
+  JOINT3 = 4,
+  JOINT_CLAMP = 5
+} Roboarm_Servo_ID_t;
+
+/* 待确认 */
+typedef enum{
+  YAW_SERVO_OFFSET = 766,
+  JOINT1_OFFSET = 766,
+  JOINT2_OFFSET = 960+375,    //375对应90度
+  JOINT3_OFFSET = 55
+} Roboarm_Servo_Offset_Position_t;
+
+typedef enum{
+  CLAMP_OPEN_POSITION = 437,
+  CLAMP_CLOSE_POSITION = 747
+} Roboarm_Clamp_State_t;
+
+typedef struct{
+  Roboarm_Servo_ID_t servoname;
+  double angle;
+} Roboarm_Servo_t;
 
 /** @brief 发送超时时间（ms）。
   *        9600bps 下 1 个字节 ≈ 1.04ms，最长的一帧（8 舵机）31 字节 ≈ 32ms，
@@ -63,11 +93,17 @@ int  app_roboarm_init(UART_HandleTypeDef *huart);
   * @param  time_ms 转动时间（ms），0 = 立刻到位
   * @retval ret_code_t
   * @note   所有舵机共用同一个时间。例：1 号 1000ms 转到 800
-  *             app_roboarm_servo_move(&(proto_roboarm_servo_t){1U, 800U}, 1U, 1000U);
-  *         ⚠️ 机械臂是刚体，多关节同时动才是一段轨迹；分开一条条发会互相干涉。
   */
-int  app_roboarm_servo_move(const proto_roboarm_servo_t *servos, uint8_t count,
+int  app_roboarm_servo_move_direct(const Roboarm_Servo_t *servos, uint8_t count,
                             uint16_t time_ms);
+
+
+int app_roboarm_servo_move_to(double x, double y, double z, double pitch);
+
+
+void app_roboarm_clamp_open(void);
+void app_roboarm_clamp_close(void);
+
 
 /**
   * @brief  运行已经下载到控制板里的动作组
