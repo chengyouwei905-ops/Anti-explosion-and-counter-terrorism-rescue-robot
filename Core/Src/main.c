@@ -30,6 +30,7 @@
 #include "app_chassis_closeloop.h"
 #include "app_chassis_motion.h"
 #include "stm32h7xx_hal_tim.h"
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,7 +40,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+//此为重要参数，角度环的周期时钟基础，修改后需要重新调试角度环
 #define CHASSIS_MOTION_UPDATE_PERIOD 1U   //每10ms更新一次
+#define CHASSIS_MOTION_TEST_SLOWDOWN 1000U   //测试用，每隔5s修改一次state，重新设置一条motion命令
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -64,6 +68,9 @@ float distance = 0.0f;   /**< 测试底盘里程用的值，供 main.c 里调试
 volatile uint8_t chassis_motion_count = 0U;   /**< 底盘运动规划周期计数 */
 volatile uint16_t angle_pid_test_slowdown = 0;
 volatile uint8_t chassis_state = 0U;   /**< 底盘运动规划周期计数 */
+
+volatile uint16_t chassis_motion_test_slowdown = 100;   /**< 底盘运动规划周期计数 */
+volatile uint8_t chassis_motion_test_state = 0;   /**< 底盘运动规划周期状态变量 */
 /* USER CODE BEGIN PV */
 
 
@@ -154,6 +161,7 @@ int main(void)
   for (uint32_t i = 0U; i < 3U; i++)
   {
     s_imu_ret = app_imu_init(&hspi2);
+    //s_imu_ret = RET_OK;
     if (s_imu_ret == RET_OK)
     {
       break;
@@ -166,11 +174,11 @@ int main(void)
   }
   (void)app_imu_poll();
   app_chassis_motion_init();
-  //HAL_TIM_Base_Start_IT(&htim6);  //闭环开启区域
+  HAL_TIM_Base_Start_IT(&htim6);  //闭环开启区域
   bsp_rgb_set(0, 50, 0);
 
   HAL_Delay(3000);
-  app_roboarm_servo_move_to(160.0,210.0,110.0,0.0);
+  app_roboarm_servo_move_to(150.0,210.0,100.0,-0.174533);
   HAL_Delay(3000);
 
   /* USER CODE END 2 */
@@ -194,6 +202,30 @@ int main(void)
       chassis_motion_count = 0U;
       app_chassis_motion_update(0.01f);
       app_chassis_closeloop_update();
+    }
+    //app_chassis_closeloop_set_target(0.0f, 0.0f, 0.0f);   //测试用，暂时不让底盘动
+    if(chassis_motion_test_slowdown >= CHASSIS_MOTION_TEST_SLOWDOWN) {
+      chassis_motion_test_slowdown = 0U;
+      if(chassis_motion_test_state > 3) {
+        chassis_motion_test_state = 0;
+      }
+      switch(chassis_motion_test_state) {
+        case 0:
+          app_chassis_motion_linear_move(500.0f, 3.14159f/2.0f, 500.0f, 100.0f, 100.0f);
+          break;
+        case 1:
+          app_chassis_motion_linear_move(500.0f, 0.0f, 500.0f, 100.0f, 100.0f);
+          break;
+        case 2:
+          app_chassis_motion_circular_move(300.0f, 3.14159f/2.0f, true, 100.0f, 50.0f, 50.0f);
+          break;
+        case 3:
+          app_chassis_motion_circular_move(300.0f, 3.14159f/2.0f, true, 100.0f, 50.0f, 50.0f);
+          break;
+        default:
+          break;
+      }
+      chassis_motion_test_state++;
     }
   }
   /* USER CODE END 3 */

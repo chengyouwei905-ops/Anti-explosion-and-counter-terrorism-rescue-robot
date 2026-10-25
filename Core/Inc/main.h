@@ -38,6 +38,7 @@ extern "C" {
 /* USER CODE BEGIN ET */
 extern volatile uint8_t chassis_motion_count;
 extern volatile uint16_t angle_pid_test_slowdown;
+extern volatile uint16_t chassis_motion_test_slowdown;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

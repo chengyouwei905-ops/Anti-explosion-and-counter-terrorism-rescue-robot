@@ -62,28 +62,30 @@ void app_chassis_motion_linear_move(float distance, float direction,
     app_chassis_closeloop_set_target(0.0f, 0.0f, g_target_yaw);
 }
 
-void app_chassis_motion_circular_move(float radius, float angle, float orientation,
+void app_chassis_motion_circular_move(float radius, float angle, bool orientation,
                                       float max_speed, float accel, float decel)
 {
     if (g_motion_state != MOTION_STATE_IDLE || !isfinite(radius) || radius < 0.0f ||
-        !isfinite(angle) || !isfinite(orientation) ||
+        !isfinite(angle) ||
         !motion_limits_valid(max_speed, accel, decel) || !motion_get_yaw(&g_start_yaw)) {
         return;
     }
     /* 原地转弯直接规划角度，避免除以零；正半径时规划非负弧长。 */
     float distance = (radius == 0.0f) ? fabsf(angle) : radius * fabsf(angle);
-    float initial_yaw = (radius == 0.0f) ? g_start_yaw : g_start_yaw + orientation;
-    if (!isfinite(distance) || !isfinite(initial_yaw + angle)) {
+    /* 圆弧从当前航向起步，orientation只选择左/右转，不附加初始航向偏角。 */
+    float turn_angle = (radius == 0.0f) ? angle :
+                       (orientation ? fabsf(angle) : -fabsf(angle));
+    if (!isfinite(distance) || !isfinite(g_start_yaw + turn_angle)) {
         return;
     }
     alg_motion_profile_init(distance, max_speed, accel, decel);
-    g_orientation = initial_yaw;
-    g_target_yaw = initial_yaw + angle;
+    g_orientation = g_start_yaw;
+    g_target_yaw = g_start_yaw + turn_angle;
     g_radius = radius;
-    g_turn_sign = (angle < 0.0f) ? -1.0f : 1.0f;
+    g_turn_sign = (turn_angle < 0.0f) ? -1.0f : 1.0f;
     g_motion_type = MOTION_TYPE_CIRCULAR_MOVE;
     g_motion_state = alg_motion_profile_update(0.0f) ? MOTION_STATE_IDLE : MOTION_STATE_RUNNING;
-    /* 零转角或规划无效时保持原朝向，不额外旋转orientation。 */
+    /* 零转角或规划无效时保持原朝向。 */
     if (g_motion_state == MOTION_STATE_IDLE) {
         g_target_yaw = g_start_yaw;
     }

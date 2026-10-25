@@ -1,6 +1,8 @@
 #ifndef __APP_CHASSIS_MOTION_H__
 #define __APP_CHASSIS_MOTION_H__
 
+#include <stdbool.h>
+
 typedef enum {
     MOTION_STATE_IDLE,
     MOTION_STATE_RUNNING
@@ -24,12 +26,12 @@ void app_chassis_motion_init(void);
 void app_chassis_motion_linear_move(float distance, float direction,
                                     float max_speed, float accel, float decel);
 
-/* orientation：相对开始时车头的初始切线朝向，不是圆心方向。
+/* orientation：true从当前yaw向左前方走圆弧，false向右前方；起始切线与当前车头一致。
  * radius>0(mm)：按radius*abs(angle)规划弧长，速度/加减速度为mm/s、mm/s^2。
- * angle>0逆时针，angle<0顺时针；车头跟踪切线朝向。
+ * radius>0时取abs(angle)为转角大小，转向由orientation决定；车头随圆弧连续转动。
  * radius==0：原地转过angle，忽略orientation；速度/加减速度为rad/s、rad/s^2。
  */
-void app_chassis_motion_circular_move(float radius, float angle, float orientation,
+void app_chassis_motion_circular_move(float radius, float angle, bool orientation,
                                       float max_speed, float accel, float decel);
 
 /* 只设置目标。外部每个控制节拍在本函数之后调用closeloop_update，含空闲时。 */

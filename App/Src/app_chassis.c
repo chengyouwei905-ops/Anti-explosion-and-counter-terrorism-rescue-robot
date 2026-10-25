@@ -111,30 +111,41 @@ int app_chassis_init(UART_HandleTypeDef *huart)
     /* 实际硬件更改后需要在此进行修改 */
     char frame[PROTO_CHASSIS_MAX_FRAME + 1U];
     uint8_t frame_len;
+    frame_len = proto_chassis_pack(PROTO_CHASSIS_CMD_FLASH_RESET, NULL, frame, sizeof(frame));
+    if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
+        return RET_ERROR;
+    }
+    HAL_Delay(2000);
     frame_len = proto_chassis_pack(PROTO_CHASSIS_CMD_MTYPE, "1", frame, sizeof(frame));
     if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
         return RET_ERROR;
     }
+    HAL_Delay(200);
     frame_len = proto_chassis_pack(PROTO_CHASSIS_CMD_DEADZONE, "1750", frame, sizeof(frame));    
     if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
         return RET_ERROR;
     }
+    HAL_Delay(200);
     frame_len = proto_chassis_pack(PROTO_CHASSIS_CMD_MLINE, "500", frame, sizeof(frame));
     if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
         return RET_ERROR;
     }
+    HAL_Delay(200);
     frame_len = proto_chassis_pack(PROTO_CHASSIS_CMD_WDIAMETER, "77", frame, sizeof(frame));
     if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
         return RET_ERROR;
     }
+    HAL_Delay(200);
     frame_len = proto_chassis_pack(PROTO_CHASSIS_CMD_MPID, "2.60,0.14,0.00", frame, sizeof(frame));
     if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
         return RET_ERROR;
     }
+    HAL_Delay(200);
     frame_len = proto_chassis_pack_spd((int16_t[4]){0, 0, 0, 0}, frame, sizeof(frame));/* 初始先锁死底盘 */
     if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
         return RET_ERROR;
     }
+    HAL_Delay(200);
     frame_len = proto_chassis_pack(PROTO_CHASSIS_CMD_UPLOAD, "1,0,0", frame, sizeof(frame));/* 请求上传编码器数据 */
     if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
         return RET_ERROR;

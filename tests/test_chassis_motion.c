@@ -134,7 +134,13 @@ static void test_motion(void)
 
     for (int sign = -1; sign <= 1; sign += 2) {
         reset(0.0f);
-        app_chassis_motion_circular_move(100.0f, sign * PI / 2.0f, 0.0f, 50.0f, 50.0f, 50.0f);
+        app_chassis_motion_circular_move(100.0f, PI / 2.0f, sign > 0, 50.0f, 50.0f, 50.0f);
+        app_chassis_closeloop_update();
+        near_value(out_omega, 0.0f, 1e-6f); /* No heading jump when accepting the command. */
+        tick(0.01f);
+        near_value(out_vx, 0.0f, 1e-4f);
+        near_value(out_vy, 0.5f, 1e-5f); /* Start forwards at the measured yaw. */
+        assert(sign * out_omega > 0.0f && sign * out_omega < 0.02f); /* No fast initial turn. */
         finish();
         near_value(world_x, -sign * 100.0f, 0.15f);
         near_value(world_y, 100.0f, 0.15f);
@@ -147,16 +153,26 @@ static void test_motion(void)
         near_value(world_y - start_y, 0.0f, 0.1f);
     }
 
-    reset(0.4f);
-    app_chassis_motion_circular_move(100.0f, PI / 2.0f, PI / 2.0f, 50.0f, 50.0f, 50.0f);
-    finish();
-    near_value(world_x, -100.0f * cosf(0.4f) + 100.0f * sinf(0.4f), 0.3f);
-    near_value(world_y, -100.0f * sinf(0.4f) - 100.0f * cosf(0.4f), 0.3f);
-    near_value(imu_yaw, 0.4f + PI, 0.001f);
+    /* The boolean selects the turn even with a nonzero yaw or negative input angle. */
+    for (int sign = -1; sign <= 1; sign += 2) {
+        for (int angle_sign = -1; angle_sign <= 1; angle_sign += 2) {
+            reset(0.4f);
+            app_chassis_motion_circular_move(100.0f, angle_sign * PI / 2.0f, sign > 0,
+                                              50.0f, 50.0f, 50.0f);
+            tick(0.01f);
+            near_value(out_vx, 0.0f, 1e-4f);
+            near_value(out_vy, 0.5f, 1e-5f);
+            assert(sign * out_omega > 0.0f && sign * out_omega < 0.02f);
+            finish();
+            near_value(world_x, -sign * 100.0f * cosf(0.4f) - 100.0f * sinf(0.4f), 0.3f);
+            near_value(world_y, -sign * 100.0f * sinf(0.4f) + 100.0f * cosf(0.4f), 0.3f);
+            near_value(imu_yaw, 0.4f + sign * PI / 2.0f, 0.001f);
+        }
+    }
 
     for (int sign = -1; sign <= 1; sign += 2) {
         reset(0.8f);
-        app_chassis_motion_circular_move(0.0f, sign * 2.5f * PI, 1.0f, 1.0f, 2.0f, 2.0f);
+        app_chassis_motion_circular_move(0.0f, sign * 2.5f * PI, sign > 0, 1.0f, 2.0f, 2.0f);
         finish();
         near_value(world_x, 0.0f, 1e-6f);
         near_value(world_y, 0.0f, 1e-6f);
@@ -164,16 +180,16 @@ static void test_motion(void)
     }
 
     reset(1.0f);
-    app_chassis_motion_circular_move(0.0f, 0.0f, 2.0f, 1.0f, 1.0f, 1.0f);
+    app_chassis_motion_circular_move(0.0f, 0.0f, true, 1.0f, 1.0f, 1.0f);
     tick(0.01f);
     near_value(out_omega, 0.0f, 1e-6f);
-    app_chassis_motion_circular_move(-1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+    app_chassis_motion_circular_move(-1.0f, 1.0f, false, 1.0f, 1.0f, 1.0f);
     assert(app_chassis_motion_get_state() == MOTION_STATE_IDLE);
 
     app_chassis_motion_linear_move(100.0f, 0.0f, 50.0f, 50.0f, 50.0f);
     tick(0.1f);
     near_value(out_vy, 5.0f, 1e-4f);
-    app_chassis_motion_circular_move(0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f); /* busy: ignored */
+    app_chassis_motion_circular_move(0.0f, 1.0f, false, 1.0f, 1.0f, 1.0f); /* busy: ignored */
     tick(0.1f);
     near_value(out_vy, 10.0f, 1e-4f);
     app_chassis_motion_stop();
@@ -189,7 +205,7 @@ static void test_motion(void)
     near_value(out_vy, 0.0f, 1e-6f);
 
     reset(0.0f);
-    app_chassis_motion_circular_move(100.0f, PI, 0.0f, 50.0f, 50.0f, 50.0f);
+    app_chassis_motion_circular_move(100.0f, PI, true, 50.0f, 50.0f, 50.0f);
     tick(0.1f);
     imu_valid = false;
     tick(0.01f);
