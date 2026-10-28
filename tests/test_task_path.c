@@ -78,6 +78,8 @@ static void test_course(uint32_t base)
             ++segment_seams;assert(before.speed>1 && after.speed>1);
         }
         if(task_get_state()!=last) {
+            /* Explicit MOVE/work cases must advance in order without skips. */
+            assert(task_get_state()==last+1);
             if(stop_count<5U && task_get_state()==stops[stop_count]) {
                 assert(awaiting_stop && elapsed_ms-done_ms>=1000U);
                 assert(app_chassis_motion_get_result()==MOTION_RESULT_DONE);

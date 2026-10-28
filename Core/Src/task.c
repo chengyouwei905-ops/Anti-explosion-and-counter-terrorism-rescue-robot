@@ -8,36 +8,145 @@
 
 static Task_State_t task_state = TASK_IDLE;
 static bool task_total_start_requested;
-static float task_offset_x, task_offset_y;
+static float task_offset_x;
+static float task_offset_y;
 static bool task_offset_pending;
 
-/* Map origin: lower left. Start: (3350,1750), facing left.
- * Smooth turns preserve nominal circular endpoints; radius varies during ramps.
+/* 赛道坐标原点在左下角，起点为 (3350,1750)，车头朝左。
+ * 距离单位 mm，速度单位 mm/s，加减速度单位 mm/s^2，角度单位 rad。
+ * 正角度左转，负角度右转。平滑转弯仍保留原圆弧的终点和总转角。
+ *
+ * 连续运动的分组：
+ * MOVE1           -> 扫码位置停车
+ * MOVE2 ~ MOVE11  -> 排爆位置停车（这十段在底层连续执行）
+ * MOVE12          -> 反恐位置停车
+ * MOVE13 ~ MOVE15 -> 救援位置停车（这三段在底层连续执行）
+ * MOVE16          -> 终点停车
+ * task_poll() 仍逐个列出 MOVE 状态；同组内切换状态时不重新下发运动。
  */
-#define ROUTE_LINE(d,v,a,b) {ALG_PATH_LINE,(d),0.0f,0.0f,(v),(a),(b)}
-#define ROUTE_TURN(angle,v,a,b) {ALG_PATH_ARC,0.0f,200.0f,(angle),(v),(a),(b)}
-#define ROUTE_HALF_PI 1.57079632679f
+/* 每段参数单独展开，调车时直接修改对应 MOVE 的字段即可。
+ * max_speed 是速度上限，实际转弯速度还受曲率和角加速度限制。
+ */
 static const AlgPathSegment_t task_route[] = {
-    ROUTE_LINE(450.0f,250.0f,300.0f,300.0f),             /* MOVE1: scan */
-    ROUTE_TURN( ROUTE_HALF_PI,140.0f,200.0f,250.0f),    /* MOVE2: left */
-    ROUTE_LINE(305.0f,180.0f,200.0f,250.0f),             /* MOVE3 */
-    ROUTE_TURN(-ROUTE_HALF_PI,100.0f,150.0f,150.0f),    /* MOVE4: right */
-    ROUTE_LINE(550.0f,100.0f,150.0f,150.0f),             /* MOVE5: bumps */
-    ROUTE_TURN( ROUTE_HALF_PI,100.0f,150.0f,150.0f),    /* MOVE6: left */
-    ROUTE_LINE(455.0f,220.0f,250.0f,300.0f),             /* MOVE7 */
-    ROUTE_TURN(-ROUTE_HALF_PI,140.0f,200.0f,250.0f),    /* MOVE8: right */
-    ROUTE_LINE(580.0f,250.0f,300.0f,350.0f),             /* MOVE9 */
-    ROUTE_TURN(-ROUTE_HALF_PI,140.0f,200.0f,250.0f),    /* MOVE10: right */
-    ROUTE_LINE(505.0f,200.0f,250.0f,300.0f),             /* MOVE11: explosive */
-    ROUTE_LINE(1730.0f,300.0f,350.0f,400.0f),            /* MOVE12: targets */
-    ROUTE_LINE(375.0f,220.0f,250.0f,300.0f),             /* MOVE13 */
-    ROUTE_TURN(-ROUTE_HALF_PI,140.0f,200.0f,250.0f),    /* MOVE14: right */
-    ROUTE_LINE(780.0f,220.0f,250.0f,300.0f),             /* MOVE15: rescue */
-    ROUTE_LINE(1600.0f,250.0f,250.0f,300.0f)             /* MOVE16: return */
+    {   /* MOVE1：直行 450 mm */
+        .type = ALG_PATH_LINE,
+        .distance = 450.0f,
+        .max_speed = 250.0f,
+        .accel = 300.0f,
+        .decel = 300.0f
+    },
+    {   /* MOVE2：左转 90 度 */
+        .type = ALG_PATH_ARC,
+        .radius = 200.0f,
+        .angle = 1.57079632679f,
+        .max_speed = 140.0f,
+        .accel = 200.0f,
+        .decel = 250.0f
+    },
+    {   /* MOVE3：直行 305 mm */
+        .type = ALG_PATH_LINE,
+        .distance = 305.0f,
+        .max_speed = 180.0f,
+        .accel = 200.0f,
+        .decel = 250.0f
+    },
+    {   /* MOVE4：右转 90 度 */
+        .type = ALG_PATH_ARC,
+        .radius = 200.0f,
+        .angle = -1.57079632679f,
+        .max_speed = 100.0f,
+        .accel = 150.0f,
+        .decel = 150.0f
+    },
+    {   /* MOVE5：直行 550 mm */
+        .type = ALG_PATH_LINE,
+        .distance = 550.0f,
+        .max_speed = 100.0f,
+        .accel = 150.0f,
+        .decel = 150.0f
+    },
+    {   /* MOVE6：左转 90 度 */
+        .type = ALG_PATH_ARC,
+        .radius = 200.0f,
+        .angle = 1.57079632679f,
+        .max_speed = 100.0f,
+        .accel = 150.0f,
+        .decel = 150.0f
+    },
+    {   /* MOVE7：直行 455 mm */
+        .type = ALG_PATH_LINE,
+        .distance = 455.0f,
+        .max_speed = 220.0f,
+        .accel = 250.0f,
+        .decel = 300.0f
+    },
+    {   /* MOVE8：右转 90 度 */
+        .type = ALG_PATH_ARC,
+        .radius = 200.0f,
+        .angle = -1.57079632679f,
+        .max_speed = 140.0f,
+        .accel = 200.0f,
+        .decel = 250.0f
+    },
+    {   /* MOVE9：直行 580 mm */
+        .type = ALG_PATH_LINE,
+        .distance = 580.0f,
+        .max_speed = 250.0f,
+        .accel = 300.0f,
+        .decel = 350.0f
+    },
+    {   /* MOVE10：右转 90 度 */
+        .type = ALG_PATH_ARC,
+        .radius = 200.0f,
+        .angle = -1.57079632679f,
+        .max_speed = 140.0f,
+        .accel = 200.0f,
+        .decel = 250.0f
+    },
+    {   /* MOVE11：直行 505 mm */
+        .type = ALG_PATH_LINE,
+        .distance = 505.0f,
+        .max_speed = 200.0f,
+        .accel = 250.0f,
+        .decel = 300.0f
+    },
+    {   /* MOVE12：直行 1730 mm */
+        .type = ALG_PATH_LINE,
+        .distance = 1730.0f,
+        .max_speed = 300.0f,
+        .accel = 350.0f,
+        .decel = 400.0f
+    },
+    {   /* MOVE13：直行 375 mm */
+        .type = ALG_PATH_LINE,
+        .distance = 375.0f,
+        .max_speed = 220.0f,
+        .accel = 250.0f,
+        .decel = 300.0f
+    },
+    {   /* MOVE14：右转 90 度 */
+        .type = ALG_PATH_ARC,
+        .radius = 200.0f,
+        .angle = -1.57079632679f,
+        .max_speed = 140.0f,
+        .accel = 200.0f,
+        .decel = 250.0f
+    },
+    {   /* MOVE15：直行 780 mm */
+        .type = ALG_PATH_LINE,
+        .distance = 780.0f,
+        .max_speed = 220.0f,
+        .accel = 250.0f,
+        .decel = 300.0f
+    },
+    {   /* MOVE16：直行 1600 mm */
+        .type = ALG_PATH_LINE,
+        .distance = 1600.0f,
+        .max_speed = 250.0f,
+        .accel = 250.0f,
+        .decel = 300.0f
+    }
 };
-#undef ROUTE_LINE
-#undef ROUTE_TURN
-#undef ROUTE_HALF_PI
 
 static const Task_State_t task_move_state[] = {
     TASK_MOVE1,TASK_MOVE2,TASK_MOVE3,TASK_MOVE4,
@@ -48,22 +157,23 @@ static const Task_State_t task_move_state[] = {
 _Static_assert(sizeof(task_route)/sizeof(task_route[0]) ==
                sizeof(task_move_state)/sizeof(task_move_state[0]), "route state count mismatch");
 static const AlgPathLimits_t task_path_limits = {
-    .transition_mm=30.0f,
-    .max_omega=0.9f, /* reserve headroom below the yaw loop limit of 1.2 rad/s */
-    .max_angular_accel=2.0f,
-    .max_lateral_accel=400.0f
+    .transition_mm = 30.0f,        /* 转弯入口和出口的曲率过渡长度参数 */
+    .max_omega = 0.9f,            /* rad/s，给航向闭环的 1.2 rad/s 限幅留余量 */
+    .max_angular_accel = 2.0f,    /* rad/s^2 */
+    .max_lateral_accel = 400.0f   /* mm/s^2 */
 };
-typedef struct { uint8_t first,count; Task_State_t next; } Task_Path_Group_t;
-static const Task_Path_Group_t task_groups[] = {
-    {0U,1U,TASK_SCAN}, {1U,10U,TASK_EXPLOSIVE}, {11U,1U,TASK_CS},
-    {12U,3U,TASK_RESCUE}, {15U,1U,TASK_END}
-};
+
+/* 试跑模式：到停车点后停稳 1 秒，作业留空，不额外等待作业时间。 */
 #define TASK_STOP_DWELL_MS 1000U
-#define TASK_WORK_PLACEHOLDER_MS 1000U
 #define TASK_TIMEOUT_MARGIN_MS 2000U
-static uint8_t task_group;
-static bool task_path_active,task_settling;
-static uint32_t task_enter_ms,task_path_start_ms,task_settle_ms,task_path_timeout_ms;
+/* 这些变量只负责一组连续运动，不涉及扫码、机械臂或视觉纠偏。 */
+static uint8_t task_first_segment;       /* 当前组在 task_route 中的起始下标 */
+static uint8_t task_segment_count;       /* 当前组包含几段移动 */
+static bool task_path_active;            /* 已启动路径，不能每次 poll 都重新启动 */
+static bool task_settling;               /* 已走完路径，正在等待停稳 */
+static uint32_t task_path_start_ms;
+static uint32_t task_settle_ms;
+static uint32_t task_path_timeout_ms;
 
 void task_vision_on_frame(const proto_vision_frame_t *frame)
 {
@@ -122,98 +232,303 @@ void task_vision_on_frame(const proto_vision_frame_t *frame)
     /* 后续指令在这里继续添加 else if；未知帧不修改已收到的事件。 */
 }
 
-static void task_enter(Task_State_t state,uint32_t now)
-{
-    task_state=state;
-    task_enter_ms=now;
-}
-static void task_fault(uint32_t now)
+/* 运动异常时结束本次试跑，不能把取消或 IMU 失效当作到达作业区。 */
+static void task_fault(void)
 {
     app_chassis_motion_stop();
-    task_path_active=task_settling=false;
-    task_enter(TASK_FAULT,now);
+    task_path_active = false;
+    task_settling = false;
+    task_state = TASK_FAULT;
 }
-static void task_start_group(uint8_t group,uint32_t now)
+
+/* 启动一组连续移动，只在这组的入口调用一次。
+ * first_move 使用 MOVE 编号（从 1 开始），count 是这组包含的移动段数。
+ * 例如 task_start_path(2U, 10U, now) 会连续执行 MOVE2 ~ MOVE11。
+ */
+static void task_start_path(uint8_t first_move, uint8_t count, uint32_t now)
 {
-    if(group>=sizeof(task_groups)/sizeof(task_groups[0])) {
-        task_fault(now);
-        return;
-    }
-    const Task_Path_Group_t *path=&task_groups[group];
-    if (path->count == 0U || (unsigned)path->first + path->count >
-        sizeof(task_route)/sizeof(task_route[0])) {
-        task_fault(now);
-        return;
-    }
-    Chassis_Motion_Start_t result=app_chassis_motion_path_start(
-        &task_route[path->first],path->count,&task_path_limits);
     AlgPathSample_t sample;
-    if(result!=MOTION_START_OK || !app_chassis_motion_path_get_sample(&sample)) {
-        task_fault(now);
+    Chassis_Motion_Start_t result;
+    unsigned route_count = sizeof(task_route) / sizeof(task_route[0]);
+
+    if (first_move == 0U || count == 0U ||
+        (unsigned)first_move - 1U + count > route_count) {
+        task_fault();
         return;
     }
-    task_group=group;
-    task_path_active=true;
-    task_settling=false;
-    task_path_start_ms=now;
-    task_path_timeout_ms=(uint32_t)ceilf(sample.duration*1000.0f)+TASK_TIMEOUT_MARGIN_MS;
-    task_enter(task_move_state[path->first],now);
+
+    uint8_t first_segment = first_move - 1U;
+    result = app_chassis_motion_path_start(&task_route[first_segment],
+                                          count, &task_path_limits);
+    if (result != MOTION_START_OK) {
+        task_fault();
+        return;
+    }
+    if (!app_chassis_motion_path_get_sample(&sample)) {
+        task_fault();
+        return;
+    }
+
+    task_first_segment = first_segment;
+    task_segment_count = count;
+    task_path_active = true;
+    task_settling = false;
+    task_path_start_ms = now;
+    task_path_timeout_ms = (uint32_t)ceilf(sample.duration * 1000.0f)
+                          + TASK_TIMEOUT_MARGIN_MS;
+    task_state = task_move_state[first_segment];
 }
+
+/* 判断某个 MOVE 是否可以进入下一个状态，不等待、不重新下发运动。
+ * 组内的中间段：底层进入后一段即可切换，底盘保持连续运动。
+ * 组内的最后段：整组轨迹结束并停稳 1 秒后，才允许进入作业占位状态。
+ * 这里的完成是参考轨迹完成，尚未接入实际位置到位判断。
+ */
+static bool task_move_finished(uint8_t move_number, uint32_t now)
+{
+    AlgPathSample_t sample;
+    Chassis_Motion_Result_t result;
+    uint8_t last_move = task_first_segment + task_segment_count;
+
+    if (!task_path_active || move_number <= task_first_segment ||
+        move_number > last_move) {
+        task_fault();
+        return false;
+    }
+
+    result = app_chassis_motion_get_result();
+    if (result != MOTION_RESULT_RUNNING && result != MOTION_RESULT_DONE) {
+        task_fault();
+        return false;
+    }
+    if (!app_chassis_motion_path_get_sample(&sample) ||
+        sample.segment >= task_segment_count) {
+        task_fault();
+        return false;
+    }
+
+    if (result == MOTION_RESULT_RUNNING) {
+        /* 超时只负责发现控制停滞，不用固定时间强行推进路线。 */
+        if ((uint32_t)(now - task_path_start_ms) > task_path_timeout_ms) {
+            task_fault();
+            return false;
+        }
+
+        uint8_t current_move = task_first_segment + sample.segment + 1U;
+        if (current_move > move_number) {
+            return true;
+        }
+        return false;
+    }
+
+    /* 从首次观察到轨迹完成开始计时；无 HAL_Delay，不影响其他 poll。 */
+    if (!task_settling) {
+        task_settling = true;
+        task_settle_ms = now;
+    }
+
+    /* 若 task_poll 暂时错过了段边界，逐个补上状态，不重启已走过的路径。 */
+    if (move_number < last_move) {
+        return true;
+    }
+    if ((uint32_t)(now - task_settle_ms) < TASK_STOP_DWELL_MS) {
+        return false;
+    }
+
+    task_path_active = false;
+    task_settling = false;
+    return true;
+}
+
 void task_init(void)
 {
-    task_state=TASK_IDLE;
-    task_total_start_requested=false;
-    task_offset_x=task_offset_y=0.0f;
-    task_offset_pending=false;
-    task_path_active=task_settling=false;
-    task_enter_ms=HAL_GetTick();
+    task_state = TASK_IDLE;
+    task_total_start_requested = false;
+    task_offset_x = 0.0f;
+    task_offset_y = 0.0f;
+    task_offset_pending = false;
+    task_first_segment = 0U;
+    task_segment_count = 0U;
+    task_path_active = false;
+    task_settling = false;
+    task_path_start_ms = 0U;
+    task_settle_ms = 0U;
+    task_path_timeout_ms = 0U;
     app_vision_set_rx_cb(task_vision_on_frame);
 }
+
 void task_poll(void)
 {
-    uint32_t now=HAL_GetTick();
-    if(task_state==TASK_IDLE) {
-        task_path_active=task_settling=false;
-        if(task_total_start_requested) {
-            task_total_start_requested=false;
-            task_start_group(0U,now);
+    uint32_t now = HAL_GetTick();
+
+    switch (task_state) {
+    case TASK_IDLE:
+        task_path_active = false;
+        task_settling = false;
+        if (task_total_start_requested) {
+            task_total_start_requested = false;
+            /* 第一组：从出发区直行到扫码位置。 */
+            task_start_path(1U, 1U, now);
         }
-    } else if(task_path_active) {
-        Chassis_Motion_Result_t result=app_chassis_motion_get_result();
-        const Task_Path_Group_t *group=&task_groups[task_group];
-        if(result==MOTION_RESULT_RUNNING) {
-            AlgPathSample_t sample;
-            if(!app_chassis_motion_path_get_sample(&sample) || sample.segment>=group->count ||
-               (uint32_t)(now-task_path_start_ms)>task_path_timeout_ms) {
-                task_fault(now);
-            } else {
-                task_state=task_move_state[group->first+sample.segment];
-            }
-        } else if(result==MOTION_RESULT_DONE) {
-            task_state=task_move_state[group->first+group->count-1U];
-            if(!task_settling) {
-                task_settling=true;
-                task_settle_ms=now;
-            }
-            if((uint32_t)(now-task_settle_ms)>=TASK_STOP_DWELL_MS) {
-                task_path_active=task_settling=false;
-                task_enter(group->next,now);
-            }
-        } else {
-            /* Cancellation / IMU failure does not mean a successful arrival. */
-            task_fault(now);
+        break;
+
+    case TASK_MOVE1:
+        /* 直行 450 mm；到扫码位置后停稳 1 秒。 */
+        if (task_move_finished(1U, now)) {
+            task_state = TASK_SCAN;
         }
-    } else if((uint32_t)(now-task_enter_ms)>=TASK_WORK_PLACEHOLDER_MS) {
-        switch(task_state) {
-        case TASK_SCAN:      task_start_group(1U,now); break;
-        case TASK_EXPLOSIVE: task_start_group(2U,now); break;
-        case TASK_CS:        task_start_group(3U,now); break;
-        case TASK_RESCUE:    task_start_group(4U,now); break;
-        default: break; /* END / FAULT wait for an explicit new lifecycle. */
+        break;
+
+    case TASK_SCAN:
+        /* TODO：扫码任务处理留空。 */
+
+        /* 仅试跑：跳过作业，启动 MOVE2 ~ MOVE11，途中不停车。 */
+        task_start_path(2U, 10U, now);
+        break;
+
+    case TASK_MOVE2:
+        /* 左转 90 度，转弯名义半径 200 mm。 */
+        if (task_move_finished(2U, now)) {
+            task_state = TASK_MOVE3;
         }
+        break;
+
+    case TASK_MOVE3:
+        /* 直行 305 mm，接近下方减速带入口。 */
+        if (task_move_finished(3U, now)) {
+            task_state = TASK_MOVE4;
+        }
+        break;
+
+    case TASK_MOVE4:
+        /* 右转 90 度，进入下方减速带方向。 */
+        if (task_move_finished(4U, now)) {
+            task_state = TASK_MOVE5;
+        }
+        break;
+
+    case TASK_MOVE5:
+        /* 以较低速度直行 550 mm，通过减速带。 */
+        if (task_move_finished(5U, now)) {
+            task_state = TASK_MOVE6;
+        }
+        break;
+
+    case TASK_MOVE6:
+        /* 左转 90 度，朝底部回廊行驶。 */
+        if (task_move_finished(6U, now)) {
+            task_state = TASK_MOVE7;
+        }
+        break;
+
+    case TASK_MOVE7:
+        /* 直行 455 mm。 */
+        if (task_move_finished(7U, now)) {
+            task_state = TASK_MOVE8;
+        }
+        break;
+
+    case TASK_MOVE8:
+        /* 右转 90 度，进入底部水平路段。 */
+        if (task_move_finished(8U, now)) {
+            task_state = TASK_MOVE9;
+        }
+        break;
+
+    case TASK_MOVE9:
+        /* 沿底部回廊直行 580 mm。 */
+        if (task_move_finished(9U, now)) {
+            task_state = TASK_MOVE10;
+        }
+        break;
+
+    case TASK_MOVE10:
+        /* 右转 90 度，朝排爆区行驶。 */
+        if (task_move_finished(10U, now)) {
+            task_state = TASK_MOVE11;
+        }
+        break;
+
+    case TASK_MOVE11:
+        /* 直行 505 mm；到排爆位置后停稳 1 秒。 */
+        if (task_move_finished(11U, now)) {
+            task_state = TASK_EXPLOSIVE;
+        }
+        break;
+
+    case TASK_EXPLOSIVE:
+        /* TODO：排爆任务处理留空。 */
+
+        /* 仅试跑：跳过作业，启动 MOVE12。 */
+        task_start_path(12U, 1U, now);
+        break;
+
+    case TASK_MOVE12:
+        /* 直行 1730 mm；到反恐位置后停稳 1 秒。 */
+        if (task_move_finished(12U, now)) {
+            task_state = TASK_CS;
+        }
+        break;
+
+    case TASK_CS:
+        /* TODO：反恐任务处理留空。 */
+
+        /* 仅试跑：跳过作业，启动 MOVE13 ~ MOVE15，途中不停车。 */
+        task_start_path(13U, 3U, now);
+        break;
+
+    case TASK_MOVE13:
+        /* 直行 375 mm，接近顶部转弯位置。 */
+        if (task_move_finished(13U, now)) {
+            task_state = TASK_MOVE14;
+        }
+        break;
+
+    case TASK_MOVE14:
+        /* 右转 90 度，进入顶部水平路段。 */
+        if (task_move_finished(14U, now)) {
+            task_state = TASK_MOVE15;
+        }
+        break;
+
+    case TASK_MOVE15:
+        /* 直行 780 mm；到救援位置后停稳 1 秒。 */
+        if (task_move_finished(15U, now)) {
+            task_state = TASK_RESCUE;
+        }
+        break;
+
+    case TASK_RESCUE:
+        /* TODO：救援任务处理留空。 */
+
+        /* 仅试跑：跳过作业，启动 MOVE16，前往终点。 */
+        task_start_path(16U, 1U, now);
+        break;
+
+    case TASK_MOVE16:
+        /* 直行 1600 mm；到终点后停稳 1 秒。 */
+        if (task_move_finished(16U, now)) {
+            task_state = TASK_END;
+        }
+        break;
+
+    case TASK_END:
+        /* 试跑结束，保持停车。 */
+        break;
+
+    case TASK_FAULT:
+        /* 本次试跑已因运动异常停止，不自动继续下一段。 */
+        break;
+
+    default:
+        task_fault();
+        break;
     }
-    task_total_start_requested=false; /* ignore duplicate starts while running */
+
+    /* 运行途中收到重复启动帧时，不重新开始整圈任务。 */
+    task_total_start_requested = false;
 }
+
 Task_State_t task_get_state(void)
 {
     return task_state;

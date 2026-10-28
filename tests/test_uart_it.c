@@ -6,9 +6,15 @@
 
 static unsigned blocking_sends;
 static unsigned it_sends;
-static char configs[7][BSP_UART_TX_BUFSIZE];
+static char configs[8][BSP_UART_TX_BUFSIZE];
+static uint32_t init_delay_ms;
 static HAL_StatusTypeDef force_it_status = HAL_OK;
 static HAL_StatusTypeDef force_block_status = HAL_OK;
+
+void HAL_Delay(uint32_t delay)
+{
+    init_delay_ms += delay;
+}
 
 HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef *uart, const uint8_t *data,
                                    uint16_t len, uint32_t timeout)
@@ -16,7 +22,7 @@ HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef *uart, const uint8_t *dat
     (void)timeout;
     if (uart->gState != HAL_UART_STATE_READY) { return HAL_BUSY; }
     if (force_block_status != HAL_OK) { return force_block_status; }
-    if (blocking_sends < 7U) {
+    if (blocking_sends < 8U) {
         assert(len < BSP_UART_TX_BUFSIZE);
         memcpy(configs[blocking_sends], data, len);
         configs[blocking_sends][len] = '\0';
@@ -57,15 +63,17 @@ int main(void)
     assert(bsp_uart_send_it(BSP_UART_CHASSIS, (const uint8_t *)"x", 1) == RET_NOTREADY);
     assert(app_chassis_init(&chassis) == RET_OK);
     const char *expected[] = {
+        "$flash_reset#",
         "$mtype:1#", "$deadzone:1750#", "$mline:500#", "$wdiameter:77#",
         "$MPID:2.60,0.14,0.00#", "$spd:0,0,0,0#", "$upload:1,0,0#"
     };
-    assert(blocking_sends == 7U && it_sends == 0U);
-    for (unsigned i = 0; i < 7U; ++i) { assert(strcmp(configs[i], expected[i]) == 0); }
+    assert(blocking_sends == 8U && it_sends == 0U);
+    assert(init_delay_ms == 3200U);
+    for (unsigned i = 0; i < 8U; ++i) { assert(strcmp(configs[i], expected[i]) == 0); }
 
     /* Actual app layer's local frame must survive return from app_chassis_move. */
     assert(app_chassis_move(0, 100, 0) == RET_OK);
-    assert(blocking_sends == 7U && it_sends == 1U);
+    assert(blocking_sends == 8U && it_sends == 1U);
     check_pending(&chassis, "$spd:-100,-100,-100,-100#");
     assert(app_chassis_move(0, 200, 0) == RET_BUSY);
     assert(it_sends == 1U);

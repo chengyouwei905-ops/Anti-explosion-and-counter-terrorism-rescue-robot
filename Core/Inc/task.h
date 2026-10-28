@@ -36,7 +36,7 @@ typedef enum {
     TASK_FAULT,
 } Task_State_t;
 
-/* 连续路径按运动完成反馈推进；作业点停稳1s，实际作业暂以1s占位。 */
+/* 逐状态执行赛道试跑；作业点停稳 1 秒，具体作业留空后自动继续。 */
 void task_poll(void);
 Task_State_t task_get_state(void);
 
