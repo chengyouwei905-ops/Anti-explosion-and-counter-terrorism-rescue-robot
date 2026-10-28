@@ -10,7 +10,7 @@
 #define CHASSIS_YAW_KP_RAD 4.0f
 #define CHASSIS_YAW_KI 0.0f
 #define CHASSIS_YAW_KD 90.0f
-#define CHASSIS_MAX_OMEGA_RADPS 1.2f
+#define CHASSIS_MAX_OMEGA_RADPS APP_CHASSIS_MAX_OMEGA_RADPS
 
 static PID_t angle_pid_t;
 static Chassis_CloseLoop_State_t chassis_closeloop_state;

@@ -1,6 +1,8 @@
 #ifndef __APP_CHASSIS_CLOSELOOP_H
 #define __APP_CHASSIS_CLOSELOOP_H
 
+#define APP_CHASSIS_MAX_OMEGA_RADPS 1.2f
+
 typedef struct {
     float speed_x;  /* 车体向右速度，mm/s */
     float speed_y;  /* 车体向前速度，mm/s */

@@ -40,5 +40,30 @@ float alg_motion_profile_get_distance(void);
  */
 bool alg_motion_profile_update(float addtime);
 
+/* Independent, allocation-free profile used by the continuous path planner.
+ * Units may be mm/s or rad/s, but must be consistent. Boundary speeds are
+ * nonnegative. Unlike the legacy singleton, multiple plans can coexist.
+ */
+typedef struct {
+    float distance;
+    float start_speed;
+    float end_speed;
+    float peak_speed;
+    float accel;
+    float decel;
+    float accel_time;
+    float cruise_time;
+    float duration;
+    float accel_distance;
+    float cruise_distance;
+} MotionProfilePlan_t;
+
+/* Rejects infeasible boundary speeds rather than silently changing them. */
+bool alg_motion_profile_plan(MotionProfilePlan_t *out, float distance,
+                             float start_speed, float end_speed, float max_speed,
+                             float accel, float decel);
+bool alg_motion_profile_sample(const MotionProfilePlan_t *plan, float time_s,
+                               float *distance, float *speed, float *accel);
+
 
 #endif /* __ALG_MOTION_PROFILE_H__ */

@@ -44,6 +44,8 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 # Add sources to executable
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE Core/Src/task.c)
+
 # ---------------------------------------------------------------------------
 # 用户代码按模块目录组织，每个模块统一为 <模块>/Src/*.c + <模块>/Inc/*.h，
 # 新增文件只要放进对应目录即可，无需改 CMake（CONFIGURE_DEPENDS 会自动重新扫描）。
