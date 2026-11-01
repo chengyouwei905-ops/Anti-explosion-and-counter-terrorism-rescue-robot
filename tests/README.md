@@ -20,16 +20,15 @@ gcc -std=c11 -Wall -Wextra -Werror -pedantic -Itests/uart_stubs -IBsp/Inc -IApp/
 
 # 视觉指令与任务状态机本机测试
 
-编译实际任务、协议和运动模块，替换 HAL 类型、时钟、IMU 和电机输出：
+运行全部六组主机测试（GCC 不在 PATH 时指定实际编译器路径）：
 
 ```powershell
-gcc -std=c11 -Wall -Wextra -Werror -pedantic -Itests/vision_stubs -ICore/Inc -Itests/stubs -IApp/Inc -IBsp/Inc -ICommon/Inc -IProtocol/Inc -IAlgorithm/Inc tests/test_task_vision.c Protocol/Src/proto_vision.c App/Src/app_chassis_motion.c App/Src/app_chassis_closeloop.c Algorithm/Src/alg_motion_profile.c Algorithm/Src/alg_chassis_path.c Algorithm/Src/alg_pid.c -o build/test_task_vision.exe -lm
-./build/test_task_vision.exe
+./tests/run_host_tests.ps1 -Compiler 'D:\compiler\msys2\ucrt64\bin\gcc.exe'
 ```
 
-覆盖精确指令匹配、非 NUL 结尾与满载 payload、半帧与 CRC 错误拒绝、事件锁存、等待启动及重复启动忽略。
+`test_vision_result.c` 验证交接文档的五个 HEX 样例、分片/粘包、CRC、超长/短包、版本/保留位、可选字段长度、NaN/Inf、扫描成功与失败、候选观测拒绝、机械臂 X 轴换向、正解/齿轮比例、坐标变换、平移符号、QR/法向 yaw 的可观测性。
 
-`OFFSET,X=12.5,Y=-3.25` 的测试覆盖正负数、科学计数法、最新值覆盖、非法参数、溢出/下溢、NaN/Inf、内嵌 NUL 和尾部垃圾拒绝。偏移目前只保存，不执行纠偏或作业；测试不验证硬件串口。
+`test_task_vision.c` 编译真实 task、作业状态机、app_vision、BSP/环形缓冲、协议、坐标换算和底盘控制；只替换 HAL、IMU/电机、机械臂 hook 和物理场景。覆盖真实发送 SEQ、回绕/忙/失败、旧结果与重复终态、观测包不控制、微调后复测、全赛程、时钟回绕、激光与微调中总停、延迟结果、23秒超时、机构参数缺失、机械臂等待超时、微调不收敛及救援 reason=9。测试中的机械臂动作完成和相机测量均为模拟，不是实际硬件验证。旧 OFFSET 文本不再用于控制。
 
 # 连续路径与曲率过渡
 
@@ -45,4 +44,4 @@ gcc -std=c11 -O2 -Wall -Wextra -Werror -pedantic -Itests/vision_stubs -ICore/Inc
 ./build/test_task_path.exe
 ```
 
-整圈测试使用实际任务和规划代码，检查全部16个移动状态及状态顺序、11个不停顿衔接、扫码/排爆/反恐/救援/终点五处停车、1秒停稳、时钟回绕、IMU 失效、控制停滞超时和取消后不继续作业。当前作业留空并直接跳过，理想模型约65秒；这不包含真实作业时间，也不包含轮胎打滑、传感器误差和通信延迟。
+`test_task_path.c` 专门验证原路线，使用作业已完成的桩，检查全部16个移动状态及顺序、11个不停顿衔接、五处停车、1秒停稳、时钟回绕、IMU失效、控制停滞超时和取消。纯路线理想模型约65秒；正式作业的真实模块由上面的 test_task_vision 单独覆盖。仿真时间不代表实车完赛时间。

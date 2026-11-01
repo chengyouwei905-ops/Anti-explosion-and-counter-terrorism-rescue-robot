@@ -1,16 +1,14 @@
 #include "task.h"
-#include <errno.h>
+#include "app_task_work.h"
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
 static Task_State_t task_state = TASK_IDLE;
 static bool task_total_start_requested;
-static float task_offset_x;
-static float task_offset_y;
-static bool task_offset_pending;
+static bool task_total_stop_requested;
+static bool task_running;
 
 /* 赛道坐标原点在左下角，起点为 (3350,1750)，车头朝左。
  * 距离单位 mm，速度单位 mm/s，加减速度单位 mm/s^2，角度单位 rad。
@@ -163,7 +161,7 @@ static const AlgPathLimits_t task_path_limits = {
     .max_lateral_accel = 400.0f   /* mm/s^2 */
 };
 
-/* 试跑模式：到停车点后停稳 1 秒，作业留空，不额外等待作业时间。 */
+/* 每组路线结束后停稳 1 秒，再进入对应作业流程。 */
 #define TASK_STOP_DWELL_MS 1000U
 #define TASK_TIMEOUT_MARGIN_MS 2000U
 /* 这些变量只负责一组连续运动，不涉及扫码、机械臂或视觉纠偏。 */
@@ -179,62 +177,53 @@ void task_vision_on_frame(const proto_vision_frame_t *frame)
 {
     static const char total_start_cmd[] = "TOTALSTART!";
     static const char total_stop_cmd[] = "TOTALSTOP!";
-    static const char offset_prefix[] = "OFFSET,X=";
 
     if ((frame == NULL) || (frame->len > PROTO_VISION_MAX_PAYLOAD)) {
         return;
     }
 
-    /* payload 不是 C 字符串：先匹配完整长度，再比较字节，避免越界或前缀误匹配。
-     * 暂按 payload 分派指令；后续约定 CMD 含义后可在此增加 frame->cmd 筛选。
+    /* 0x81 是二进制任务结果，原请求 SEQ 在 payload[2]，不是 frame->seq。
+     * 仅复制匹配的事件；实际坐标换算和运动由下面的 task_poll 驱动。
      */
+    if (frame->cmd == VISION_CMD_RESULT) {
+        if (task_running && !task_total_stop_requested) {
+            app_task_work_on_frame(frame);
+        }
+        return;
+    }
+    if (frame->cmd != PROTO_VISION_CMD_STATUS) {
+        return;
+    }
+    /* 启停指令严格匹配 CMD、长度、字节，不按未终止字符串访问 payload。 */
     if ((frame->len == sizeof(total_start_cmd) - 1U) &&
         (memcmp(frame->payload, total_start_cmd, sizeof(total_start_cmd) - 1U) == 0)) {
-        task_total_start_requested = true;
+        if (task_state == TASK_IDLE && !task_total_stop_requested) {
+            task_total_start_requested = true;
+        }
         return;
     }
     if ((frame->len == sizeof(total_stop_cmd) - 1U) &&
         (memcmp(frame->payload, total_stop_cmd, sizeof(total_stop_cmd) - 1U) == 0)) {
         task_total_start_requested = false;
-        task_state = TASK_IDLE;
+        task_total_stop_requested = true;
+        task_running = false;
+        /* 先失效所有等待/成功事件，保证同一批串口数据中的晚到结果也无效。 */
+        app_task_work_cancel(HAL_GetTick());
         return;
     }
-    if ((frame->len >= sizeof(offset_prefix) - 1U) &&
-        (memcmp(frame->payload, offset_prefix, sizeof(offset_prefix) - 1U) == 0)) {
-        char text[PROTO_VISION_MAX_PAYLOAD + 1U];
-        char *p;
-        char *end;
-        float x;
-        float y;
-        /* payload 不带 NUL：复制到本地缓冲后补终止符，供 strtof() 安全读取。 */
-        memcpy(text, frame->payload, frame->len);
-        text[frame->len] = '\0';
-        p = text + sizeof(offset_prefix) - 1U;
-        errno = 0;
-        x = strtof(p, &end);
-        if ((end == p) || (errno == ERANGE) || !isfinite(x) ||
-            (strncmp(end, ",Y=", 3U) != 0)) {
-            return;
-        }
-        p = end + 3U;
-        errno = 0;
-        y = strtof(p, &end);
-        if ((end == p) || (errno == ERANGE) || !isfinite(y) ||
-            (end != text + frame->len)) {
-            return;
-        }
-        /* 整条指令校验通过后再一起更新，避免只更新 X 或误接收尾部垃圾。 */
-        task_offset_x = x;
-        task_offset_y = y;
-        task_offset_pending = true;
-        return;
-    }
-    /* 后续指令在这里继续添加 else if；未知帧不修改已收到的事件。 */
+    /* 旧 OFFSET 文本不再作为控制来源，坐标只接受文档约定的二进制结果。 */
 }
 
-/* 运动异常时结束本次试跑，不能把取消或 IMU 失效当作到达作业区。 */
+/* 运动/作业异常时结束本轮任务，不能把取消或 IMU 失效当作到达作业区。 */
 static void task_fault(void)
 {
+    task_running = false;
+    task_total_start_requested = false;
+    if (app_task_work_get_status()->phase != WORK_ERROR &&
+        !app_task_work_get_status()->cancel_failed) {
+        app_task_work_cancel(HAL_GetTick());
+    }
+    app_chassis_closeloop_init();
     app_chassis_motion_stop();
     task_path_active = false;
     task_settling = false;
@@ -281,7 +270,7 @@ static void task_start_path(uint8_t first_move, uint8_t count, uint32_t now)
 
 /* 判断某个 MOVE 是否可以进入下一个状态，不等待、不重新下发运动。
  * 组内的中间段：底层进入后一段即可切换，底盘保持连续运动。
- * 组内的最后段：整组轨迹结束并停稳 1 秒后，才允许进入作业占位状态。
+ * 组内的最后段：整组轨迹结束并停稳 1 秒后，才允许进入作业状态。
  * 这里的完成是参考轨迹完成，尚未接入实际位置到位判断。
  */
 static bool task_move_finished(uint8_t move_number, uint32_t now)
@@ -344,9 +333,9 @@ void task_init(void)
 {
     task_state = TASK_IDLE;
     task_total_start_requested = false;
-    task_offset_x = 0.0f;
-    task_offset_y = 0.0f;
-    task_offset_pending = false;
+    task_total_stop_requested = false;
+    task_running = false;
+    app_task_work_init();
     task_first_segment = 0U;
     task_segment_count = 0U;
     task_path_active = false;
@@ -361,12 +350,35 @@ void task_poll(void)
 {
     uint32_t now = HAL_GetTick();
 
+    /* 总停优先于任何移动/作业状态。激光在回调里已关，下面取消实际底盘运动。
+     * 清 PID 后保持当前航向，避免旧误差的微分项在停车时继续输出转速。
+     */
+    if (task_total_stop_requested) {
+        task_total_stop_requested = false;
+        task_total_start_requested = false;
+        app_chassis_closeloop_init();
+        app_chassis_motion_stop();
+        task_path_active = false;
+        task_settling = false;
+        task_state = TASK_IDLE;
+    }
+    app_task_work_service(now);
+
     switch (task_state) {
     case TASK_IDLE:
         task_path_active = false;
         task_settling = false;
         if (task_total_start_requested) {
+            if (app_task_work_cancel_pending()) {
+                break; /* 上一次的取消发送未完成，不能让它取消新一轮视觉任务 */
+            }
+            if (app_task_work_get_status()->cancel_failed) {
+                task_fault();
+                break;
+            }
             task_total_start_requested = false;
+            task_running = true;
+            app_task_work_init();
             /* 第一组：从出发区直行到扫码位置。 */
             task_start_path(1U, 1U, now);
         }
@@ -379,12 +391,17 @@ void task_poll(void)
         }
         break;
 
-    case TASK_SCAN:
-        /* TODO：扫码任务处理留空。 */
-
-        /* 仅试跑：跳过作业，启动 MOVE2 ~ MOVE11，途中不停车。 */
-        task_start_path(2U, 10U, now);
+    case TASK_SCAN: {
+        /* 观察姿态 -> 发 0x10 -> 等位姿 -> 底盘微调并复测 -> 收臂。 */
+        TaskWorkResult_t result = app_task_work_poll(WORK_QR, now);
+        //result = WORK_DONE;     //测试时暂时屏蔽
+        if (result == WORK_DONE) {
+            task_start_path(2U, 10U, now);
+        } else if (result == WORK_FAILED) {
+            task_fault();
+        }
         break;
+    }
 
     case TASK_MOVE2:
         /* 左转 90 度，转弯名义半径 200 mm。 */
@@ -456,12 +473,16 @@ void task_poll(void)
         }
         break;
 
-    case TASK_EXPLOSIVE:
-        /* TODO：排爆任务处理留空。 */
-
-        /* 仅试跑：跳过作业，启动 MOVE12。 */
-        task_start_path(12U, 1U, now);
+    case TASK_EXPLOSIVE: {
+        /* 发 0x20 扫描三处 -> 按序号选位 -> 发 0x21 -> 微调 -> 夹取/放置。 */
+        TaskWorkResult_t result = app_task_work_poll(WORK_BOMB, now);
+        if (result == WORK_DONE) {
+            task_start_path(12U, 1U, now);
+        } else if (result == WORK_FAILED) {
+            task_fault();
+        }
         break;
+    }
 
     case TASK_MOVE12:
         /* 直行 1730 mm；到反恐位置后停稳 1 秒。 */
@@ -470,12 +491,16 @@ void task_poll(void)
         }
         break;
 
-    case TASK_CS:
-        /* TODO：反恐任务处理留空。 */
-
-        /* 仅试跑：跳过作业，启动 MOVE13 ~ MOVE15，途中不停车。 */
-        task_start_path(13U, 3U, now);
+    case TASK_CS: {
+        /* 发 0x30/0x31 -> 微调并复测对准 -> PA0 高电平照射 -> 关闭激光。 */
+        TaskWorkResult_t result = app_task_work_poll(WORK_TARGET, now);
+        if (result == WORK_DONE) {
+            task_start_path(13U, 3U, now);
+        } else if (result == WORK_FAILED) {
+            task_fault();
+        }
         break;
+    }
 
     case TASK_MOVE13:
         /* 直行 375 mm，接近顶部转弯位置。 */
@@ -498,12 +523,16 @@ void task_poll(void)
         }
         break;
 
-    case TASK_RESCUE:
-        /* TODO：救援任务处理留空。 */
-
-        /* 仅试跑：跳过作业，启动 MOVE16，前往终点。 */
-        task_start_path(16U, 1U, now);
+    case TASK_RESCUE: {
+        /* 预留 0x40/0x41；模型未就绪 reason=9 时停止，不假装作业成功。 */
+        TaskWorkResult_t result = app_task_work_poll(WORK_RESCUE, now);
+        if (result == WORK_DONE) {
+            task_start_path(16U, 1U, now);
+        } else if (result == WORK_FAILED) {
+            task_fault();
+        }
         break;
+    }
 
     case TASK_MOVE16:
         /* 直行 1600 mm；到终点后停稳 1 秒。 */
@@ -513,11 +542,12 @@ void task_poll(void)
         break;
 
     case TASK_END:
-        /* 试跑结束，保持停车。 */
+        /* 本轮任务结束，保持停车。 */
+        task_running = false;
         break;
 
     case TASK_FAULT:
-        /* 本次试跑已因运动异常停止，不自动继续下一段。 */
+        /* 本轮任务已因异常停止，不自动继续下一段。 */
         break;
 
     default:
@@ -526,7 +556,9 @@ void task_poll(void)
     }
 
     /* 运行途中收到重复启动帧时，不重新开始整圈任务。 */
-    task_total_start_requested = false;
+    if (task_state != TASK_IDLE) {
+        task_total_start_requested = false;
+    }
 }
 
 Task_State_t task_get_state(void)

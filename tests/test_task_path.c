@@ -6,6 +6,17 @@
 #include <string.h>
 #include "../Core/Src/task.c"
 
+/* 此测试只验证原路线；实际作业链路由 test_task_vision.c 使用真实模块验证。 */
+static TaskWorkStatus_t work_status;
+void app_task_work_init(void) { work_status=(TaskWorkStatus_t){0}; }
+TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind,uint32_t now)
+{ (void)kind;(void)now;return WORK_DONE; }
+void app_task_work_cancel(uint32_t now) { (void)now; }
+void app_task_work_service(uint32_t now) { (void)now; }
+void app_task_work_on_frame(const proto_vision_frame_t *frame) { (void)frame; }
+bool app_task_work_cancel_pending(void) { return false; }
+const TaskWorkStatus_t *app_task_work_get_status(void) { return &work_status; }
+
 #define PI 3.14159265358979323846f
 static uint32_t clock_base, elapsed_ms;
 static bool imu_valid;

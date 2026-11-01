@@ -57,11 +57,21 @@ void app_vision_poll(void)
 
 int app_vision_send(uint8_t cmd, const uint8_t *payload, uint8_t len)
 {
+    uint8_t sent_seq;
+    return app_vision_send_with_seq(cmd, payload, len, &sent_seq);
+}
+
+int app_vision_send_with_seq(uint8_t cmd, const uint8_t *payload, uint8_t len,
+                             uint8_t *sent_seq)
+{
     uint8_t frame[PROTO_VISION_OVERHEAD + PROTO_VISION_MAX_PAYLOAD];
     uint8_t frame_len;
 
     if (!s_inited) {
         return RET_NOTREADY;
+    }
+    if (sent_seq == NULL) {
+        return RET_PARAM;
     }
 
     /* 组帧：帧头/序号/长度/CRC 全部由协议层负责 */
@@ -70,7 +80,11 @@ int app_vision_send(uint8_t cmd, const uint8_t *payload, uint8_t len)
         return RET_PARAM;
     }
 
-    return bsp_uart_send(BSP_UART_VISION, frame, frame_len, APP_VISION_TX_TIMEOUT_MS);
+    int result = bsp_uart_send_it(BSP_UART_VISION, frame, frame_len);
+    if (result == RET_OK) {
+        *sent_seq = frame[3];
+    }
+    return result;
 }
 
 const proto_vision_stat_t *app_vision_get_stat(void)

@@ -1,5 +1,6 @@
 #include "alg_roboarm_kinematics.h"
 #include <math.h>
+#include <stddef.h>
 
 #ifndef PI
 #define PI 3.14159265358979323846
@@ -22,20 +23,28 @@ void alg_roboarm_init(void)
 /* 正解 */
 Roboarm_Kinematics_Status_t alg_roboarm_forward(const Roboarm_State_t *roboarm_state, End_Effector_Pos_t *end_effector_pos)
 {
+    if (roboarm_state == NULL || end_effector_pos == NULL ||
+        !isfinite(roboarm_state->yaw_angle) || !isfinite(roboarm_state->joint1_angle) ||
+        !isfinite(roboarm_state->joint2_angle) || !isfinite(roboarm_state->joint3_angle)) {
+        return ROBOARM_KINEMATICS_ERR;
+    }
     Roboarm_State_t roboarm_state_calculate = *roboarm_state;
+    roboarm_state_calculate.yaw_angle *= ROBOARM_YAW_OUTPUT_PER_SERVO;
     /* angle合法性检查，手动标定 */
     /* 检查yawservo的输入参数合法性 */
-    if ((roboarm_state->yaw_angle < (-(0.16666666667 * PI)))  || (roboarm_state->yaw_angle > (0.5*PI)))    //-30°~+90°      yaw_servo通过一个1：2的减速齿轮组实现yaw转动
+    if ((roboarm_state_calculate.yaw_angle < ROBOARM_YAW_MIN_RAD) ||
+        (roboarm_state_calculate.yaw_angle > ROBOARM_YAW_MAX_RAD)) /* 转台 -100°~+100° */
     {
         return ROBOARM_KINEMATICS_ERR;
     }
     /* 先检查joint2 */
-    if ((roboarm_state->joint2_angle < (-(0.333333333 * PI))) || (roboarm_state->joint2_angle > (0.6666666667 * PI)))      //+60°~+120°
+    if (roboarm_state->joint2_angle < ROBOARM_JOINT2_MIN_RAD || roboarm_state->joint2_angle > ROBOARM_JOINT2_MAX_RAD) /* -60..140 degrees */
     {
         return ROBOARM_KINEMATICS_ERR;
     }
     /* 再检查joint1和joint2的连杆是否几何冲突 */
-    if (((roboarm_state->joint2_angle - roboarm_state->joint1_angle) < (0.166666667 * PI)) || ((roboarm_state->joint2_angle - roboarm_state->joint1_angle) > (0.66666666667 * PI)))      //连杆几何限制
+    if (((roboarm_state->joint2_angle - roboarm_state->joint1_angle) < ROBOARM_JOINT_DIFF_MIN_RAD) ||
+        ((roboarm_state->joint2_angle - roboarm_state->joint1_angle) > ROBOARM_JOINT_DIFF_MAX_RAD)) /* 30°～150° */
     {
         return ROBOARM_KINEMATICS_ERR;
     }
@@ -45,13 +54,12 @@ Roboarm_Kinematics_Status_t alg_roboarm_forward(const Roboarm_State_t *roboarm_s
         return ROBOARM_KINEMATICS_ERR;
     }
     /* 检查joint3（pitch角度）本身角度限制 */
-    if ((roboarm_state->joint3_angle < (-PI / 18)) || (roboarm_state->joint3_angle > (0.333334 * PI)))      //-10°~+60°
+    if (roboarm_state->joint3_angle < ROBOARM_JOINT3_MIN_RAD || roboarm_state->joint3_angle > ROBOARM_JOINT3_MAX_RAD) /* -75..75 degrees */
     {
         return ROBOARM_KINEMATICS_ERR;
     }
 
-    /* yaw_servo齿轮组的减速比为1：2 */
-    roboarm_state_calculate.yaw_angle = roboarm_state_calculate.yaw_angle / 2.0;
+    /* yaw 已在入口由舵机角换算为转台角，不再重复减速。 */
 
     end_effector_pos->z = ALG_ROBOARM_KINEMATICS_L0 
     + ALG_ROBOARM_KINEMATICS_L1 * cos(roboarm_state_calculate.joint1_angle) 
@@ -75,6 +83,11 @@ Roboarm_Kinematics_Status_t alg_roboarm_forward(const Roboarm_State_t *roboarm_s
 //只取从上方接触目标点的逆解，从下方弯折的逆解方式忽略
 Roboarm_Kinematics_Status_t alg_roboarm_invert(const End_Effector_Pos_t *end_effector_pos, Roboarm_State_t *roboarm_state)
 {
+    if (end_effector_pos == NULL || roboarm_state == NULL ||
+        !isfinite(end_effector_pos->x) || !isfinite(end_effector_pos->y) ||
+        !isfinite(end_effector_pos->z) || !isfinite(end_effector_pos->pitch)) {
+        return ROBOARM_KINEMATICS_ERR;
+    }
     End_Effector_Pos_t end_effector_pos_calculate = *end_effector_pos;
 
     roboarm_state->yaw_angle = atan2(end_effector_pos_calculate.x, end_effector_pos_calculate.y);
@@ -83,7 +96,7 @@ Roboarm_Kinematics_Status_t alg_roboarm_invert(const End_Effector_Pos_t *end_eff
     Roboarm_Rectangular_Plane_Coordinate_System_t coordinate_D = {r, end_effector_pos_calculate.z - ALG_ROBOARM_KINEMATICS_L0};
     Roboarm_Rectangular_Plane_Coordinate_System_t coordinate_C = {coordinate_D.x - ALG_ROBOARM_KINEMATICS_L3 * cos(end_effector_pos_calculate.pitch) + ALG_ROBOARM_KINEMATICS_L4 * sin(end_effector_pos_calculate.pitch), coordinate_D.y - ALG_ROBOARM_KINEMATICS_L3 * sin(end_effector_pos_calculate.pitch) - ALG_ROBOARM_KINEMATICS_L4 * cos(end_effector_pos_calculate.pitch)};
     double L_AC = sqrt(coordinate_C.x * coordinate_C.x + coordinate_C.y * coordinate_C.y);
-    if (L_AC < 50 || L_AC > 210)        //满足两边之和大于第三边两边之差小于第三边
+    if (!isfinite(L_AC) || L_AC < 50 || L_AC > 210)        //满足两边之和大于第三边两边之差小于第三边
     {
         return ROBOARM_KINEMATICS_ERR;
     }
@@ -96,17 +109,19 @@ Roboarm_Kinematics_Status_t alg_roboarm_invert(const End_Effector_Pos_t *end_eff
 
     /* angle合法性检查，手动标定 */
     /* 检查yawservo的输入参数合法性 */
-    if ((roboarm_state->yaw_angle < (-(0.16666666667 * PI)))  || (roboarm_state->yaw_angle > (0.5*PI)))    //-30°~+90°      yaw_servo通过一个1：2的减速齿轮组实现yaw转动
+    if ((roboarm_state->yaw_angle < ROBOARM_YAW_MIN_RAD) ||
+        (roboarm_state->yaw_angle > ROBOARM_YAW_MAX_RAD))    //转台 -100°~+100°
     {
         return ROBOARM_KINEMATICS_ERR;
     }
     /* 先检查joint2 */
-    if ((roboarm_state->joint2_angle < (-(0.333333333 * PI))) || (roboarm_state->joint2_angle > (0.6666666667 * PI)))      //+60°~+120°
+    if (roboarm_state->joint2_angle < ROBOARM_JOINT2_MIN_RAD || roboarm_state->joint2_angle > ROBOARM_JOINT2_MAX_RAD) /* -60..140 degrees */
     {
         return ROBOARM_KINEMATICS_ERR;
     }
     /* 再检查joint1和joint2的连杆是否几何冲突 */
-    if (((roboarm_state->joint2_angle - roboarm_state->joint1_angle) < (0.166666667 * PI)) || ((roboarm_state->joint2_angle - roboarm_state->joint1_angle) > (0.66666666667 * PI)))      //连杆几何限制
+    if (((roboarm_state->joint2_angle - roboarm_state->joint1_angle) < ROBOARM_JOINT_DIFF_MIN_RAD) ||
+        ((roboarm_state->joint2_angle - roboarm_state->joint1_angle) > ROBOARM_JOINT_DIFF_MAX_RAD)) /* 30°～150° */
     {
         return ROBOARM_KINEMATICS_ERR;
     }
@@ -116,14 +131,14 @@ Roboarm_Kinematics_Status_t alg_roboarm_invert(const End_Effector_Pos_t *end_eff
         return ROBOARM_KINEMATICS_ERR;
     }
     /* 检查joint3（pitch角度）本身角度限制 */
-    if ((roboarm_state->joint3_angle < (-PI / 18)) || (roboarm_state->joint3_angle > (0.333334 * PI)))      //-10°~+60°
+    if (roboarm_state->joint3_angle < ROBOARM_JOINT3_MIN_RAD || roboarm_state->joint3_angle > ROBOARM_JOINT3_MAX_RAD) /* -75..75 degrees */
     {
         return ROBOARM_KINEMATICS_ERR;
     }
 
 
-    /* yaw的减速比为1：2 */
-    roboarm_state->yaw_angle = roboarm_state->yaw_angle * 2;
+    /* 转台角 -> 舵机角：乘 44/35。 */
+    roboarm_state->yaw_angle /= ROBOARM_YAW_OUTPUT_PER_SERVO;
 
     return ROBOARM_KINEMATICS_OK;
 }

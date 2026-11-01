@@ -66,10 +66,14 @@ void Error_Handler(void);
 #define Power_OUT2_EN_GPIO_Port GPIOC
 #define Power_OUT1_EN_Pin GPIO_PIN_14
 #define Power_OUT1_EN_GPIO_Port GPIOC
+#define OUT5V_EN_Pin GPIO_PIN_15
+#define OUT5V_EN_GPIO_Port GPIOC
 #define SPI2_CS0_Pin GPIO_PIN_0
 #define SPI2_CS0_GPIO_Port GPIOC
 #define SPI2_CS1_Pin GPIO_PIN_3
 #define SPI2_CS1_GPIO_Port GPIOC
+#define LASER_Pin GPIO_PIN_0
+#define LASER_GPIO_Port GPIOA
 #define RGB_Pin GPIO_PIN_7
 #define RGB_GPIO_Port GPIOA
 #define Camera_RX_Pin GPIO_PIN_7

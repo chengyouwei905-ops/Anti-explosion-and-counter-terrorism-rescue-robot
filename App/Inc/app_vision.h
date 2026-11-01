@@ -27,7 +27,7 @@ extern "C" {
 /** @brief 一次从环形缓冲搬运的最大字节数 */
 #define APP_VISION_CHUNK_SIZE       64U
 
-/** @brief 发送超时时间（ms） */
+/** @brief 保留旧宏供兼容；当前发送改为中断方式，业务超时在作业层处理。 */
 #define APP_VISION_TX_TIMEOUT_MS    50U
 
 /**
@@ -48,13 +48,20 @@ void app_vision_poll(void);
 void app_vision_set_rx_cb(proto_vision_frame_cb_t cb);
 
 /**
-  * @brief  发送一帧（自动填充帧头 / 序号 / 长度 / CRC）
+  * @brief  非阻塞发送一帧（自动填充帧头 / 序号 / 长度 / CRC）
   * @param  cmd     命令字
   * @param  payload 载荷，len 为 0 时可传 NULL
   * @param  len     载荷字节数（<= PROTO_VISION_MAX_PAYLOAD）
-  * @retval ret_code_t
+  * @retval RET_OK=已交给中断发送，RET_BUSY=尚未接收；不代表对端已收到。
   */
 int  app_vision_send(uint8_t cmd, const uint8_t *payload, uint8_t len);
+
+/* 非阻塞发送并返回本次实际打包的 SEQ。RET_OK 表示已交给串口中断发送，
+ * 不表示对端已收到；失败时不修改 sent_seq，调用方不得建立等待请求。
+ * RET_BUSY 时由下一次 poll 重试。仅允许主循环调用。
+ */
+int app_vision_send_with_seq(uint8_t cmd, const uint8_t *payload, uint8_t len,
+                             uint8_t *sent_seq);
 
 /** @brief 协议层统计（收字节数 / 正确帧数 / CRC 错误数） */
 const proto_vision_stat_t *app_vision_get_stat(void);

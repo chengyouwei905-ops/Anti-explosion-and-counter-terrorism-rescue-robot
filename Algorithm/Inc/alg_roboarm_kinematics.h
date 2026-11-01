@@ -1,6 +1,22 @@
 #ifndef __ALG_ROBOARM_KINEMATICS_H__
 #define __ALG_ROBOARM_KINEMATICS_H__
 
+/* 舵机轴 35 齿，转台轴 44 齿。只在正逆解中换算一次。
+ * Roboarm_State_t.yaw_angle 是舵机角；几何计算使用转台角。
+ */
+#define ROBOARM_YAW_OUTPUT_PER_SERVO (35.0 / 44.0)
+/* 转台角限制，正逆解共用；舵机原始位置仍必须在 0..1000。 */
+#define ROBOARM_YAW_MIN_RAD (-100.0 * 3.14159265358979323846 / 180.0)
+#define ROBOARM_YAW_MAX_RAD (100.0 * 3.14159265358979323846 / 180.0)
+/* 用户重新审核的关节范围，正逆解共用。 */
+#define ROBOARM_JOINT2_MIN_RAD (-60.0 * 3.14159265358979323846 / 180.0)
+#define ROBOARM_JOINT2_MAX_RAD (140.0 * 3.14159265358979323846 / 180.0)
+#define ROBOARM_JOINT3_MIN_RAD (-75.0 * 3.14159265358979323846 / 180.0)
+#define ROBOARM_JOINT3_MAX_RAD (75.0 * 3.14159265358979323846 / 180.0)
+/* joint2 - joint1 的连杆差角，2026-11-01 用户校核。 */
+#define ROBOARM_JOINT_DIFF_MIN_RAD (30.0 * 3.14159265358979323846 / 180.0)
+#define ROBOARM_JOINT_DIFF_MAX_RAD (150.0 * 3.14159265358979323846 / 180.0)
+
 typedef struct{
     double yaw_angle_offset;
     double joint1_angle_offset;

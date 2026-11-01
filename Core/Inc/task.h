@@ -36,7 +36,7 @@ typedef enum {
     TASK_FAULT,
 } Task_State_t;
 
-/* 逐状态执行赛道试跑；作业点停稳 1 秒，具体作业留空后自动继续。 */
+/* 逐状态执行路线与视觉作业；机械臂位置在 app_task_work_port.c 中填写。 */
 void task_poll(void);
 Task_State_t task_get_state(void);
 

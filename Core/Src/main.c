@@ -53,27 +53,23 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+
 SPI_HandleTypeDef hspi2;
 DMA_HandleTypeDef hdma_spi2_rx;
 DMA_HandleTypeDef hdma_spi2_tx;
+
 TIM_HandleTypeDef htim6;
+
 UART_HandleTypeDef huart7;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart10;
 
-int s_imu_ret;   /**< app_imu_init() 的返回值，供 main.c 里调试用 */
-float testangle[3] = {0.0f, 0.0f, 0.0f};   /**< 测试imu用的角度值，供 main.c 里调试用 */
-float yawangle = 0.0f;
-float distance = 0.0f;   /**< 测试底盘里程用的值，供 main.c 里调试用 */
-
-volatile uint8_t chassis_motion_count = 0U;   /**< 底盘运动规划周期计数 */
-//volatile uint16_t angle_pid_test_slowdown = 0;
-volatile uint8_t chassis_state = 0U;   /**< 底盘运动规划周期计数 */
-
-//volatile uint16_t chassis_motion_test_slowdown = 100;   /**< 底盘运动规划周期计数 */
-//volatile uint8_t chassis_motion_test_state = 0;   /**< 底盘运动规划周期状态变量 */
 /* USER CODE BEGIN PV */
-
+int s_imu_ret;
+float testangle[3] = {0.0f, 0.0f, 0.0f};
+float yawangle = 0.0f;
+float distance = 0.0f;
+volatile uint8_t chassis_motion_count = 0U;
 
 /* USER CODE END PV */
 
@@ -139,6 +135,7 @@ int main(void)
   bsp_rgb_set(50, 0, 0);   //上电后先亮红灯，表示系统初始化中
   //除mcu外其他部分供电使能
   HAL_GPIO_WritePin(Power_OUT2_EN_GPIO_Port,Power_OUT2_EN_Pin,GPIO_PIN_SET);
+  HAL_GPIO_WritePin(OUT5V_EN_GPIO_Port,OUT5V_EN_Pin,GPIO_PIN_RESET);
   HAL_Delay(2000);    //等待其他设备稳定
   //视觉链路初始化
   if (app_vision_init(&huart7) != RET_OK)
@@ -540,16 +537,16 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, Power_OUT2_EN_Pin|SPI2_CS0_Pin|SPI2_CS1_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOC, Power_OUT2_EN_Pin|OUT5V_EN_Pin|SPI2_CS0_Pin|SPI2_CS1_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(Power_OUT1_EN_GPIO_Port, Power_OUT1_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(RGB_GPIO_Port, RGB_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LASER_Pin|RGB_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : Power_OUT2_EN_Pin Power_OUT1_EN_Pin */
-  GPIO_InitStruct.Pin = Power_OUT2_EN_Pin|Power_OUT1_EN_Pin;
+  /*Configure GPIO pins : Power_OUT2_EN_Pin Power_OUT1_EN_Pin OUT5V_EN_Pin */
+  GPIO_InitStruct.Pin = Power_OUT2_EN_Pin|Power_OUT1_EN_Pin|OUT5V_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -561,6 +558,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : LASER_Pin */
+  GPIO_InitStruct.Pin = LASER_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LASER_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RGB_Pin */
   GPIO_InitStruct.Pin = RGB_Pin;
@@ -577,6 +581,9 @@ static void MX_GPIO_Init(void)
 
   /*AnalogSwitch Config */
   HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PC3, SYSCFG_SWITCH_PC3_CLOSE);
+
+  /*AnalogSwitch Config */
+  HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA0, SYSCFG_SWITCH_PA0_CLOSE);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   

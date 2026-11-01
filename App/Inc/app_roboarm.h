@@ -51,12 +51,12 @@ typedef enum{
   JOINT_CLAMP = 5
 } Roboarm_Servo_ID_t;
 
-/* 待确认 */
+/* 2026-10-31 实测：ID1=480，ID4=443；ID2/ID3 保持原值。 */
 typedef enum{
-  YAW_SERVO_OFFSET = 766,
+  YAW_SERVO_OFFSET = 480,
   JOINT1_OFFSET = 766,
   JOINT2_OFFSET = 960+375,    //375对应90度
-  JOINT3_OFFSET = 55
+  JOINT3_OFFSET = 443
 } Roboarm_Servo_Offset_Position_t;
 
 typedef enum{
@@ -88,8 +88,8 @@ int  app_roboarm_init(UART_HandleTypeDef *huart);
 
 /**
   * @brief  控制任意个舵机在 time_ms 内转到目标位置
-  * @param  servos  舵机数组（ID + 位置），一个元素 = 一个舵机
-  * @param  count   舵机个数，1 ~ PROTO_ROBOARM_MAX_SERVO
+  * @param  servos  舵机数组（ID + 弧度角），一个元素 = 一个舵机
+  * @param  count   舵机个数，1 ~ 5，不允许重复 ID
   * @param  time_ms 转动时间（ms），0 = 立刻到位
   * @retval ret_code_t
   * @note   所有舵机共用同一个时间。例：1 号 1000ms 转到 800
@@ -99,6 +99,28 @@ int  app_roboarm_servo_move_direct(const Roboarm_Servo_t *servos, uint8_t count,
 
 
 int app_roboarm_servo_move_to(double x, double y, double z, double pitch);
+
+/* 实测原始位置，数组顺序固定为 ID 1、2、3、4；不经过角度/零偏转换。
+ * 这些姿态只记录用户实测值，不代表已验证各姿态之间的运动路径无碰撞。
+ */
+typedef enum {
+    ROBOARM_POSE_QR_OBSERVE,
+    ROBOARM_POSE_BOMB_PLACE,
+    ROBOARM_POSE_BOMB_PICK,
+    ROBOARM_POSE_RESCUE_PICK,
+    ROBOARM_POSE_BOMB_OBSERVE,
+    ROBOARM_POSE_TARGET_OBSERVE,
+    ROBOARM_POSE_RESCUE_OBSERVE,
+    ROBOARM_POSE_COUNT
+} Roboarm_Pose_t;
+
+const uint16_t *app_roboarm_pose_positions(Roboarm_Pose_t pose);
+/* 非阻塞原始位置发送：RET_OK 仅表示开始发送，不表示舵机到位。
+ * RET_BUSY 时调用者保留步骤，后续 poll 重试。BSP 自行复制帧缓冲。
+ */
+int app_roboarm_positions_it(const proto_roboarm_servo_t *servos,
+                            uint8_t count, uint16_t time_ms);
+int app_roboarm_pose_it(Roboarm_Pose_t pose, uint16_t time_ms);
 
 
 void app_roboarm_clamp_open(void);

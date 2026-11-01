@@ -55,4 +55,4 @@ Chassis_Motion_Start_t result = app_chassis_motion_path_start(path, 3U, &limits)
 
 通过 `app_chassis_motion_path_get_sample()` 可读取当前段号、参考位移/航向、速度、角速度、预计总时长；这些是规划参考量，不是实际定位。`app_chassis_motion_get_result()` 区分正常完成、取消和 IMU 错误，任务不能只凭空闲状态宣布成功。
 
-当前 `task.c` 在 `switch (task_state)` 中逐个展开 MOVE1~16 和四个作业状态，每个 MOVE 都写明下一状态。路线仍分为 MOVE1、MOVE2~11、MOVE12、MOVE13~15、MOVE16 五组，由底层保持组内连续运动；每组只在入口下发一次路径。只在扫码、排爆、反恐、救援和终点停车1秒。四个作业状态只留 TODO，当前为试跑直接跳过，不额外等待或执行实际作业；后续在对应 case 中补上作业完成条件，再启动下一组。
+当前 `task.c` 在 `switch (task_state)` 中逐个展开 MOVE1~16 和四个作业状态。路线仍分为 MOVE1、MOVE2~11、MOVE12、MOVE13~15、MOVE16 五组，由底层保持组内连续运动。每组结束停稳1秒后，四个作业状态轮询 `app_task_work_poll()`，等待匹配的 K230 结果、坐标换算、微调复测和作业完成，再启动下一组。机械臂位置及机构参数在 `app_task_work_port.c` 留空，未填写时等待，不假报成功。具体流程、坐标轴、配置与调试见 [视觉作业接入说明](VISION_TASK_GUIDE.md)。
