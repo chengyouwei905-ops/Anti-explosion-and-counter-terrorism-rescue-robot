@@ -21,16 +21,22 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "bsp_uart.h"
 #include "stm32h7xx_hal.h"
 #include "app_vision.h"
 #include "app_chassis.h"
 #include "app_roboarm.h"
 #include "app_imu.h"
+#include "app_imu_uart_debug.h"
+#include "alg_vision_align.h"
 #include "bsp_rgb.h"
 #include "app_chassis_closeloop.h"
 #include "app_chassis_motion.h"
 #include "stm32h7xx_hal_tim.h"
 #include <stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <math.h>
 #include "task.h"
 /* USER CODE END Includes */
 
@@ -44,6 +50,18 @@
 //此为重要参数，角度环的周期时钟基础，修改后需要重新调试角度环
 #define CHASSIS_MOTION_UPDATE_PERIOD 1U   //每10ms更新一次
 #define CHASSIS_MOTION_TEST_SLOWDOWN 1000U   //测试用，每隔5s修改一次state，重新设置一条motion命令
+
+/* 1：独立QR坐标验证，使用USART10控制机械臂，暂停路线和IMU串口日志。 */
+#ifndef VISION_COORD_DEBUG_ENABLE
+#define VISION_COORD_DEBUG_ENABLE 1
+#endif
+
+#ifndef CHASSIS_TCP_CONFIRM_DEBUG
+#define CHASSIS_TCP_CONFIRM_DEBUG 1
+#endif
+
+#define CORRECT_TCP_QR_X -100
+#define CORRECT_TCP_QR_Y -1150
 
 /* USER CODE END PD */
 
@@ -68,9 +86,22 @@ UART_HandleTypeDef huart10;
 int s_imu_ret;
 float testangle[3] = {0.0f, 0.0f, 0.0f};
 float yawangle = 0.0f;
+float temperature = 0.0f;
 float distance = 0.0f;
 volatile uint8_t chassis_motion_count = 0U;
 
+int s_imu_uart_debug_ret;  /* 调试器可查看 RET_OK / RET_BUSY / 错误码 */
+
+/* 每次测试只修改这组XYZ/pitch，控制机械臂与坐标换算共用同一份姿态。 */
+End_Effector_Pos_t vision_arm_pose = {0.0, 250.0, 100.0, -0.304533};
+int vision_arm_move_ret = RET_NOTREADY;
+volatile VisionResult_t vision_result;       /* K230原始结果，xyz_mm为TCP系坐标 */
+volatile float qr_position_body[3];          /* QR中心相对基座，X右/Y前/Z上，mm */
+volatile float arm_origin_relative_qr[3];    /* 基座相对QR中心的位移，用同一组B轴表达 */
+volatile uint32_t vision_count = 0U;
+volatile uint8_t vision_valid = 0U;
+
+volatile uint8_t chassis_fix_onlyonce = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -85,10 +116,57 @@ static void MX_USART10_UART_Init(void);
 static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 
+void vision_confirm_function(const proto_vision_frame_t *frame);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void vision_confirm_function(const proto_vision_frame_t *frame)
+{
+  if (frame == NULL || frame->cmd != VISION_CMD_RESULT) {
+    return;
+  }
+
+  vision_valid = 0U;
+  VisionResult_t result;
+  if (!proto_vision_decode_result(frame->payload, frame->len, &result)) {
+    return;
+  }
+  vision_result = result;
+  if (result.task_cmd != VISION_CMD_QR || result.slot_id != 0U ||
+      (result.status != VISION_SUCCESS && result.status != VISION_OBSERVATION) ||
+      (result.flags & VISION_POSITION) == 0U || vision_arm_move_ret != RET_OK) {
+    return;
+  }
+
+  VisionTransform_t transform;
+  if (!alg_vision_transform_from_arm_pose(&vision_arm_pose, &transform)) {
+    return;
+  }
+
+  /* K230已完成相机到TCP的手眼变换，这里计算 p_B = R_B_E*p_E + t_B_E。 */
+  float position[3];
+  for (unsigned i = 0U; i < 3U; ++i) {
+    position[i] = transform.translation[i];
+    for (unsigned j = 0U; j < 3U; ++j) {
+      position[i] += transform.rotation[i][j] * result.xyz_mm[j];
+    }
+    if (!isfinite(position[i])) {
+      return;
+    }
+  }
+  for (unsigned i = 0U; i < 3U; ++i) {
+    qr_position_body[i] = position[i];
+    arm_origin_relative_qr[i] = -position[i];
+  }
+  ++vision_count;
+  vision_valid = 1U; /* 在下面return处打断点，查看arm_origin_relative_qr[0..2]。 */
+
+  chassis_fix_onlyonce = 1;
+  return;
+}
 
 /* USER CODE END 0 */
 
@@ -151,10 +229,12 @@ int main(void)
   }
   app_chassis_move(0.0f, 0.0f, 0.0f);       //初始化底盘模块
   /* 机械臂链路初始化（USART10：PE3=TX / PE2=RX）*/
+#if VISION_COORD_DEBUG_ENABLE || !APP_IMU_UART_DEBUG_ENABLE
   if (app_roboarm_init(&huart10) != RET_OK)
   {
     Error_Handler();
   }
+#endif
 
   for (uint32_t i = 0U; i < 3U; i++)
   {
@@ -176,9 +256,27 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim6);  //闭环开启区域
   bsp_rgb_set(0, 50, 0);
 
+#if VISION_COORD_DEBUG_ENABLE
+  app_vision_set_rx_cb(vision_confirm_function);
   HAL_Delay(3000);
-  app_roboarm_servo_move_to(150.0,210.0,100.0,-0.174533);
+  vision_arm_move_ret = app_roboarm_servo_move_to(vision_arm_pose.x, vision_arm_pose.y,
+                                                vision_arm_pose.z, vision_arm_pose.pitch);
   HAL_Delay(3000);
+  bsp_uart_flush_rx(BSP_UART_VISION); /* 丢弃运动期间积压的数据。 */
+  (void)app_vision_send(VISION_CMD_QR, NULL, 0U); /* 让脚本清空旧样本并重新开始采样。 */
+#elif APP_IMU_UART_DEBUG_ENABLE
+  /* 调试期间 USART10 只发 CSV，不下发舵机二进制指令。 */
+  s_imu_uart_debug_ret = app_imu_uart_debug_init(&huart10, HAL_GetTick());
+  if (s_imu_uart_debug_ret != RET_OK)
+  {
+    Error_Handler();
+  }
+#else
+  HAL_Delay(3000);
+  app_roboarm_servo_move_to(0.0,250.0,100.0,-0.174533);
+  HAL_Delay(3000);
+#endif
+
 
   /* USER CODE END 2 */
 
@@ -193,9 +291,18 @@ int main(void)
     app_vision_poll();
     app_chassis_poll();
     distance = app_chassis_get_distance();
+    temperature = app_imu_get_temp();
     app_imu_get_euler(testangle);
     yawangle = testangle[2];
-
+    /* 一秒一次，由模块内部限频；主循环持续轮询 IMU，不插入发送延时。 */
+#if VISION_COORD_DEBUG_ENABLE
+    /* app_vision_poll内的回调逐包完成坐标验证；此模式不运行路线或IMU串口日志。 */
+#elif APP_IMU_UART_DEBUG_ENABLE
+    int debug_ret = app_imu_uart_debug_poll(HAL_GetTick());
+    if (debug_ret != RET_IDLE) {
+      s_imu_uart_debug_ret = debug_ret;
+    }
+#else
     task_poll();   //任务流：时间驱动的状态机
 
     /* 规划先更新目标，闭环随后启动非阻塞的串口中断发送。 */
@@ -204,9 +311,29 @@ int main(void)
       app_chassis_motion_update(0.01f);
       app_chassis_closeloop_update();
     }
-    //app_chassis_closeloop_set_target(0.0f, 0.0f, 0.0f);   //测试用，暂时不让底盘动
+#endif
 
+#if CHASSIS_TCP_CONFIRM_DEBUG
+    if (chassis_fix_onlyonce) {
+      chassis_fix_onlyonce = 0;
+      /* 根据TCP结果计算移动距离和方向下放底盘。 */
+      float distance = ((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X) * (arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)) 
+                        +((arm_origin_relative_qr[1] - CORRECT_TCP_QR_Y) * (arm_origin_relative_qr[1] - CORRECT_TCP_QR_Y));
+      distance = sqrtf(distance);
+      float direction = atan((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X) / (arm_origin_relative_qr[1] - CORRECT_TCP_QR_Y));
+      if((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)<0&&(arm_origin_relative_qr[1]-CORRECT_TCP_QR_Y)<0)direction = -direction;
+      if((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)<0&&(arm_origin_relative_qr[1]-CORRECT_TCP_QR_Y)>0)direction = direction - 3.1415926535f;
+      if((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)>0&&(arm_origin_relative_qr[1]-CORRECT_TCP_QR_Y)>0)direction = 3.1415926535f-direction;
+      if((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)>0&&(arm_origin_relative_qr[1]-CORRECT_TCP_QR_Y)<0)direction = direction;
+      app_chassis_motion_linear_move(distance,direction,100.0f,100.0f,100.0f);
+    }
+    if (chassis_motion_count >= CHASSIS_MOTION_UPDATE_PERIOD) {
+      chassis_motion_count = 0U;
+      app_chassis_motion_update(0.01f);
+      app_chassis_closeloop_update();
+    }
   }
+#endif
   /* USER CODE END 3 */
 }
 

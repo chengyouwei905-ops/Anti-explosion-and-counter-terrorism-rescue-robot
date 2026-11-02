@@ -15,6 +15,10 @@ try {
     $taskIncludes = @("-Itests/vision_stubs", "-Itests/uart_stubs", "-ICore/Inc", "-Itests/stubs",
                       "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IProtocol/Inc", "-IAlgorithm/Inc")
     $cases = @(
+        @{ Name="imu"; Includes=@("-Itests/imu_stubs", "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IAlgorithm/Inc");
+           Sources=@("Algorithm/Src/alg_ahrs.c") },
+        @{ Name="imu_uart_debug"; Includes=@("-Itests/vision_stubs", "-Itests/uart_stubs", "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IAlgorithm/Inc");
+           Sources=@("App/Src/app_imu_uart_debug.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") },
         @{ Name="work_port"; Includes=@("-Itests/work_port_stubs", "-Itests/vision_stubs", "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IProtocol/Inc", "-IAlgorithm/Inc");
            Sources=@("App/Src/app_task_work_port.c", "App/Src/app_roboarm.c", "Protocol/Src/proto_roboarm.c") + $resultSources },
         @{ Name="roboarm"; Includes=@("-Itests/vision_stubs", "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IProtocol/Inc", "-IAlgorithm/Inc");
@@ -26,6 +30,8 @@ try {
         @{ Name="task_path"; Includes=$taskIncludes; Sources=@("Protocol/Src/proto_vision.c") + $motionSources },
         @{ Name="vision_result"; Includes=@("-IProtocol/Inc", "-IAlgorithm/Inc", "-ICommon/Inc"); Sources=$resultSources },
         @{ Name="task_vision"; Includes=$taskIncludes;
+           Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
+        @{ Name="task_camera_test"; Includes=$taskIncludes;
            Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources }
     )
     foreach ($case in $cases) {
@@ -33,6 +39,9 @@ try {
         $executable = "build/test_$name.exe"
         $compileArgs = @("-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-pedantic") +
                        $case.Includes + @("tests/test_$name.c") + $case.Sources + @("-o", $executable, "-lm")
+        # Normal protocol regression stays enabled even while firmware defaults to camera test.
+        if ($name -eq "task_camera_test") { $compileArgs += "-DTASK_WORK_CAMERA_TEST=1" }
+        else { $compileArgs += "-DTASK_WORK_CAMERA_TEST=0" }
         & $Compiler @compileArgs
         if ($LASTEXITCODE -ne 0) { throw "Compile failed: $name" }
         & (Join-Path $repoRoot $executable)

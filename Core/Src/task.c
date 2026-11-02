@@ -28,7 +28,7 @@ static bool task_running;
 static const AlgPathSegment_t task_route[] = {
     {   /* MOVE1：直行 450 mm */
         .type = ALG_PATH_LINE,
-        .distance = 450.0f,
+        .distance = 450.0f + 40.0f, /* 50mm 直走实测修正 */
         .max_speed = 250.0f,
         .accel = 300.0f,
         .decel = 300.0f
@@ -43,7 +43,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE3：直行 305 mm */
         .type = ALG_PATH_LINE,
-        .distance = 305.0f,
+        .distance = 305.0f + 20.0f, /* 20mm 直走实测修正 */
         .max_speed = 180.0f,
         .accel = 200.0f,
         .decel = 250.0f
@@ -73,7 +73,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE7：直行 455 mm */
         .type = ALG_PATH_LINE,
-        .distance = 455.0f,
+        .distance = 455.0f + 25.0f + 15.0f - 10.0f, /* 25mm 直走实测修正 */
         .max_speed = 220.0f,
         .accel = 250.0f,
         .decel = 300.0f
@@ -88,7 +88,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE9：直行 580 mm */
         .type = ALG_PATH_LINE,
-        .distance = 580.0f,
+        .distance = 580.0f + 25.0f - 10.0f + 5.0f, /* 直走实测修正 */
         .max_speed = 250.0f,
         .accel = 300.0f,
         .decel = 350.0f
@@ -101,23 +101,23 @@ static const AlgPathSegment_t task_route[] = {
         .accel = 200.0f,
         .decel = 250.0f
     },
-    {   /* MOVE11：直行 505 mm */
+    {   /* MOVE11：直行 400 mm（实测修正） */
         .type = ALG_PATH_LINE,
-        .distance = 505.0f,
+        .distance = 400.0f - 50.0f - 20.0f + 10.0f, /* 直走实测修正 */
         .max_speed = 200.0f,
         .accel = 250.0f,
         .decel = 300.0f
     },
     {   /* MOVE12：直行 1730 mm */
         .type = ALG_PATH_LINE,
-        .distance = 1730.0f,
+        .distance = 1730.0f - 100.0f + 25.0f + 15.0f, /* 直走实测修正 */
         .max_speed = 300.0f,
         .accel = 350.0f,
         .decel = 400.0f
     },
     {   /* MOVE13：直行 375 mm */
         .type = ALG_PATH_LINE,
-        .distance = 375.0f,
+        .distance = 375.0f - 10.0f + 100.0f + 100.0f, /* 直走实测修正 */
         .max_speed = 220.0f,
         .accel = 250.0f,
         .decel = 300.0f
@@ -132,14 +132,14 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE15：直行 780 mm */
         .type = ALG_PATH_LINE,
-        .distance = 780.0f,
+        .distance = 780.0f + 100.0f - 200.0f - 50.0f, /* 直走实测修正 */
         .max_speed = 220.0f,
         .accel = 250.0f,
         .decel = 300.0f
     },
     {   /* MOVE16：直行 1600 mm */
         .type = ALG_PATH_LINE,
-        .distance = 1600.0f,
+        .distance = 1600.0f - 70.0f + 30.0f + 50.0f,    /* 直走实测修正 */
         .max_speed = 250.0f,
         .accel = 250.0f,
         .decel = 300.0f

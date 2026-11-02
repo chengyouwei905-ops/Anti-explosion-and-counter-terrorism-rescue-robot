@@ -104,6 +104,13 @@ const TaskWorkStatus_t *app_task_work_get_status(void)
 
 void app_task_work_on_frame(const proto_vision_frame_t *frame)
 {
+#if TASK_WORK_CAMERA_TEST
+    /* 相机故障可能回失败或晚到结果，联调时不让其覆盖模拟结果。
+     * 此回调只负责作业结果；task.c中的真实启停处理不受影响。
+     */
+    (void)frame;
+    return;
+#endif
     if (frame == NULL || frame->cmd != VISION_CMD_RESULT || !s.request_pending) {
         return;
     }
@@ -394,6 +401,37 @@ static void start_alignment(uint32_t now)
     }
 }
 
+#if TASK_WORK_CAMERA_TEST
+static void camera_test_result(void)
+{
+    if (!s.request_pending || result_pending) return;
+    received = (VisionResult_t){
+        .task_cmd = s.request_cmd,
+        .input_seq = s.request_seq,
+        .status = VISION_SUCCESS,
+        .slot_id = s.kind == WORK_QR ? 0U : 1U
+    };
+    if (s.phase == WORK_WAIT_LOCATE) {
+        const VisionAlignmentConfig_t *alignment = &config.slot[target_slot].alignment;
+        /* 本轮配置只平移。期望底盘坐标反变换到夹爪E系：
+         * p_E = R^T * (p_B_expected - t)，再走原换算/校验流程，得到零纠偏。
+         * 不能把底盘XYZ直接填进K230的E系字段。
+         */
+        received.flags = VISION_POSITION | VISION_CONTROL_READY;
+        received.sample_count = 5U;
+        const VisionTransform_t *transform = &alignment->body_from_tcp;
+        for (unsigned i = 0U; i < 3U; ++i) {
+            for (unsigned j = 0U; j < 3U; ++j) {
+                received.xyz_mm[i] += transform->rotation[j][i] *
+                    (alignment->desired_reference_body[j] - transform->translation[j]);
+            }
+        }
+    }
+    s.request_pending = false;
+    result_pending = true;
+}
+#endif
+
 TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
 {
     if ((unsigned)kind >= WORK_COUNT || s.cancel_failed) {
@@ -518,6 +556,9 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
         break;
 
     case WORK_WAIT_SCAN:
+#if TASK_WORK_CAMERA_TEST
+        camera_test_result(); /* 三个观察位走完后，模拟扫描成功并选择第1位。 */
+#endif
         if (result_pending) {
             phase_enter(WORK_SELECT_SLOT, now);
         }
@@ -542,6 +583,9 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
         break;
 
     case WORK_WAIT_LOCATE: {
+#if TASK_WORK_CAMERA_TEST
+        camera_test_result(); /* QR及各作业定位均模拟已对准，无底盘二次修正。 */
+#endif
         float yaw;
         if (!read_yaw(&yaw)) {
             work_fail(WORK_ERR_IMU, now);

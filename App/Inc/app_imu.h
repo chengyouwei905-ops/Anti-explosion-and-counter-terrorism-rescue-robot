@@ -45,16 +45,20 @@ extern "C" {
 #include "alg_ahrs.h"
 
 /**
-  * @brief  初始化 IMU：跑 BSP 驱动 + 开机陀螺零偏标定 + 复位姿态解算
+  * @brief  初始化 IMU：跑 BSP 驱动 + 开机陀螺零偏/基准温度标定 + 复位姿态解算
   * @param  hspi SPI 句柄（本工程为 &hspi2），需已由 MX_SPI2_Init() 初始化
   * @retval RET_OK 成功；其它见 ret_code_t
-  * @note   本函数会阻塞至少约 3 秒做零偏标定，期间板子必须**静止**
-  *         （标定失败不致命：零偏按 0 处理，可用 app_imu_is_calibrated() 查询）
+  * @note   本函数会阻塞至少约 7 秒做零偏标定，期间板子必须**静止**
+  *         标定首尾温度的均值作为温漂补偿基准，平均零偏同步折算到此基准温度。
+  *         调试器可观察 app_imu.c 中 s_gyro_cali_start_temp_c / s_gyro_cali_end_temp_c，
+  *         s_gyro_cali_mean_temp_c 为全部样本均温，s_gyro_ref_temp_c 为首尾均温。
+  *         （标定失败不致命：零偏按 0 处理并禁用温漂补偿，可用 app_imu_is_calibrated() 查询）
   */
 int app_imu_init(SPI_HandleTypeDef *hspi);
 
 /**
-  * @brief  采样一拍：读传感器 -> 减零偏 -> 姿态解算 -> 发布快照
+  * @brief  采样一拍：读传感器 -> 减零偏及线性温漂 -> 姿态解算 -> 发布快照
+  * @note   三轴温度系数在 app_imu.c 的 APP_IMU_GYRO_TEMP_COEFF_X/Y/Z 中配置，单位 (rad/s)/℃。
   * @retval RET_OK       本轮完成了一次解算
   *         RET_IDLE     距上次不足 APP_IMU_MIN_DT_S（陀螺 ODR 1kHz）本轮跳过，
   *                      **属于正常情况，不是错误**
@@ -86,7 +90,7 @@ bool app_imu_get_euler(float euler_rad[3]);
 /** @brief 取四元数 [w, x, y, z]；返回 false 时输出清零 */
 bool app_imu_get_quat(float quat[4]);
 
-/** @brief 取角速度（已减掉标定出的零偏），单位 rad/s；返回 false 时输出清零 */
+/** @brief 取角速度（已减掉标定零偏及配置的温漂），单位 rad/s；返回 false 时输出清零 */
 bool app_imu_get_gyro(float gyro_radps[3]);
 
 /** @brief 取加速度，单位 m/s^2（含重力）；返回 false 时输出清零 */
@@ -101,7 +105,7 @@ float app_imu_get_rate_hz(void);
 /** @brief 姿态解算是否已就绪（app_imu_init 成功后为 true） */
 bool app_imu_is_ready(void);
 
-/** @brief 开机陀螺零偏标定是否有效（标定时板子被晃动则为 false，此时零偏按 0 处理） */
+/** @brief 开机陀螺零偏标定是否有效（失败时零偏按 0 处理并禁用温漂补偿） */
 bool app_imu_is_calibrated(void);
 
 /** @brief 传感器读取失败累计次数，正常应为 0 */

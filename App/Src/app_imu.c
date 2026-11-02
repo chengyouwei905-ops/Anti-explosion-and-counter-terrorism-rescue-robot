@@ -5,7 +5,7 @@
   *
   * 三块职责，互不耦合：
   *   1. 节拍：app_imu_poll() 用 DWT 实测 dt 自限速，**调用频率不敏感**
-  *   2. 解算：bsp_imu_read() -> 减零偏 -> alg_ahrs_update()
+  *   2. 解算：bsp_imu_read() -> 减零偏及温漂 -> alg_ahrs_update()
   *   3. 发布：每拍把结果直接写进快照 s_snap；读取侧 app_imu_get_xxx() 直接读它，
   *            无锁、不关中断，随便哪个上下文调都行
   *
@@ -35,12 +35,27 @@
 #include "bsp_imu.h"
 #include "bsp_dwt.h"
 
-/** @brief 开机零偏标定的采样次数（配合下面的 1ms 间隔，至少约 3 秒） */
+/** @brief 开机零偏标定的采样次数（配合下面的 1ms 间隔，至少约 7 秒） */
 #define APP_IMU_CALI_SAMPLES      7000U     //此处给7s的采样时间，保证低零飘
 /** @brief 标定采样间隔（ms），BMI088 陀螺 ODR 是 1kHz，刚好每次拿到新数据 */
 #define APP_IMU_CALI_INTERVAL_MS  1U
 /** @brief 标定期间允许的零偏抖动峰峰值（rad/s）。超过就说明板子在被晃，标定作废 */
 #define APP_IMU_CALI_MAX_SPREAD   0.05f
+
+/**
+  * @brief 三轴零偏温度系数，单位 (rad/s)/℃；0 表示禁用该轴，按本机静止实测值填写
+  * @note  K = (高温零偏 - 低温零偏) / (高温 - 低温)，各轴可正可负。
+  *        补偿时减去 K * (当前温度 - 标定基准温度)；若三轴共用一个 K，填相同值。
+  */
+#ifndef APP_IMU_GYRO_TEMP_COEFF_X
+#define APP_IMU_GYRO_TEMP_COEFF_X  0.0f
+#endif
+#ifndef APP_IMU_GYRO_TEMP_COEFF_Y
+#define APP_IMU_GYRO_TEMP_COEFF_Y  0.0f
+#endif
+#ifndef APP_IMU_GYRO_TEMP_COEFF_Z
+#define APP_IMU_GYRO_TEMP_COEFF_Z  0.000010f
+#endif
 
 /**
   * @brief 两次采样之间的最小间隔（秒）—— 限速用，比它更密地读只会拿到重复样本
@@ -68,7 +83,7 @@ typedef struct
 {
     float euler[3];    /**< [roll, pitch, yaw]，弧度；**yaw 是连续角**，见下 */
     float quat[4];     /**< [w, x, y, z] */
-    float gyro[3];     /**< 已减零偏的角速度，rad/s */
+    float gyro[3];     /**< 已减零偏及温漂的角速度，rad/s */
     float accel[3];    /**< 加速度，m/s^2 */
     float temp_c;      /**< 芯片温度，℃ */
     float rate_hz;     /**< 最近一拍的等效采样率，Hz */
@@ -78,7 +93,16 @@ typedef struct
 static bool          s_ready;
 static bool          s_calibrated;
 static Ahrs_State_t  s_ahrs;
-static float         s_gyro_bias[3];
+static float         s_gyro_bias[3];       /**< 基准温度对应的三轴零偏，rad/s */
+static float         s_gyro_ref_temp_c;    /**< 标定首尾温度的均值，℃ */
+static float         s_gyro_cali_start_temp_c; /**< 标定第一个有效样本的温度，℃ */
+static float         s_gyro_cali_end_temp_c;   /**< 标定最后一个有效样本的温度，℃ */
+static float         s_gyro_cali_mean_temp_c;  /**< 标定全部样本的平均温度，℃ */
+static const float   s_gyro_temp_coeff[3] = {
+    APP_IMU_GYRO_TEMP_COEFF_X,
+    APP_IMU_GYRO_TEMP_COEFF_Y,
+    APP_IMU_GYRO_TEMP_COEFF_Z
+};
 static uint32_t      s_last_cycle;   /**< 上次采样的 DWT 周期计数 */
 static uint32_t      s_err_count;
 
@@ -100,6 +124,8 @@ static volatile app_imu_snapshot_t s_snap;   /**< 最新一次解算结果，读
 /**
   * @brief 开机陀螺零偏标定：静止采样取平均
   * @note  同时用峰峰值判断板子是否真的静止，静止是标定的前提
+  * @note  记录首尾温度，以两者均值作为基准；平均零偏同步折算到此基准温度。
+  *        全部样本的均温仍参与折算，避免非匀速升温时产生额外固定零偏。
   */
 static ret_code_t imu_calibrate_gyro(void)
 {
@@ -107,6 +133,9 @@ static ret_code_t imu_calibrate_gyro(void)
     float       sum[3]  = { 0.0f, 0.0f, 0.0f };
     float       vmin[3] = { 0.0f, 0.0f, 0.0f };
     float       vmax[3] = { 0.0f, 0.0f, 0.0f };
+    float       temp_sum = 0.0f;
+    float       temp_start_c = 0.0f;
+    float       temp_end_c = 0.0f;
     uint32_t    i;
     uint32_t    k;
     ret_code_t  ret;
@@ -116,6 +145,11 @@ static ret_code_t imu_calibrate_gyro(void)
         if (ret != RET_OK) {
             return ret;
         }
+
+        if (i == 0U) {
+            temp_start_c = data.temp_c;
+        }
+        temp_end_c = data.temp_c;
 
         for (k = 0U; k < 3U; k++) {
             float v = data.gyro_radps[k];
@@ -129,6 +163,7 @@ static ret_code_t imu_calibrate_gyro(void)
             }
             sum[k] += v;
         }
+        temp_sum += data.temp_c;
 
         HAL_Delay(APP_IMU_CALI_INTERVAL_MS);
     }
@@ -138,9 +173,18 @@ static ret_code_t imu_calibrate_gyro(void)
             return RET_ERROR;   /* 标定期间板子在动，这一组数据不能用 */
         }
     }
-    /* 全部轴通过后才提交，避免失败时只更新部分轴的零偏。 */
+    /* 全部轴通过后才提交温度和零偏，失败时不保留部分标定结果。 */
+    s_gyro_cali_start_temp_c = temp_start_c;
+    s_gyro_cali_end_temp_c   = temp_end_c;
+    s_gyro_cali_mean_temp_c  = temp_sum / (float)APP_IMU_CALI_SAMPLES;
+    s_gyro_ref_temp_c       = 0.5f * (temp_start_c + temp_end_c);
+
+    /* 平均零偏对应全部样本的均温，而首尾均温在非匀速升温时可能不同。
+     * 将零偏折算到新基准：bias_ref = bias_mean + K * (T_ref - T_mean)。
+     * 后续仍按 gyro = raw - bias_ref - K * (T - T_ref) 补偿。 */
     for (k = 0U; k < 3U; k++) {
-        s_gyro_bias[k] = sum[k] / (float)APP_IMU_CALI_SAMPLES;
+        s_gyro_bias[k] = sum[k] / (float)APP_IMU_CALI_SAMPLES
+                      + s_gyro_temp_coeff[k] * (s_gyro_ref_temp_c - s_gyro_cali_mean_temp_c);
     }
 
     return RET_OK;
@@ -152,6 +196,10 @@ int app_imu_init(SPI_HandleTypeDef *hspi)
 
     s_ready          = false;
     s_calibrated     = false;
+    s_gyro_ref_temp_c = 0.0f;
+    s_gyro_cali_start_temp_c = 0.0f;
+    s_gyro_cali_end_temp_c   = 0.0f;
+    s_gyro_cali_mean_temp_c  = 0.0f;
     s_err_count      = 0U;
     s_yaw_cont       = 0.0f;
     s_yaw_prev       = 0.0f;
@@ -189,7 +237,7 @@ int app_imu_init(SPI_HandleTypeDef *hspi)
         return RET_ERROR;
     }
 
-    /* 4) 标定陀螺零偏（失败不致命，bias 保持 0）*/
+    /* 4) 标定陀螺零偏并记录基准温度（失败不致命，bias 保持 0，禁用温漂补偿）*/
     s_calibrated = (imu_calibrate_gyro() == RET_OK);
 
     s_last_cycle = bsp_dwt_get_cycles();
@@ -221,6 +269,7 @@ int app_imu_poll(void)
     float          euler[3];
     uint32_t       now_cycle;
     float          dt_s;
+    float          temp_delta_c;
     uint32_t       k;
     ret_code_t     ret;
 
@@ -243,16 +292,18 @@ int app_imu_poll(void)
      * 阻塞）时才按上限夹住，避免单拍积分把姿态带飞 —— 而不是不更新姿态 */
     dt_s = CLAMP(dt_s, APP_IMU_MIN_DT_S, APP_IMU_MAX_DT_S);
 
-    /* ---- 2) 读传感器 ---- */
+    /* ---- 2) 读传感器（data.temp_c 为本次读取的当前温度）---- */
     ret = bsp_imu_read(&data);
     if (ret != RET_OK) {
         s_err_count++;
         return ret;     /* 读失败就保持上一次的姿态，绝不把垃圾喂进解算器 */
     }
 
-    /* ---- 3) 减零偏 ---- */
+    /* ---- 3) 减零偏及温漂；温差保留符号，升温/降温都能补偿 ---- */
+    temp_delta_c = s_calibrated ? (data.temp_c - s_gyro_ref_temp_c) : 0.0f;
     for (k = 0U; k < 3U; k++) {
-        gyro[k] = data.gyro_radps[k] - s_gyro_bias[k];
+        gyro[k] = data.gyro_radps[k] - s_gyro_bias[k]
+                - s_gyro_temp_coeff[k] * temp_delta_c;
     }
 
     /* ---- 4) 姿态解算：dt 用实测值，所以调用节奏不齐也不影响积分正确性 ---- */

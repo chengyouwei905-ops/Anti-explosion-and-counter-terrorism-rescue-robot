@@ -4,6 +4,13 @@
 #include "alg_vision_align.h"
 #include <stdint.h>
 
+/* 摄像头故障时的MCU联调：1=模拟视觉成功/选第1位/不纠偏。
+ * 摄像头恢复后改为0并重新编译烧录。启停仍由真实TOTALSTART/TOTALSTOP控制。
+ */
+#ifndef TASK_WORK_CAMERA_TEST
+#define TASK_WORK_CAMERA_TEST 0
+#endif
+
 typedef enum { WORK_QR, WORK_BOMB, WORK_TARGET, WORK_RESCUE, WORK_COUNT } TaskWorkKind_t;
 typedef enum { WORK_WAITING, WORK_DONE, WORK_FAILED } TaskWorkResult_t;
 typedef enum { ARM_OBSERVE, ARM_PICK, ARM_PLACE, ARM_TRAVEL, ARM_CANCEL } TaskArmStep_t;

@@ -20,11 +20,15 @@ gcc -std=c11 -Wall -Wextra -Werror -pedantic -Itests/uart_stubs -IBsp/Inc -IApp/
 
 # 视觉指令与任务状态机本机测试
 
-运行全部六组主机测试（GCC 不在 PATH 时指定实际编译器路径）：
+运行全部主机测试（GCC 不在 PATH 时指定实际编译器路径）：
 
 ```powershell
 ./tests/run_host_tests.ps1 -Compiler 'D:\compiler\msys2\ucrt64\bin\gcc.exe'
 ```
+
+`test_imu.c` 使用真实 IMU 应用和 AHRS 算法，模拟传感器与 DWT/HAL；以非零三轴温度系数验证标定首尾均温、非匀速升温时零偏与基准温度对应、升温/降温、真实转动保留、读取失败保持快照、重新初始化，以及标定晃动/读取失败后禁用补偿并清除标定温度。实际温度系数仍需在本机静止测量后填写。
+
+`test_imu_uart_debug.c` 编译实际 IMU 文本日志模块、UART BSP 和环形缓冲，验证 CSV 精度/长度、中断发送缓冲寿命、一秒限频、忙/错误恢复、无效数据和 tick 回绕。接线和使用方法见 `App/IMU_UART_DEBUG.md`。
 
 `test_vision_result.c` 验证交接文档的五个 HEX 样例、分片/粘包、CRC、超长/短包、版本/保留位、可选字段长度、NaN/Inf、扫描成功与失败、候选观测拒绝、机械臂 X 轴换向、正解/齿轮比例、坐标变换、平移符号、QR/法向 yaw 的可观测性。
 
