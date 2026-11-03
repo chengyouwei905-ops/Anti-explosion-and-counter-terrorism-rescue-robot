@@ -21,10 +21,12 @@ const TaskWorkStatus_t *app_task_work_get_status(void) { return &work_status; }
 static uint32_t clock_base, elapsed_ms;
 static bool imu_valid;
 static float imu_yaw, out_vx, out_vy, out_omega, px, py;
+bool app_chassis_get_distance_sample(Chassis_DistanceSample_t *out)
+{ (void)out;assert(!"original route must not read encoder mileage");return false; }
 
 uint32_t HAL_GetTick(void) { return clock_base + elapsed_ms; }
 void app_vision_set_rx_cb(proto_vision_frame_cb_t cb) { proto_vision_set_cb(cb); }
-bool app_imu_get_euler(float e[3]) { e[0]=e[1]=0;e[2]=imu_yaw;return imu_valid; }
+bool app_imu_get_euler(double e[3]) { e[0]=e[1]=0;e[2]=imu_yaw;return imu_valid; }
 int app_chassis_move(float x,float y,float w)
 {
     assert(isfinite(x) && isfinite(y) && isfinite(w));

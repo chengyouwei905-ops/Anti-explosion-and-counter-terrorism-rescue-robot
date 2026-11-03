@@ -36,7 +36,7 @@ time_ms,yaw_rad,temp_c
 - `temp_c`：当前芯片温度，摄氏度，3 位小数。
 - 当前发送的是每秒一个最新快照，不是这一秒内的平均值，也不包含原始陀螺角速度。
 
-`snprintf()` 将 float 转成可读文本，返回文本的字节长度；发送长度不包括末尾的 `\0`。
+`snprintf()` 将 double 转成可读文本，返回文本的字节长度；发送长度不包括末尾的 `\0`。
 工程使用 newlib-nano，CMake 已加入 `-u _printf_float`，使 `%f` 正常输出。
 直接发送 `float values[2]` 会得到二进制字节；长度 `2` 只会发送两个字节，并不是两个浮点数。
 
@@ -50,6 +50,10 @@ time_ms,yaw_rad,temp_c
 每轮同时记录一次初始化诊断值：`s_calibrated`、`s_gyro_cali_start_temp_c`、`s_gyro_cali_end_temp_c`、
 `s_gyro_ref_temp_c`、`s_gyro_bias[2]` 和当前 `APP_IMU_GYRO_TEMP_COEFF_Z`。
 这些诊断字段保留在调试器中，不混入三列 CSV。
+
+IMU 换算、校准求和、温漂补偿、AHRS 和连续 yaw 累加均使用 `double`，读取接口的输出数组也必须为 `double`。
+上电静止校准对同一批 8000 个有效样本求平均：`T_ref = sum(T) / 8000`，`bias = sum(gyro) / 8000`。
+运行时按 `gyro_corrected = gyro_raw - bias - K * (T_current - T_ref)` 补偿；首尾温度仅用于观察，K 仍为预先配置的系数。
 
 ## 验证范围
 

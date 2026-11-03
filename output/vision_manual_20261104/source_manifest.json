@@ -1,0 +1,2498 @@
+{
+  "review_date": "2026-11-04",
+  "project": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031",
+  "cache": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote",
+  "records": [
+    {
+      "group": "deployment",
+      "relative": "aim_config.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\aim_config.py",
+      "sha256": "b0ea4601e7f6497ff919e5904b9e5f1fb55f2e1602f30d9fd5c72f60a223d6b5",
+      "bytes": 1253,
+      "lines": 32,
+      "symbols": {},
+      "constants": {
+        "TARGET_OUTER_DIAMETER_MM": 100.0,
+        "TARGET_INNER_DIAMETER_MM": 55.0,
+        "LAB_THRESHOLDS": [
+          [
+            15,
+            100,
+            20,
+            127,
+            -15,
+            100
+          ],
+          [
+            15,
+            100,
+            -128,
+            -15,
+            -20,
+            100
+          ],
+          [
+            5,
+            100,
+            -10,
+            100,
+            -128,
+            -15
+          ]
+        ],
+        "HUE_DEG": {
+          "1": [
+            [
+              0.0,
+              25.0
+            ],
+            [
+              335.0,
+              360.0
+            ]
+          ],
+          "2": [
+            [
+              70.0,
+              170.0
+            ]
+          ],
+          "3": [
+            [
+              180.0,
+              265.0
+            ]
+          ]
+        },
+        "MIN_SATURATION": 0.3,
+        "MIN_VALUE": 0.12,
+        "MAX_CANDIDATES": 9,
+        "MAX_ROI_CELLS": 10000,
+        "MAX_POINTS_PER_RING": 96,
+        "MIN_COMPONENT_SAMPLES": 45,
+        "MIN_HOLE_SAMPLES": 16,
+        "HOLE_AREA_RATIO": [
+          0.12,
+          0.55
+        ],
+        "MAX_REPROJECTION_PX": 3.0,
+        "MIN_INLIER_RATIO": 0.85,
+        "MIN_COVERAGE_DEG": 275.0,
+        "MIN_OUTER_RADIUS_PX": 12.0,
+        "MIN_DEPTH_MM": 100.0,
+        "MAX_DEPTH_MM": 1600.0,
+        "CORNER_NOISE_PX": 0.8,
+        "MAX_POSITION_3SIGMA_MM": 20.0,
+        "TARGET_DETECTION_ROI_RAW_PX": [
+          240,
+          160,
+          160,
+          160
+        ],
+        "SCAN_MIN_HITS": 3,
+        "SCAN_RELEASE_FRAMES": 2,
+        "LASER_OFFSET_COMPENSATED": false
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "aim_measure_example.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\aim_measure_example.py",
+      "sha256": "e4dcfb969e500e16083077ddd8142aaa4e5d34b9f7a179a00c18f653ddd03f67",
+      "bytes": 3997,
+      "lines": 93,
+      "symbols": {
+        "main": 14
+      },
+      "constants": {
+        "PROJECT_ROOT": "/data/guanggongsai"
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "boundary_policy.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\boundary_policy.py",
+      "sha256": "bbf4c9ad94f479d05b3f50b47fd511b041c250f48abf3c6a137ddb80a0c19842",
+      "bytes": 474,
+      "lines": 15,
+      "symbols": {
+        "enabled": 5,
+        "visible_edges": 9
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "calibration/handeye/session_20261025_fixed/result/handeye_result.json",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\calibration\\handeye\\session_20261025_fixed\\result\\handeye_result.json",
+      "sha256": "cb6a1ee8239e7094f66ff9c866fc103c2a91b41492972e9339545b424a78197b",
+      "bytes": 38298,
+      "lines": 1724,
+      "symbols": {},
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "calibration/results/camera_params.json",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\calibration\\results\\camera_params.json",
+      "sha256": "1c24dced011c651c550bf8aff8bbf8039cab4436acbcdb7f16ed9f521bb36ba6",
+      "bytes": 7438,
+      "lines": 345,
+      "symbols": {},
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "calibration_params.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\calibration_params.py",
+      "sha256": "66dae6a234250d77a65efab8bb5812b93193bc788efa39fc6aa31f3997414824",
+      "bytes": 2578,
+      "lines": 48,
+      "symbols": {
+        "Calibration": 9,
+        "Calibration.__init__": 10,
+        "Calibration.point_to_tool": 20,
+        "load_calibration": 33
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "camera_service.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\camera_service.py",
+      "sha256": "0fa4daa03be301830155eb4fe7d829fd5ea28345a08942d3df6222394187847a",
+      "bytes": 10514,
+      "lines": 251,
+      "symbols": {
+        "ticks_ms": 7,
+        "ticks_diff": 12,
+        "settle_outputs": 17,
+        "lcd_wrap": 24,
+        "CameraService": 37,
+        "CameraService.__init__": 38,
+        "CameraService.set_qr_capture": 55,
+        "CameraService._load_types": 61,
+        "CameraService._create_sensor": 68,
+        "CameraService._ensure_display": 82,
+        "CameraService.open": 101,
+        "CameraService._stop_sensor": 117,
+        "CameraService.get_frame": 125,
+        "CameraService.render_debug": 184,
+        "CameraService.show": 227,
+        "CameraService.close": 230
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "competition_main.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\competition_main.py",
+      "sha256": "ea2632cb96fecfaaeb5785dd5a29069d1eca93a784e370f1d8e72d5bebfa1a4e",
+      "bytes": 10858,
+      "lines": 219,
+      "symbols": {
+        "UnavailableFactory": 23,
+        "UnavailableFactory.start": 25,
+        "UnavailableFactory.close": 26,
+        "pump_commands": 29,
+        "debug_preview": 45,
+        "run_loop": 105,
+        "main": 172
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "config.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\config.py",
+      "sha256": "347135acd60151ef33ce5470179721d32c9d45a7a49cbf659544f812a347237a",
+      "bytes": 2028,
+      "lines": 42,
+      "symbols": {},
+      "constants": {
+        "IMAGE_SIZE": [
+          640,
+          480
+        ],
+        "BOUNDARY_CHECKS_ENABLED": false,
+        "GEOMETRY_ID": "sensor0_vga_rgb888_original_calibration_20261023",
+        "QR_SIZE_MM": 80.0,
+        "QR_MAX_CENTER_DISAGREEMENT_MM": 8.0,
+        "QR_MAX_POSITION_3SIGMA_MM": 25.0,
+        "BOMB_DIAMETER_MM": 40.0,
+        "BOMB_LABELS": [
+          "red_bomb",
+          "green_bomb",
+          "blue_bomb"
+        ],
+        "COLOR_NAMES": [
+          null,
+          "red",
+          "green",
+          "blue"
+        ],
+        "MODEL_CONFIG_PATH": "models/bomb_three_colors.template.json",
+        "DETECTION_SCORE_MIN": 0.55,
+        "MAX_DETECTIONS": 12,
+        "COLOR_HUE_DEG": {
+          "1": [
+            [
+              0.0,
+              25.0
+            ],
+            [
+              335.0,
+              360.0
+            ]
+          ],
+          "2": [
+            [
+              70.0,
+              170.0
+            ]
+          ],
+          "3": [
+            [
+              180.0,
+              265.0
+            ]
+          ]
+        },
+        "COLOR_MIN_SATURATION": 0.3,
+        "COLOR_MIN_VALUE": 0.12,
+        "BOMB_LAB_THRESHOLDS": {
+          "1": [
+            31,
+            88,
+            18,
+            102,
+            -20,
+            83
+          ],
+          "2": [
+            9,
+            79,
+            -21,
+            55,
+            -101,
+            -8
+          ],
+          "3": [
+            11,
+            77,
+            -55,
+            -7,
+            -31,
+            60
+          ]
+        },
+        "CONTOUR_MAX_CELLS": 12000,
+        "CONTOUR_MAX_POINTS": 192,
+        "CONTOUR_MIN_PIXELS": 40,
+        "SPHERE_MAX_ERROR_PX": 10.0,
+        "SPHERE_MIN_INLIER_RATIO": 0.8,
+        "SPHERE_MIN_COVERAGE_DEG": 270.0,
+        "SPHERE_MIN_RADIUS_PX": 8.0,
+        "SPHERE_MAX_DISTANCE_MM": 2000.0,
+        "SCAN_MIN_HITS": 3,
+        "SCAN_RELEASE_FRAMES": 2,
+        "BOMB_DETECTION_ROI_RAW_PX": [
+          160,
+          80,
+          320,
+          320
+        ],
+        "BOMB_FULL_FRAME_SEARCH": true,
+        "SCAN_MAX_STEP_PX": 60.0,
+        "REPORT_CANDIDATE_TRANSFORMS": true
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "field_aim_tcp_test.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\field_aim_tcp_test.py",
+      "sha256": "73fb95a3129c6543514e7a2f69928ad9654c55759c9a206fd891ad95dcce7268",
+      "bytes": 1640,
+      "lines": 34,
+      "symbols": {
+        "main": 27
+      },
+      "constants": {
+        "TARGET_ID": 1,
+        "SAMPLE_COUNT": 3,
+        "SEND_INTERVAL_MS": 1000,
+        "SAMPLE_WINDOW_MS": 3000,
+        "AUTO_START": true,
+        "ENABLE_USER_BUTTON": true,
+        "SHOW_TO_IDE": true,
+        "ARM_POSE_FOR_REFERENCE": null,
+        "REFERENCE_BODY_MM": null
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "field_bomb_tcp_test.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\field_bomb_tcp_test.py",
+      "sha256": "3635e5bcbe1e604299f66d651e8e05621783f14446f9d8179b947364f7911a3f",
+      "bytes": 1665,
+      "lines": 34,
+      "symbols": {
+        "main": 27
+      },
+      "constants": {
+        "TARGET_ID": 1,
+        "SAMPLE_COUNT": 3,
+        "SEND_INTERVAL_MS": 1000,
+        "SAMPLE_WINDOW_MS": 3000,
+        "AUTO_START": true,
+        "ENABLE_USER_BUTTON": true,
+        "SHOW_TO_IDE": true,
+        "ARM_POSE_FOR_REFERENCE": null,
+        "REFERENCE_BODY_MM": null
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "field_qr_tcp_test.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\field_qr_tcp_test.py",
+      "sha256": "6902bcba65977d893f082013667cba00785420379a3ceed3486578e9aca5bef8",
+      "bytes": 1666,
+      "lines": 34,
+      "symbols": {
+        "main": 27
+      },
+      "constants": {
+        "TARGET_ID": 1,
+        "SAMPLE_COUNT": 3,
+        "SEND_INTERVAL_MS": 1000,
+        "SAMPLE_WINDOW_MS": 3000,
+        "AUTO_START": true,
+        "ENABLE_USER_BUTTON": true,
+        "SHOW_TO_IDE": true,
+        "ARM_POSE_FOR_REFERENCE": null,
+        "REFERENCE_BODY_MM": null
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "field_rescue_tcp_test.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\field_rescue_tcp_test.py",
+      "sha256": "52b3593ad18ef0ea50bad97a9fa72a1757aae8f1bda9ba7e9da926b1ed3bdfc0",
+      "bytes": 1679,
+      "lines": 34,
+      "symbols": {
+        "main": 27
+      },
+      "constants": {
+        "TARGET_ID": 1,
+        "SAMPLE_COUNT": 3,
+        "SEND_INTERVAL_MS": 1000,
+        "SAMPLE_WINDOW_MS": 3000,
+        "AUTO_START": true,
+        "ENABLE_USER_BUTTON": true,
+        "SHOW_TO_IDE": true,
+        "ARM_POSE_FOR_REFERENCE": null,
+        "REFERENCE_BODY_MM": null
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "field_tcp_reference.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\field_tcp_reference.py",
+      "sha256": "528ceaa3321371b1ee0a095157d888f086c89af82173359ee210f704ac0ec5b3",
+      "bytes": 4873,
+      "lines": 94,
+      "symbols": {
+        "_vector": 25,
+        "body_from_tcp": 31,
+        "tcp_to_body": 40,
+        "body_to_tcp": 46,
+        "expected_tcp": 52,
+        "expected_camera": 58,
+        "print_reference": 66
+      },
+      "constants": {
+        "PROFILES": {
+          "qr": {
+            "label": "二维码中心",
+            "source_cmd": 16,
+            "reference_point": "qr_center",
+            "body_reference": [
+              0.0,
+              1250.0,
+              55.0
+            ],
+            "preset_pose": [
+              0.0,
+              204.662675872066,
+              99.824932482697,
+              -0.217817090649
+            ]
+          },
+          "bomb": {
+            "label": "爆炸物球心",
+            "source_cmd": 33,
+            "reference_point": "sphere_center",
+            "body_reference": [
+              -225.0,
+              0.0,
+              0.0
+            ],
+            "preset_pose": [
+              154.215426385177,
+              -4.405580176218,
+              -4.9160102914,
+              -0.950855376487
+            ]
+          },
+          "aim": {
+            "label": "靶心",
+            "source_cmd": 49,
+            "reference_point": "target_center",
+            "body_reference": [
+              -620.0,
+              0.0,
+              20.0
+            ],
+            "preset_pose": [
+              250.683196776456,
+              -7.161442587922,
+              14.658957083631,
+              -0.234572251468
+            ]
+          },
+          "rescue": {
+            "label": "人质轴线中点",
+            "source_cmd": 65,
+            "reference_point": "rescue_object_axis_midpoint",
+            "body_reference": [
+              -225.0,
+              0.0,
+              55.0
+            ],
+            "preset_pose": [
+              186.048897441216,
+              -5.314989256179,
+              28.793387844528,
+              -0.908967474439
+            ]
+          }
+        }
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "field_tcp_stream.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\field_tcp_stream.py",
+      "sha256": "ea8ff1a31fb09c4e7e8b95bd6a8f6efb4d1ee7d5d562d9508351f4f3bab25f41",
+      "bytes": 13910,
+      "lines": 281,
+      "symbols": {
+        "FieldTCPStream": 26,
+        "FieldTCPStream.__init__": 27,
+        "FieldTCPStream._clear_debug": 46,
+        "FieldTCPStream._sync_debug": 50,
+        "FieldTCPStream._preview_only": 54,
+        "FieldTCPStream._reset_job": 59,
+        "FieldTCPStream.resume": 62,
+        "FieldTCPStream.pause": 68,
+        "FieldTCPStream.process_frame": 73,
+        "FieldTCPStream.send_observation": 102,
+        "pump_controls": 135,
+        "render_preview": 158,
+        "run_loop": 190,
+        "main": 229
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "geometry.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\geometry.py",
+      "sha256": "5dbdb036ce14ea3ae4d70aef8fafa05770742fbd565db5a08b557d05065829b2",
+      "bytes": 10895,
+      "lines": 246,
+      "symbols": {
+        "finite": 6,
+        "dot": 10,
+        "cross": 14,
+        "norm": 18,
+        "unit": 22,
+        "validate_rigid": 29,
+        "compose": 43,
+        "transform_point": 49,
+        "CameraModel": 56,
+        "CameraModel.__init__": 57,
+        "CameraModel.distort": 68,
+        "CameraModel.ray": 75,
+        "CameraModel.project_ray": 93,
+        "_plane_from_three": 100,
+        "_plane_fit": 110,
+        "_pixel_errors": 146,
+        "fit_sphere_center": 161
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "kpu_yolo_backend.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\kpu_yolo_backend.py",
+      "sha256": "787f40d53d36afbbfda9e4ec14cabc8add211278ba44d56e9b88d00d975d5ba5",
+      "bytes": 8219,
+      "lines": 161,
+      "symbols": {
+        "letterbox_transform": 6,
+        "_iou": 16,
+        "_prob": 24,
+        "decode_outputs": 32,
+        "KPUYoloBackend": 64,
+        "KPUYoloBackend.__init__": 66,
+        "KPUYoloBackend.load": 70,
+        "KPUYoloBackend.infer": 108,
+        "KPUYoloBackend.close": 149
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "lab_color.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\lab_color.py",
+      "sha256": "2112fa30411f24ed7d2a80e7fa11b69af19d64e36d8a8f5dd813aa8a471527d3",
+      "bytes": 1112,
+      "lines": 29,
+      "symbols": {
+        "matches_lab": 4,
+        "rgb_to_lab_reference": 10,
+        "native_lab_mask": 24
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "measurement.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\measurement.py",
+      "sha256": "35b7c3a327098eacd27e8b79d60c6a97ad42b3c813f4913ff252a64345961a97",
+      "bytes": 5337,
+      "lines": 102,
+      "symbols": {
+        "position_fields": 5,
+        "MeasurementAverage": 14,
+        "MeasurementAverage.__init__": 15,
+        "MeasurementAverage.reset": 23,
+        "MeasurementAverage.add": 27,
+        "QRMeasurementAverage": 66,
+        "QRMeasurementAverage.__init__": 69,
+        "QRMeasurementAverage.add": 75
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "models/bomb_three_colors.template.json",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\models\\bomb_three_colors.template.json",
+      "sha256": "1a6543c38d13beb4efac5a2bab13e883f7e0473c054c2e5c036a0dac98b70611",
+      "bytes": 1109,
+      "lines": 47,
+      "symbols": {},
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "models/rescue_table.template.json",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\models\\rescue_table.template.json",
+      "sha256": "f884690064d634ad7aef6e05697ab7ba1f9e6625be0015b1dda0679c462355ff",
+      "bytes": 364,
+      "lines": 12,
+      "symbols": {},
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "models/rescue_three_shapes.template.json",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\models\\rescue_three_shapes.template.json",
+      "sha256": "f426d99791195c78a248be885905564b2a55d6f2dfc824c985e711b7f284dc51",
+      "bytes": 1475,
+      "lines": 50,
+      "symbols": {},
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "protocol.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\protocol.py",
+      "sha256": "125f3c3df3606a569f1b0fe9a5a8640f5bde16a7da4d9b7a0ec43a3fe57f57cf",
+      "bytes": 6752,
+      "lines": 132,
+      "symbols": {
+        "reason_code": 47,
+        "decode_command": 57,
+        "_pack_vector": 70,
+        "encode_result": 75,
+        "decode_result": 104
+      },
+      "constants": {
+        "QR_START": 16,
+        "BOMB_SCAN": 32,
+        "BOMB_MEASURE": 33,
+        "AIM_SCAN": 48,
+        "AIM_MEASURE": 49,
+        "RESCUE_SCAN": 64,
+        "RESCUE_MEASURE": 65,
+        "STOP": 127,
+        "RESULT": 129,
+        "HEARTBEAT": 2,
+        "STATUS": 2,
+        "VERSION": 1,
+        "HEADER_FORMAT": "<BBBBBBBBHIB",
+        "HEADER_SIZE": 15,
+        "REASONS": {
+          "OK": 0,
+          "CANCELLED": 1,
+          "PREEMPTED": 2,
+          "TIMEOUT": 3,
+          "UNKNOWN_COMMAND": 4,
+          "BAD_COMMAND_PAYLOAD": 5,
+          "TARGET_NOT_SELECTED": 6,
+          "TARGET_SLOT_NOT_KNOWN": 7,
+          "SLOT_MAPPING_CONFLICT": 8,
+          "MODEL_NOT_READY": 9,
+          "MODEL_CONFIGURATION_ERROR": 10,
+          "CALIBRATION_NOT_READY": 11,
+          "HANDEYE_CANDIDATE_ONLY": 12,
+          "SCAN_NOT_CONFIGURED": 13,
+          "SCAN_AMBIGUOUS": 14,
+          "CAMERA_ERROR": 15,
+          "COMMAND_QUEUE_OVERFLOW": 16,
+          "LINK_ERROR": 17,
+          "TABLE_CONFIGURATION_ERROR": 18,
+          "VISION_ERROR": 19
+        }
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "qr_1080_update/camera_service.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\qr_1080_update\\camera_service.py",
+      "sha256": "af71fa69aaf7e513c8a2d199d96113eb919ddf1ed17204a89bb6016b53753536",
+      "bytes": 9894,
+      "lines": 242,
+      "symbols": {
+        "ticks_ms": 7,
+        "ticks_diff": 12,
+        "settle_outputs": 17,
+        "lcd_wrap": 24,
+        "CameraService": 37,
+        "CameraService.__init__": 38,
+        "CameraService.set_qr_capture": 54,
+        "CameraService._load_types": 60,
+        "CameraService._create_sensor": 67,
+        "CameraService._ensure_display": 81,
+        "CameraService.open": 99,
+        "CameraService._stop_sensor": 115,
+        "CameraService.get_frame": 123,
+        "CameraService.render_debug": 182,
+        "CameraService.show": 218,
+        "CameraService.close": 221
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "qr_1080_update/competition_main.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\qr_1080_update\\competition_main.py",
+      "sha256": "5308219b6dc5acfb4e9a52bde50c612cac6f0c4ea93c82558b5bd0b691fe54bf",
+      "bytes": 8650,
+      "lines": 193,
+      "symbols": {
+        "UnavailableFactory": 22,
+        "UnavailableFactory.start": 24,
+        "UnavailableFactory.close": 25,
+        "pump_commands": 28,
+        "debug_preview": 44,
+        "run_loop": 87,
+        "main": 148
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "qr_1080_update/qr_tcp_stream.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\qr_1080_update\\qr_tcp_stream.py",
+      "sha256": "42285f96bacbc7b2c8f3861630e9b5df1e91dcac2213bb2e586877d36adc6a0c",
+      "bytes": 14312,
+      "lines": 304,
+      "symbols": {
+        "QRStream": 79,
+        "QRStream.__init__": 82,
+        "QRStream.resume": 98,
+        "QRStream.pause": 108,
+        "QRStream.process_frame": 114,
+        "QRStream.send_observation": 148,
+        "pump_controls": 169,
+        "render_preview": 202,
+        "run_loop": 217,
+        "main": 258
+      },
+      "constants": {
+        "PROJECT_ROOT": "/data/guanggongsai",
+        "AUTO_START": true,
+        "ENABLE_USER_BUTTON": true,
+        "SEND_INTERVAL_MS": 1000,
+        "SAMPLE_COUNT": 5,
+        "MAX_SCATTER_MM": 8.0,
+        "MAX_ROTATION_SPREAD_DEG": 5.0,
+        "SETTLE_MS": 250,
+        "INITIAL_INPUT_SEQ": 0,
+        "PREVIEW_INTERVAL_MS": 200,
+        "LOG_INTERVAL_MS": 1000
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "qr_1080_update/runtime_config.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\qr_1080_update\\runtime_config.py",
+      "sha256": "84a793c6066bef17d091f2f6ca72df9873ff4d48b45fe91bef744172e0066fb2",
+      "bytes": 2287,
+      "lines": 63,
+      "symbols": {
+        "create_model_backend": 51
+      },
+      "constants": {
+        "PROJECT_ROOT": "/data/guanggongsai",
+        "UART_ID": 2,
+        "UART_BAUDRATE": 115200,
+        "UART_TX_PIN": 11,
+        "UART_RX_PIN": 12,
+        "COMMAND_QUEUE_SIZE": 8,
+        "COMMANDS_PER_POLL": 8,
+        "RX_READ_BYTES": 128,
+        "USER_KEY_GPIO": 53,
+        "USER_KEY_ACTIVE": 1,
+        "USER_KEY_DEBOUNCE_MS": 40,
+        "USER_KEY_POLL_MS": 5,
+        "TOTAL_START_BYTES": "b'TOTALSTART!'",
+        "TOTAL_STOP_BYTES": "b'TOTALSTOP!'",
+        "LOOP_SLEEP_MS": 5,
+        "MEASUREMENT_SAMPLES": 5,
+        "MAX_POSITION_SCATTER_MM": 8.0,
+        "MAX_ROTATION_SPREAD_DEG": 5.0,
+        "SETTLE_MS": 250,
+        "MEASUREMENT_TIMEOUT_MS": 20000,
+        "SCAN_TIMEOUT_MS": 60000,
+        "REQUEST_DEDUP_MS": 5000,
+        "REQUEST_HISTORY_SIZE": 16,
+        "RAW_GEOMETRY_CONFIRMED": true,
+        "QR_HIGH_RES_ENABLED": true,
+        "QR_CAPTURE_SIZE": [
+          1920,
+          1080
+        ],
+        "QR_CAPTURE_CHANNEL": 1,
+        "SCAN_ORDER_CONFIRMED": true,
+        "SCAN_START_BOUNDARY_CONFIRMED": true,
+        "ALLOW_CANDIDATE_REPORTS": true,
+        "DISPLAY_ENABLED": true,
+        "DISPLAY_WIDTH": 800,
+        "DISPLAY_HEIGHT": 480,
+        "DISPLAY_TO_IDE": false,
+        "DISPLAY_REFRESH_MS": 100,
+        "SNAPSHOT_TIMEOUT_MS": 200,
+        "SNAPSHOT_ATTEMPTS": 3,
+        "MAX_CAMERA_RESTARTS": 2,
+        "CAMERA_RESTART_WAIT_MS": 200,
+        "CAMERA_WARMUP_FRAMES": 10,
+        "HANDEYE_ACCEPTED_BY_USER": true,
+        "SCAN_REQUIRE_BLANK_GAP": false,
+        "SCAN_MAX_AMBIGUOUS_FRAMES": 3,
+        "RESCUE_REFERENCE_MODE": "object",
+        "TOTAL_STOP_POLICY": "restart"
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "qr_1080_update/task_runner.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\qr_1080_update\\task_runner.py",
+      "sha256": "7696bff97f8f144308c03d1124e8fffe071832e10b187b6d4457041eeef6bda9",
+      "bytes": 8766,
+      "lines": 177,
+      "symbols": {
+        "terminal_reason": 18,
+        "VisionJob": 28,
+        "VisionJob.__init__": 29,
+        "VisionJob.poll": 34,
+        "VisionJob.reset_window": 57,
+        "VisionJob.pause_window": 62,
+        "VisionJob.cancel": 72,
+        "VisionTaskFactory": 76,
+        "VisionTaskFactory.__init__": 77,
+        "VisionTaskFactory._json": 85,
+        "VisionTaskFactory._model": 90,
+        "VisionTaskFactory._rescue_reference": 105,
+        "VisionTaskFactory._kind": 111,
+        "VisionTaskFactory._start_measure": 117,
+        "VisionTaskFactory.start": 122,
+        "VisionTaskFactory.completed": 163,
+        "VisionTaskFactory.reset_session": 168,
+        "VisionTaskFactory.close": 172
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "qr_1080_update/tasks/task_qr.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\qr_1080_update\\tasks\\task_qr.py",
+      "sha256": "a50f66e066e588b9f09f8383cd5ffca4c900476492bea0c33bddb14213e7286f",
+      "bytes": 4709,
+      "lines": 86,
+      "symbols": {
+        "parse_task": 6,
+        "QRTask": 16,
+        "QRTask.__init__": 17,
+        "QRTask.measure": 36
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "qr_pose.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\qr_pose.py",
+      "sha256": "5f4ddfa3f98624499c5d2a252d821d7cd285bcdb152b6db3a48d5b2167ebf55d",
+      "bytes": 23307,
+      "lines": 458,
+      "symbols": {
+        "_finite": 22,
+        "_dot": 27,
+        "_cross": 31,
+        "_unit": 35,
+        "_mm": 42,
+        "_orthogonal": 46,
+        "_exp": 56,
+        "_solve": 70,
+        "QRPoseEstimator": 97,
+        "QRPoseEstimator.__init__": 98,
+        "QRPoseEstimator._distort": 151,
+        "QRPoseEstimator._undistort": 164,
+        "QRPoseEstimator._homography_pose": 194,
+        "QRPoseEstimator._evaluate": 216,
+        "QRPoseEstimator._normal": 237,
+        "QRPoseEstimator._refine": 246,
+        "QRPoseEstimator._seeds": 292,
+        "QRPoseEstimator._position_uncertainty": 309,
+        "QRPoseEstimator._failure": 327,
+        "QRPoseEstimator.estimate_from_corners": 332,
+        "QRPoseEstimator.detect": 416
+      },
+      "constants": {
+        "IMAGE_SIZE": [
+          640,
+          480
+        ],
+        "CAMERA_MATRIX": [
+          [
+            540.241698997,
+            0.0,
+            320.099137389
+          ],
+          [
+            0.0,
+            719.860920175,
+            248.378807146
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "DIST_COEFFS": [
+          0.071451906,
+          -0.206368008,
+          -0.001534711,
+          0.001398159,
+          0.0
+        ],
+        "_SQUARE": [
+          [
+            -0.5,
+            0.5
+          ],
+          [
+            0.5,
+            0.5
+          ],
+          [
+            0.5,
+            -0.5
+          ],
+          [
+            -0.5,
+            -0.5
+          ]
+        ]
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "qr_pose_example.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\qr_pose_example.py",
+      "sha256": "1db191893f5f3b70a76c95c44fb3138b7c48f527f90d8e123393fd1399b08c81",
+      "bytes": 4927,
+      "lines": 104,
+      "symbols": {
+        "main": 19
+      },
+      "constants": {
+        "QR_SIZE_MM": 80.0,
+        "TARGET_PAYLOAD": null
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "qr_tcp_stream.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\qr_tcp_stream.py",
+      "sha256": "1946f5355d6391be6bba7853a1df64e394b3799ed10b16266844b732bef76f6e",
+      "bytes": 14885,
+      "lines": 307,
+      "symbols": {
+        "QRStream": 80,
+        "QRStream.__init__": 83,
+        "QRStream.resume": 98,
+        "QRStream.pause": 108,
+        "QRStream.process_frame": 114,
+        "QRStream.send_observation": 148,
+        "pump_controls": 170,
+        "render_preview": 203,
+        "run_loop": 218,
+        "main": 259
+      },
+      "constants": {
+        "PROJECT_ROOT": "/data/guanggongsai",
+        "AUTO_START": true,
+        "ENABLE_USER_BUTTON": true,
+        "SEND_INTERVAL_MS": 1000,
+        "SAMPLE_COUNT": 3,
+        "MAX_SCATTER_MM": 8.0,
+        "SETTLE_MS": 250,
+        "INITIAL_INPUT_SEQ": 0,
+        "PREVIEW_INTERVAL_MS": 200,
+        "LOG_INTERVAL_MS": 1000
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "rescue_config.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\rescue_config.py",
+      "sha256": "ebf29d811829f6178adb4b8a2b902fd7ffb32714129aa6ffae2ae1e303a2c828",
+      "bytes": 1312,
+      "lines": 36,
+      "symbols": {},
+      "constants": {
+        "RESCUE_LABELS": [
+          "cylinder",
+          "frustum",
+          "drum"
+        ],
+        "SHAPE_NAMES": [
+          null,
+          "cylinder",
+          "frustum",
+          "drum"
+        ],
+        "SCAN_GATE_RAW_PX": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "OBJECT_FULL_FRAME_SEARCH": true,
+        "TABLE_FULL_FRAME_SEARCH": true,
+        "SCAN_MIN_HITS": 3,
+        "SCAN_RELEASE_FRAMES": 2,
+        "MEASURE_MIN_HITS": 3,
+        "MAX_SCATTER_MM": 6.0,
+        "MAX_REFERENCE_3SIGMA_MM": 15.0,
+        "TABLE_REPROJECTION_PX": 2.0,
+        "TABLE_CORNER_NOISE_PX": 0.8,
+        "RECTANGLE_THRESHOLD": 10000,
+        "MAX_TABLE_CANDIDATES": 8,
+        "TABLE_BLACK_MAX_GRAY": 90,
+        "TABLE_MIN_BLACK_FRACTION": 0.6,
+        "SLOT_ASSOCIATION_MARGIN_PX": 10.0,
+        "MODEL_TEMPLATE": "models/rescue_three_shapes.template.json",
+        "LAYOUT_TEMPLATE": "models/rescue_table.template.json",
+        "OBJECT_HEIGHT_MM": 70.0,
+        "CYLINDER_DIAMETER_MM": 50.0,
+        "FRUSTUM_TOP_DIAMETER_MM": 30.0,
+        "FRUSTUM_BOTTOM_DIAMETER_MM": 50.0,
+        "DRUM_END_DIAMETER_MM": 30.0,
+        "DRUM_SIDE_ARC_RADIUS_MM": 66.0,
+        "OBJECT_MIN_DEPTH_MM": 100.0,
+        "OBJECT_MAX_DEPTH_MM": 1800.0,
+        "OBJECT_MAX_ROI_CELLS": 6000,
+        "OBJECT_MIN_COMPONENT_SAMPLES": 45,
+        "OBJECT_MAX_REPROJECTION_PX": 3.0,
+        "OBJECT_MAX_POSITION_3SIGMA_MM": 25.0,
+        "OBJECT_AMBIGUITY_SEPARATION_MM": 10.0
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "rescue_detector.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\rescue_detector.py",
+      "sha256": "02cf9acfd63ed4352d87c211afdd57d54982ef3a297863558b2c5c4575a5c439",
+      "bytes": 439,
+      "lines": 9,
+      "symbols": {
+        "RescueYoloDetector": 6,
+        "RescueYoloDetector.__init__": 7
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "rescue_geometry.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\rescue_geometry.py",
+      "sha256": "50f86c968ccb2cc46219348e683fdbde5b336c90af3cbdada9475ae76de73270",
+      "bytes": 6636,
+      "lines": 114,
+      "symbols": {
+        "RescueTablePoseEstimator": 12,
+        "RescueTablePoseEstimator.__init__": 13,
+        "RescueTablePoseEstimator._homography_pose": 26,
+        "RescueTablePoseEstimator._evaluate": 44,
+        "RescueTablePoseEstimator.estimate_table": 64,
+        "project_table_point": 90
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "rescue_measure_example.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\rescue_measure_example.py",
+      "sha256": "8d718f198241fdedec8b46ef98951d3c68ee31e90c3aaf38e6b536934bbfb615",
+      "bytes": 7835,
+      "lines": 149,
+      "symbols": {
+        "main": 21
+      },
+      "constants": {
+        "PROJECT_ROOT": "/data/guanggongsai"
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "rescue_object_pose.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\rescue_object_pose.py",
+      "sha256": "432fc5b9903cd08a4429a96ecc0f37d50fa71a491f771c9b96fae4f2a3d129a2",
+      "bytes": 11714,
+      "lines": 213,
+      "symbols": {
+        "body_surface": 14,
+        "_basis": 34,
+        "project_surface": 42,
+        "_supports": 57,
+        "_evaluate": 61,
+        "_equations": 74,
+        "_refine": 80,
+        "RescueObjectEstimator": 100,
+        "RescueObjectEstimator.__init__": 101,
+        "RescueObjectEstimator.reset": 102,
+        "RescueObjectEstimator.fit": 103,
+        "extract_white_object": 161
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "rescue_preview.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\rescue_preview.py",
+      "sha256": "9d084e209acb5ca028118d453665fe5709de9f42f120b3ef3bc3fc37f9973884",
+      "bytes": 2705,
+      "lines": 61,
+      "symbols": {
+        "main": 11
+      },
+      "constants": {
+        "PROJECT_ROOT": "/data/guanggongsai"
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "rescue_reference.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\rescue_reference.py",
+      "sha256": "4926261840df0320a05cc4b39cf3f3abefa41c4d929e6f7cfece68d4b0b9107d",
+      "bytes": 9121,
+      "lines": 181,
+      "symbols": {
+        "RescueLayout": 12,
+        "RescueLayout.__init__": 13,
+        "RescueLayout.ready_reason": 16,
+        "RescueLayout.native_ready_reason": 39,
+        "RescueLayout.slot_point": 52,
+        "RescueLayout.grasp_point": 59,
+        "order_restricted_top_view": 70,
+        "NativeRescueTableReference": 89,
+        "NativeRescueTableReference.__init__": 96,
+        "NativeRescueTableReference.readiness": 103,
+        "NativeRescueTableReference._failure": 107,
+        "NativeRescueTableReference._black_fraction": 110,
+        "NativeRescueTableReference.observe": 128,
+        "NativeRescueTableReference.close": 180
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "run_control.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\run_control.py",
+      "sha256": "0ae24a8d0e9a5402f3f53ccd91b88a537d30c24305f673a548f15d386fee303a",
+      "bytes": 2557,
+      "lines": 71,
+      "symbols": {
+        "RunControl": 6,
+        "RunControl.__init__": 7,
+        "RunControl.state": 17,
+        "RunControl._start": 20,
+        "RunControl._stop": 33,
+        "RunControl.poll": 47,
+        "RunControl.close": 66
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "runtime_config.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\runtime_config.py",
+      "sha256": "d6b4f916e58f51385160f184e8b55e0e6d6286e1a33f77d01323db0e3918a9dd",
+      "bytes": 2741,
+      "lines": 68,
+      "symbols": {
+        "create_model_backend": 56
+      },
+      "constants": {
+        "PROJECT_ROOT": "/data/guanggongsai",
+        "UART_ID": 2,
+        "UART_BAUDRATE": 115200,
+        "UART_TX_PIN": 11,
+        "UART_RX_PIN": 12,
+        "COMMAND_QUEUE_SIZE": 8,
+        "COMMANDS_PER_POLL": 8,
+        "RX_READ_BYTES": 128,
+        "USER_KEY_GPIO": 53,
+        "USER_KEY_ACTIVE": 1,
+        "USER_KEY_DEBOUNCE_MS": 40,
+        "USER_KEY_POLL_MS": 5,
+        "TOTAL_START_BYTES": "b'TOTALSTART!'",
+        "TOTAL_STOP_BYTES": "b'TOTALSTOP!'",
+        "LOOP_SLEEP_MS": 5,
+        "MEASUREMENT_SAMPLES": 3,
+        "MAX_POSITION_SCATTER_MM": 8.0,
+        "SETTLE_MS": 250,
+        "MEASUREMENT_TIMEOUT_MS": 60000,
+        "SCAN_TIMEOUT_MS": 60000,
+        "REQUEST_DEDUP_MS": 5000,
+        "REQUEST_HISTORY_SIZE": 16,
+        "RAW_GEOMETRY_CONFIRMED": true,
+        "QR_HIGH_RES_ENABLED": true,
+        "QR_CAPTURE_SIZE": [
+          1920,
+          1080
+        ],
+        "QR_CAPTURE_CHANNEL": 1,
+        "QR_SAMPLE_WINDOW_MS": 3000,
+        "QR_CONTRAST_RETRY_ENABLED": true,
+        "QR_CONTRAST_RETRY_EVERY_N_FRAMES": 3,
+        "SCAN_ORDER_CONFIRMED": true,
+        "SCAN_START_BOUNDARY_CONFIRMED": true,
+        "ALLOW_CANDIDATE_REPORTS": true,
+        "DISPLAY_ENABLED": true,
+        "DISPLAY_WIDTH": 800,
+        "DISPLAY_HEIGHT": 480,
+        "DISPLAY_TO_IDE": false,
+        "DISPLAY_REFRESH_MS": 100,
+        "SNAPSHOT_TIMEOUT_MS": 200,
+        "SNAPSHOT_ATTEMPTS": 3,
+        "MAX_CAMERA_RESTARTS": 2,
+        "CAMERA_RESTART_WAIT_MS": 200,
+        "CAMERA_WARMUP_FRAMES": 10,
+        "HANDEYE_ACCEPTED_BY_USER": true,
+        "SCAN_REQUIRE_BLANK_GAP": false,
+        "SCAN_MAX_AMBIGUOUS_FRAMES": 3,
+        "RESCUE_REFERENCE_MODE": "object",
+        "TOTAL_STOP_POLICY": "restart"
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "search_region.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\search_region.py",
+      "sha256": "f45f9685f4d6b57fcba90c3bff5e512c538c6b8340bd2266e7f2ee784cfdc371",
+      "bytes": 280,
+      "lines": 8,
+      "symbols": {
+        "expand_to_frame": 4
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "target_color.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\target_color.py",
+      "sha256": "6be8987df7acddfb6376376f7db736165f24b5138bb1d37cc188fd5e30c7e6db",
+      "bytes": 9532,
+      "lines": 198,
+      "symbols": {
+        "valid_color": 9,
+        "_color_matches": 13,
+        "_neighbors": 28,
+        "_component": 36,
+        "extract_target_rings": 49,
+        "ColorTargetDetector": 154,
+        "ColorTargetDetector.__init__": 156,
+        "ColorTargetDetector.load": 159,
+        "ColorTargetDetector.detect": 163,
+        "ColorTargetDetector.close": 197
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "target_pose.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\target_pose.py",
+      "sha256": "f7be368e9040fadc059c9877c0c27cbae65e42390bcddbbc36bf9d7e7586fb3b",
+      "bytes": 11208,
+      "lines": 231,
+      "symbols": {
+        "_solve": 12,
+        "_evaluate": 37,
+        "_normal_equations": 69,
+        "_cost": 84,
+        "_refine": 89,
+        "_reproject": 115,
+        "_coverage": 131,
+        "fit_target_center": 142
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "task_manager.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\task_manager.py",
+      "sha256": "40179889bc6295313dd849c12f5f900e8fc95ab7a25efc7de20bfaf65e4f7f30",
+      "bytes": 15863,
+      "lines": 325,
+      "symbols": {
+        "TaskManager": 12,
+        "TaskManager.__init__": 13,
+        "TaskManager._reset_measurement_diagnostics": 34,
+        "TaskManager._measurement_snapshot": 41,
+        "TaskManager._record_measurement_reason": 51,
+        "TaskManager.log_measurement_state": 60,
+        "TaskManager.pause": 74,
+        "TaskManager.reset_session": 90,
+        "TaskManager.resume": 100,
+        "TaskManager._elapsed": 111,
+        "TaskManager.active_task": 115,
+        "TaskManager._new_run_id": 118,
+        "TaskManager._seen": 122,
+        "TaskManager._remember": 127,
+        "TaskManager._transmit_once": 131,
+        "TaskManager._discard_active": 150,
+        "TaskManager._finish_active": 161,
+        "TaskManager.on_command": 178,
+        "TaskManager.tick": 220,
+        "TaskManager.observe_camera_epoch": 230,
+        "TaskManager.poll_frame": 244,
+        "TaskManager.flush_report": 300,
+        "TaskManager.fail_active": 310,
+        "TaskManager.reject_command": 315,
+        "TaskManager.close": 323
+      },
+      "constants": {
+        "PAUSED": "PAUSED"
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "task_runner.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\task_runner.py",
+      "sha256": "f746c1daf88784789059e2856915f3ca9411a78aa367784ae5219716c1e0bd20",
+      "bytes": 12048,
+      "lines": 237,
+      "symbols": {
+        "terminal_reason": 18,
+        "VisionJob": 37,
+        "VisionJob.__init__": 38,
+        "VisionJob.enable_debug": 45,
+        "VisionJob.debug_snapshot": 57,
+        "VisionJob._debug_begin": 60,
+        "VisionJob.preview": 67,
+        "VisionJob.poll": 91,
+        "VisionJob.reset_window": 115,
+        "VisionJob.pause_window": 120,
+        "VisionJob.cancel": 130,
+        "VisionTaskFactory": 134,
+        "VisionTaskFactory.__init__": 135,
+        "VisionTaskFactory._json": 143,
+        "VisionTaskFactory._model": 148,
+        "VisionTaskFactory._rescue_reference": 163,
+        "VisionTaskFactory._kind": 169,
+        "VisionTaskFactory._start_measure": 175,
+        "VisionTaskFactory.start": 180,
+        "VisionTaskFactory.completed": 223,
+        "VisionTaskFactory.reset_session": 228,
+        "VisionTaskFactory.close": 232
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "tasks/__init__.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\tasks\\__init__.py",
+      "sha256": "980d6f740f468ade76e7fa6e614a6653d031536a975bc2951fe1c6e2afe8a66e",
+      "bytes": 74,
+      "lines": 1,
+      "symbols": {},
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "tasks/task_aim.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\tasks\\task_aim.py",
+      "sha256": "331a32a8fe0a0e4dc20c87ed1a718d62fb6332201e0f0a43b0da94e5b1b1ce94",
+      "bytes": 9422,
+      "lines": 173,
+      "symbols": {
+        "_error": 11,
+        "measure_target_from_contours": 18,
+        "TargetScanSession": 43,
+        "TargetScanSession.__init__": 45,
+        "AimTask": 52,
+        "AimTask.__init__": 53,
+        "AimTask.start_scan": 63,
+        "AimTask.start_measure": 69,
+        "AimTask._budget": 77,
+        "AimTask._invalid": 82,
+        "AimTask.poll": 86,
+        "AimTask.finish_scan": 162,
+        "AimTask.cancel": 168,
+        "AimTask.close": 171
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "tasks/task_bomb.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\tasks\\task_bomb.py",
+      "sha256": "134c1c1f99b68b0b807dd3675fcbebdc2b68a817f01c18cd5a2a3a2058aa43b2",
+      "bytes": 20411,
+      "lines": 411,
+      "symbols": {
+        "_error": 10,
+        "_valid_color": 16,
+        "_is_color": 20,
+        "_neighbors": 38,
+        "extract_ball_boundary": 50,
+        "measure_bomb_from_boundary": 149,
+        "measure_bombs": 175,
+        "BombScanSession": 221,
+        "BombScanSession.__init__": 228,
+        "BombScanSession.drop_frame": 250,
+        "BombScanSession.fail": 256,
+        "BombScanSession._state": 261,
+        "BombScanSession.update": 267,
+        "BombScanSession.finish": 327,
+        "BombTask": 343,
+        "BombTask.__init__": 344,
+        "BombTask.start_scan": 349,
+        "BombTask.finish_scan": 354,
+        "BombTask.start_refine": 360,
+        "BombTask.poll": 366,
+        "BombTask.cancel": 406,
+        "BombTask.close": 409
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "tasks/task_qr.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\tasks\\task_qr.py",
+      "sha256": "2dea25df15acfb17652098689a715a104c242290f65c58f6e8ec22e1f5d3862d",
+      "bytes": 6634,
+      "lines": 119,
+      "symbols": {
+        "parse_task": 7,
+        "QRTask": 17,
+        "QRTask.__init__": 18,
+        "QRTask.measure": 47
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "tasks/task_rescue.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\tasks\\task_rescue.py",
+      "sha256": "04c54b6f08d8413aabc8e402b69056cc4935995b47efa3e153bd2698186e6171",
+      "bytes": 13823,
+      "lines": 244,
+      "symbols": {
+        "valid_shape": 13,
+        "_error": 17,
+        "RescueScanSession": 24,
+        "RescueScanSession.__init__": 26,
+        "RescueScanSession._rename": 32,
+        "RescueScanSession.update": 37,
+        "RescueScanSession.drop_frame": 46,
+        "RescueScanSession.fail": 49,
+        "RescueScanSession.finish": 52,
+        "measure_rescue_reference": 56,
+        "RescueTask": 119,
+        "RescueTask.__init__": 120,
+        "RescueTask._budget": 131,
+        "RescueTask.start_scan": 135,
+        "RescueTask.start_measure": 142,
+        "RescueTask._invalid": 153,
+        "RescueTask.poll": 157,
+        "RescueTask.finish_scan": 227,
+        "RescueTask.invalidate_mapping": 232,
+        "RescueTask.cancel": 236,
+        "RescueTask.close": 239
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "tasks/task_rescue_object.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\tasks\\task_rescue_object.py",
+      "sha256": "de799f30568202527b08b3ca91451c199d64d2d298cb2eaf9d3996177b1634f0",
+      "bytes": 4307,
+      "lines": 60,
+      "symbols": {
+        "RescueObjectTask": 9,
+        "RescueObjectTask.__init__": 10,
+        "RescueObjectTask.start_scan": 16,
+        "RescueObjectTask.start_measure": 19,
+        "RescueObjectTask.poll": 23,
+        "RescueObjectTask.reset_window": 59,
+        "RescueObjectTask.cancel": 60
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "user_button.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\user_button.py",
+      "sha256": "b37df35ca8925eb98b891118f0d18a4a480ceecef360b17da54063bac6f4eef1",
+      "bytes": 2884,
+      "lines": 83,
+      "symbols": {
+        "DebouncedKey": 8,
+        "DebouncedKey.__init__": 9,
+        "DebouncedKey.pressed": 16,
+        "UserButton": 28,
+        "UserButton.__init__": 29,
+        "UserButton.sample": 48,
+        "UserButton._worker": 58,
+        "UserButton.pressed": 69,
+        "UserButton.healthy": 77,
+        "UserButton.close": 79
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "vision_debug.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\vision_debug.py",
+      "sha256": "5437cd479c549075d0cd45ff3152780f671c5ce55f8fe2064c85270e37904808",
+      "bytes": 9037,
+      "lines": 164,
+      "symbols": {
+        "image_size": 9,
+        "target_label": 14,
+        "DetectionTrace": 18,
+        "DetectionTrace.__init__": 19,
+        "DetectionTrace.begin": 23,
+        "DetectionTrace.detector_result": 28,
+        "DetectionTrace.qr_result": 51,
+        "DetectionTrace.snapshot": 63,
+        "DetectorProbe": 68,
+        "DetectorProbe.__init__": 69,
+        "DetectorProbe.__getattr__": 70,
+        "DetectorProbe.detect": 71,
+        "QRPoseProbe": 78,
+        "QRPoseProbe.__init__": 79,
+        "QRPoseProbe.__getattr__": 80,
+        "QRPoseProbe.detect": 81,
+        "status_text": 90,
+        "draw_detections": 134
+      },
+      "constants": {
+        "LABELS": {
+          "bomb": [
+            null,
+            "红球",
+            "绿球",
+            "蓝球"
+          ],
+          "aim": [
+            null,
+            "红靶",
+            "绿靶",
+            "蓝靶"
+          ],
+          "rescue": [
+            null,
+            "圆柱",
+            "圆台",
+            "腰鼓"
+          ]
+        }
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "vision_link.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\vision_link.py",
+      "sha256": "0f154689fadf7ee184a8c4b674f555a678ef7e01d8881ae4dc70c5c0af9586b3",
+      "bytes": 13504,
+      "lines": 352,
+      "symbols": {
+        "_ticks_ms": 44,
+        "_ticks_diff": 49,
+        "_sleep_ms": 54,
+        "crc8": 62,
+        "Frame": 74,
+        "Frame.__init__": 78,
+        "Frame.__repr__": 85,
+        "VisionLink": 89,
+        "VisionLink.__init__": 90,
+        "VisionLink.get": 140,
+        "VisionLink.get_new": 144,
+        "VisionLink.pop_command": 156,
+        "VisionLink.pop_priority": 169,
+        "VisionLink.take_overflow": 182,
+        "VisionLink.healthy": 193,
+        "VisionLink.diagnostics": 196,
+        "VisionLink.stats": 201,
+        "VisionLink.pack": 205,
+        "VisionLink.send": 216,
+        "VisionLink.send_raw": 226,
+        "VisionLink.set_command_acceptance": 233,
+        "VisionLink.deinit": 256,
+        "VisionLink._rx_task": 274,
+        "VisionLink._publish": 295,
+        "VisionLink._publish_locked": 302,
+        "VisionLink._feed": 313,
+        "VisionLink._feed_locked": 324
+      },
+      "constants": {
+        "SOF1": 170,
+        "SOF2": 85,
+        "MAX_PAYLOAD": 64,
+        "OVERHEAD": 6,
+        "_HEADER": "b'\\xaaU'"
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "vision_measure_example.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\vision_measure_example.py",
+      "sha256": "fed21bde52ef5e27fbb252e523f13ebda9c75a6fc3992a03dc63cebec41858dd",
+      "bytes": 4357,
+      "lines": 110,
+      "symbols": {
+        "main": 21
+      },
+      "constants": {
+        "PROJECT_ROOT": "/data/guanggongsai"
+      }
+    },
+    {
+      "group": "deployment",
+      "relative": "yolo_detector.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\yolo_detector.py",
+      "sha256": "e45ea63c322db0d91407338c6d23a938752391640756858b00e1d8410972f2a3",
+      "bytes": 6803,
+      "lines": 133,
+      "symbols": {
+        "_failure": 7,
+        "restore_bbox_xywh": 11,
+        "YoloDetector": 32,
+        "YoloDetector.__init__": 40,
+        "YoloDetector.load": 52,
+        "YoloDetector.detect": 90,
+        "YoloDetector.close": 129
+      },
+      "constants": {}
+    },
+    {
+      "group": "deployment",
+      "relative": "yolo_video_capture.py",
+      "source": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_Competition_Rescue_20261031\\board_files\\data\\guanggongsai\\yolo_video_capture.py",
+      "sha256": "333c46b3cd517cd114ae14f7746012ae341610615eb49f46b93a6622bf55e5e3",
+      "bytes": 20866,
+      "lines": 517,
+      "symbols": {
+        "ticks_ms": 38,
+        "ticks_diff": 43,
+        "sleep_ms": 48,
+        "exitpoint": 56,
+        "sync_storage": 62,
+        "exists": 68,
+        "ensure_directory": 78,
+        "free_megabytes": 85,
+        "write_all": 93,
+        "CaptureButton": 102,
+        "CaptureButton.__init__": 103,
+        "CaptureButton.reset": 107,
+        "CaptureButton.pressed": 113,
+        "avi_header": 127,
+        "AviRecorder": 152,
+        "AviRecorder.__init__": 154,
+        "AviRecorder.fps": 179,
+        "AviRecorder._header": 183,
+        "AviRecorder.append": 187,
+        "AviRecorder.checkpoint": 212,
+        "AviRecorder.close": 221,
+        "JpegEncoder": 258,
+        "JpegEncoder.__init__": 259,
+        "JpegEncoder.encode": 264,
+        "JpegEncoder.close": 268,
+        "CaptureApp": 272,
+        "CaptureApp.__init__": 273,
+        "CaptureApp._new_sensor": 284,
+        "CaptureApp.open": 290,
+        "CaptureApp.start_recording": 331,
+        "CaptureApp.finish_recording": 345,
+        "CaptureApp.read_frame": 365,
+        "CaptureApp.show": 392,
+        "CaptureApp.run": 417,
+        "CaptureApp.close": 473,
+        "main": 500
+      },
+      "constants": {
+        "DATASET_NAME": "bomb",
+        "VIDEO_ROOT": "/data/yolo_videos",
+        "DEBOUNCE_MS": 40,
+        "TARGET_FPS": 10,
+        "JPEG_QUALITY": 90,
+        "MAX_RECORD_SECONDS": 120,
+        "PREVIEW_INTERVAL_MS": 200,
+        "SYNC_INTERVAL_MS": 1000,
+        "SNAPSHOT_TIMEOUT_MS": 200,
+        "WARMUP_FRAMES": 20,
+        "APP_VERSION": "yolo-video-capture-v1.1-data"
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "aim_config.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\aim_config.py",
+      "sha256": "5cbd2695df69a88e665f67ab8325628f312743223521b6ddeb53a18a44e1a1ef",
+      "bytes": 1246,
+      "lines": 32,
+      "symbols": {},
+      "constants": {
+        "TARGET_OUTER_DIAMETER_MM": 100.0,
+        "TARGET_INNER_DIAMETER_MM": 55.0,
+        "LAB_THRESHOLDS": [
+          [
+            15,
+            100,
+            -5,
+            62,
+            23,
+            55
+          ],
+          [
+            15,
+            100,
+            -43,
+            -17,
+            -23,
+            58
+          ],
+          [
+            15,
+            100,
+            -25,
+            51,
+            -67,
+            -9
+          ]
+        ],
+        "HUE_DEG": {
+          "1": [
+            [
+              0.0,
+              25.0
+            ],
+            [
+              335.0,
+              360.0
+            ]
+          ],
+          "2": [
+            [
+              70.0,
+              170.0
+            ]
+          ],
+          "3": [
+            [
+              180.0,
+              265.0
+            ]
+          ]
+        },
+        "MIN_SATURATION": 0.3,
+        "MIN_VALUE": 0.12,
+        "MAX_CANDIDATES": 9,
+        "MAX_ROI_CELLS": 10000,
+        "MAX_POINTS_PER_RING": 96,
+        "MIN_COMPONENT_SAMPLES": 45,
+        "MIN_HOLE_SAMPLES": 16,
+        "HOLE_AREA_RATIO": [
+          0.12,
+          0.55
+        ],
+        "MAX_REPROJECTION_PX": 3.0,
+        "MIN_INLIER_RATIO": 0.85,
+        "MIN_COVERAGE_DEG": 275.0,
+        "MIN_OUTER_RADIUS_PX": 12.0,
+        "MIN_DEPTH_MM": 100.0,
+        "MAX_DEPTH_MM": 1600.0,
+        "CORNER_NOISE_PX": 0.8,
+        "MAX_POSITION_3SIGMA_MM": 20.0,
+        "TARGET_DETECTION_ROI_RAW_PX": [
+          240,
+          160,
+          160,
+          160
+        ],
+        "SCAN_MIN_HITS": 3,
+        "SCAN_RELEASE_FRAMES": 2,
+        "LASER_OFFSET_COMPENSATED": false
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "config.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\config.py",
+      "sha256": "1b0b9011b3157023949139add9bc0c6d915b2e1578fda9e68ea9f28cef8b5d58",
+      "bytes": 2027,
+      "lines": 42,
+      "symbols": {},
+      "constants": {
+        "IMAGE_SIZE": [
+          640,
+          480
+        ],
+        "BOUNDARY_CHECKS_ENABLED": false,
+        "GEOMETRY_ID": "sensor0_vga_rgb888_original_calibration_20261023",
+        "QR_SIZE_MM": 80.0,
+        "QR_MAX_CENTER_DISAGREEMENT_MM": 8.0,
+        "QR_MAX_POSITION_3SIGMA_MM": 25.0,
+        "BOMB_DIAMETER_MM": 40.0,
+        "BOMB_LABELS": [
+          "red_bomb",
+          "green_bomb",
+          "blue_bomb"
+        ],
+        "COLOR_NAMES": [
+          null,
+          "red",
+          "green",
+          "blue"
+        ],
+        "MODEL_CONFIG_PATH": "models/bomb_three_colors.template.json",
+        "DETECTION_SCORE_MIN": 0.55,
+        "MAX_DETECTIONS": 12,
+        "COLOR_HUE_DEG": {
+          "1": [
+            [
+              0.0,
+              25.0
+            ],
+            [
+              335.0,
+              360.0
+            ]
+          ],
+          "2": [
+            [
+              70.0,
+              170.0
+            ]
+          ],
+          "3": [
+            [
+              180.0,
+              265.0
+            ]
+          ]
+        },
+        "COLOR_MIN_SATURATION": 0.3,
+        "COLOR_MIN_VALUE": 0.12,
+        "BOMB_LAB_THRESHOLDS": {
+          "1": [
+            8,
+            88,
+            10,
+            102,
+            -20,
+            83
+          ],
+          "2": [
+            9,
+            79,
+            -21,
+            55,
+            -101,
+            -8
+          ],
+          "3": [
+            11,
+            77,
+            -55,
+            -7,
+            -31,
+            60
+          ]
+        },
+        "CONTOUR_MAX_CELLS": 12000,
+        "CONTOUR_MAX_POINTS": 192,
+        "CONTOUR_MIN_PIXELS": 40,
+        "SPHERE_MAX_ERROR_PX": 10.0,
+        "SPHERE_MIN_INLIER_RATIO": 0.8,
+        "SPHERE_MIN_COVERAGE_DEG": 270.0,
+        "SPHERE_MIN_RADIUS_PX": 8.0,
+        "SPHERE_MAX_DISTANCE_MM": 2000.0,
+        "SCAN_MIN_HITS": 3,
+        "SCAN_RELEASE_FRAMES": 2,
+        "BOMB_DETECTION_ROI_RAW_PX": [
+          160,
+          80,
+          320,
+          320
+        ],
+        "BOMB_FULL_FRAME_SEARCH": true,
+        "SCAN_MAX_STEP_PX": 60.0,
+        "REPORT_CANDIDATE_TRANSFORMS": true
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "field_aim_tcp_test.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\field_aim_tcp_test.py",
+      "sha256": "e24af2c975760d04c02824a891b96b359432feb83aecd3b2466866082bc239a9",
+      "bytes": 1547,
+      "lines": 33,
+      "symbols": {
+        "main": 26
+      },
+      "constants": {
+        "TARGET_ID": 1,
+        "SAMPLE_COUNT": 3,
+        "SEND_INTERVAL_MS": 1000,
+        "SAMPLE_WINDOW_MS": 3000,
+        "AUTO_START": true,
+        "ENABLE_USER_BUTTON": true,
+        "ARM_POSE_FOR_REFERENCE": null,
+        "REFERENCE_BODY_MM": null
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "field_bomb_tcp_test.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\field_bomb_tcp_test.py",
+      "sha256": "3635e5bcbe1e604299f66d651e8e05621783f14446f9d8179b947364f7911a3f",
+      "bytes": 1665,
+      "lines": 34,
+      "symbols": {
+        "main": 27
+      },
+      "constants": {
+        "TARGET_ID": 1,
+        "SAMPLE_COUNT": 3,
+        "SEND_INTERVAL_MS": 1000,
+        "SAMPLE_WINDOW_MS": 3000,
+        "AUTO_START": true,
+        "ENABLE_USER_BUTTON": true,
+        "SHOW_TO_IDE": true,
+        "ARM_POSE_FOR_REFERENCE": null,
+        "REFERENCE_BODY_MM": null
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "field_qr_tcp_test.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\field_qr_tcp_test.py",
+      "sha256": "6902bcba65977d893f082013667cba00785420379a3ceed3486578e9aca5bef8",
+      "bytes": 1666,
+      "lines": 34,
+      "symbols": {
+        "main": 27
+      },
+      "constants": {
+        "TARGET_ID": 1,
+        "SAMPLE_COUNT": 3,
+        "SEND_INTERVAL_MS": 1000,
+        "SAMPLE_WINDOW_MS": 3000,
+        "AUTO_START": true,
+        "ENABLE_USER_BUTTON": true,
+        "SHOW_TO_IDE": true,
+        "ARM_POSE_FOR_REFERENCE": null,
+        "REFERENCE_BODY_MM": null
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "field_rescue_tcp_test.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\field_rescue_tcp_test.py",
+      "sha256": "52b3593ad18ef0ea50bad97a9fa72a1757aae8f1bda9ba7e9da926b1ed3bdfc0",
+      "bytes": 1679,
+      "lines": 34,
+      "symbols": {
+        "main": 27
+      },
+      "constants": {
+        "TARGET_ID": 1,
+        "SAMPLE_COUNT": 3,
+        "SEND_INTERVAL_MS": 1000,
+        "SAMPLE_WINDOW_MS": 3000,
+        "AUTO_START": true,
+        "ENABLE_USER_BUTTON": true,
+        "SHOW_TO_IDE": true,
+        "ARM_POSE_FOR_REFERENCE": null,
+        "REFERENCE_BODY_MM": null
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "field_tcp_reference.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\field_tcp_reference.py",
+      "sha256": "f222ebfa18cc44ef4eafb33ad38fa4fd033d7fd16a87f21b10b4d862dcb444f4",
+      "bytes": 4776,
+      "lines": 94,
+      "symbols": {
+        "_vector": 25,
+        "body_from_tcp": 31,
+        "tcp_to_body": 40,
+        "body_to_tcp": 46,
+        "expected_tcp": 52,
+        "expected_camera": 58,
+        "print_reference": 66
+      },
+      "constants": {
+        "PROFILES": {
+          "qr": {
+            "label": "二维码中心",
+            "source_cmd": 16,
+            "reference_point": "qr_center",
+            "body_reference": [
+              0.0,
+              1250.0,
+              55.0
+            ],
+            "preset_pose": [
+              0.0,
+              204.662675872066,
+              99.824932482697,
+              -0.217817090649
+            ]
+          },
+          "bomb": {
+            "label": "爆炸物球心",
+            "source_cmd": 33,
+            "reference_point": "sphere_center",
+            "body_reference": [
+              -225.0,
+              0.0,
+              0.0
+            ],
+            "preset_pose": [
+              154.215426385177,
+              -4.405580176218,
+              -4.9160102914,
+              -0.950855376487
+            ]
+          },
+          "aim": {
+            "label": "靶心",
+            "source_cmd": 49,
+            "reference_point": "target_center",
+            "body_reference": [
+              -620.0,
+              0.0,
+              20.0
+            ],
+            "preset_pose": [
+              250.683196776456,
+              -7.161442587922,
+              14.658957083631,
+              -0.234572251468
+            ]
+          },
+          "rescue": {
+            "label": "人质轴线中点",
+            "source_cmd": 65,
+            "reference_point": "rescue_object_axis_midpoint",
+            "body_reference": [
+              -225.0,
+              0.0,
+              55.0
+            ],
+            "preset_pose": [
+              186.048897441216,
+              -5.314989256179,
+              28.793387844528,
+              -0.908967474439
+            ]
+          }
+        }
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "field_tcp_stream.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\field_tcp_stream.py",
+      "sha256": "5a75ac920704000cc5007b4741976bb43537f9eded6073c2e893e786efbda982",
+      "bytes": 11214,
+      "lines": 230,
+      "symbols": {
+        "FieldTCPStream": 24,
+        "FieldTCPStream.__init__": 25,
+        "FieldTCPStream._reset_job": 40,
+        "FieldTCPStream.resume": 43,
+        "FieldTCPStream.pause": 47,
+        "FieldTCPStream.process_frame": 51,
+        "FieldTCPStream.send_observation": 75,
+        "pump_controls": 108,
+        "render_preview": 131,
+        "run_loop": 144,
+        "main": 178
+      },
+      "constants": {}
+    },
+    {
+      "group": "ide_cache",
+      "relative": "qr_pose.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\qr_pose.py",
+      "sha256": "d6b391aca0e547834a75feaf8c39acf593bbdd83bec10c3e6196d0fcdded0d00",
+      "bytes": 23215,
+      "lines": 470,
+      "symbols": {
+        "_finite": 21,
+        "_dot": 26,
+        "_cross": 30,
+        "_unit": 34,
+        "_mm": 41,
+        "_orthogonal": 45,
+        "_exp": 55,
+        "_solve": 69,
+        "_rotation_angle": 96,
+        "QRPoseEstimator": 101,
+        "QRPoseEstimator.__init__": 102,
+        "QRPoseEstimator._distort": 155,
+        "QRPoseEstimator._undistort": 168,
+        "QRPoseEstimator._homography_pose": 198,
+        "QRPoseEstimator._evaluate": 220,
+        "QRPoseEstimator._normal": 241,
+        "QRPoseEstimator._refine": 250,
+        "QRPoseEstimator._seeds": 296,
+        "QRPoseEstimator._uncertainty": 313,
+        "QRPoseEstimator._failure": 326,
+        "QRPoseEstimator.estimate_from_corners": 331,
+        "QRPoseEstimator.detect": 428
+      },
+      "constants": {
+        "IMAGE_SIZE": [
+          640,
+          480
+        ],
+        "CAMERA_MATRIX": [
+          [
+            540.241698997,
+            0.0,
+            320.099137389
+          ],
+          [
+            0.0,
+            719.860920175,
+            248.378807146
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "DIST_COEFFS": [
+          0.071451906,
+          -0.206368008,
+          -0.001534711,
+          0.001398159,
+          0.0
+        ],
+        "_SQUARE": [
+          [
+            -0.5,
+            0.5
+          ],
+          [
+            0.5,
+            0.5
+          ],
+          [
+            0.5,
+            -0.5
+          ],
+          [
+            -0.5,
+            -0.5
+          ]
+        ]
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "qr_tcp_stream.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\qr_tcp_stream.py",
+      "sha256": "e1a1051cc887284dbe5d4be6e23730e2c586927a6adec32e35f2e5855720eb44",
+      "bytes": 14312,
+      "lines": 304,
+      "symbols": {
+        "QRStream": 79,
+        "QRStream.__init__": 82,
+        "QRStream.resume": 98,
+        "QRStream.pause": 108,
+        "QRStream.process_frame": 114,
+        "QRStream.send_observation": 148,
+        "pump_controls": 169,
+        "render_preview": 202,
+        "run_loop": 217,
+        "main": 258
+      },
+      "constants": {
+        "PROJECT_ROOT": "/data/guanggongsai",
+        "AUTO_START": true,
+        "ENABLE_USER_BUTTON": true,
+        "SEND_INTERVAL_MS": 1000,
+        "SAMPLE_COUNT": 3,
+        "MAX_SCATTER_MM": 8.0,
+        "MAX_ROTATION_SPREAD_DEG": 5.0,
+        "SETTLE_MS": 250,
+        "INITIAL_INPUT_SEQ": 0,
+        "PREVIEW_INTERVAL_MS": 200,
+        "LOG_INTERVAL_MS": 1000
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "rescue_config.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\rescue_config.py",
+      "sha256": "609dd75c2bfec657169344a9e6791c2e82d6a466356caefa8c12d93b941db1db",
+      "bytes": 1163,
+      "lines": 34,
+      "symbols": {},
+      "constants": {
+        "RESCUE_LABELS": [
+          "cylinder",
+          "frustum",
+          "drum"
+        ],
+        "SHAPE_NAMES": [
+          null,
+          "cylinder",
+          "frustum",
+          "drum"
+        ],
+        "SCAN_GATE_RAW_PX": [
+          280,
+          80,
+          80,
+          320
+        ],
+        "SCAN_MIN_HITS": 3,
+        "SCAN_RELEASE_FRAMES": 2,
+        "MEASURE_MIN_HITS": 3,
+        "MAX_SCATTER_MM": 6.0,
+        "MAX_REFERENCE_3SIGMA_MM": 15.0,
+        "TABLE_REPROJECTION_PX": 2.0,
+        "TABLE_CORNER_NOISE_PX": 0.8,
+        "TABLE_ROTATION_3SIGMA_DEG": 8.0,
+        "RECTANGLE_THRESHOLD": 10000,
+        "MAX_TABLE_CANDIDATES": 8,
+        "TABLE_BLACK_MAX_GRAY": 90,
+        "TABLE_MIN_BLACK_FRACTION": 0.6,
+        "SLOT_ASSOCIATION_MARGIN_PX": 10.0,
+        "MODEL_TEMPLATE": "models/rescue_three_shapes.template.json",
+        "LAYOUT_TEMPLATE": "models/rescue_table.template.json",
+        "OBJECT_HEIGHT_MM": 70.0,
+        "CYLINDER_DIAMETER_MM": 50.0,
+        "FRUSTUM_TOP_DIAMETER_MM": 30.0,
+        "FRUSTUM_BOTTOM_DIAMETER_MM": 50.0,
+        "DRUM_END_DIAMETER_MM": 30.0,
+        "DRUM_SIDE_ARC_RADIUS_MM": 66.0,
+        "OBJECT_MIN_DEPTH_MM": 100.0,
+        "OBJECT_MAX_DEPTH_MM": 1800.0,
+        "OBJECT_MAX_ROI_CELLS": 6000,
+        "OBJECT_MIN_COMPONENT_SAMPLES": 45,
+        "OBJECT_MAX_REPROJECTION_PX": 3.0,
+        "OBJECT_MAX_POSITION_3SIGMA_MM": 25.0,
+        "OBJECT_AMBIGUITY_SEPARATION_MM": 10.0
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "rescue_object_pose.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\rescue_object_pose.py",
+      "sha256": "76c532939fc46b4114fe174d98ce72188a7bc6873a61a611ee5ed1601ce73ba5",
+      "bytes": 10535,
+      "lines": 198,
+      "symbols": {
+        "body_surface": 12,
+        "_basis": 32,
+        "project_surface": 40,
+        "_supports": 55,
+        "_evaluate": 59,
+        "_equations": 72,
+        "_refine": 78,
+        "RescueObjectEstimator": 98,
+        "RescueObjectEstimator.__init__": 99,
+        "RescueObjectEstimator.reset": 100,
+        "RescueObjectEstimator.fit": 101,
+        "extract_white_object": 157
+      },
+      "constants": {}
+    },
+    {
+      "group": "ide_cache",
+      "relative": "run_control.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\run_control.py",
+      "sha256": "0ae24a8d0e9a5402f3f53ccd91b88a537d30c24305f673a548f15d386fee303a",
+      "bytes": 2557,
+      "lines": 71,
+      "symbols": {
+        "RunControl": 6,
+        "RunControl.__init__": 7,
+        "RunControl.state": 17,
+        "RunControl._start": 20,
+        "RunControl._stop": 33,
+        "RunControl.poll": 47,
+        "RunControl.close": 66
+      },
+      "constants": {}
+    },
+    {
+      "group": "ide_cache",
+      "relative": "runtime_config.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\runtime_config.py",
+      "sha256": "dead3ddc5bbca8c54b70734fada67d7d7c59b72abd97bb49aa5e1bd299c0b3bf",
+      "bytes": 2741,
+      "lines": 68,
+      "symbols": {
+        "create_model_backend": 56
+      },
+      "constants": {
+        "PROJECT_ROOT": "/data/guanggongsai",
+        "UART_ID": 2,
+        "UART_BAUDRATE": 115200,
+        "UART_TX_PIN": 11,
+        "UART_RX_PIN": 12,
+        "COMMAND_QUEUE_SIZE": 8,
+        "COMMANDS_PER_POLL": 8,
+        "RX_READ_BYTES": 128,
+        "USER_KEY_GPIO": 53,
+        "USER_KEY_ACTIVE": 1,
+        "USER_KEY_DEBOUNCE_MS": 40,
+        "USER_KEY_POLL_MS": 5,
+        "TOTAL_START_BYTES": "b'TOTALSTART!'",
+        "TOTAL_STOP_BYTES": "b'TOTALSTOP!'",
+        "LOOP_SLEEP_MS": 5,
+        "MEASUREMENT_SAMPLES": 3,
+        "MAX_POSITION_SCATTER_MM": 8.0,
+        "SETTLE_MS": 250,
+        "MEASUREMENT_TIMEOUT_MS": 60000,
+        "SCAN_TIMEOUT_MS": 60000,
+        "REQUEST_DEDUP_MS": 5000,
+        "REQUEST_HISTORY_SIZE": 16,
+        "RAW_GEOMETRY_CONFIRMED": true,
+        "QR_HIGH_RES_ENABLED": true,
+        "QR_CAPTURE_SIZE": [
+          1920,
+          1080
+        ],
+        "QR_CAPTURE_CHANNEL": 1,
+        "QR_SAMPLE_WINDOW_MS": 3000,
+        "QR_CONTRAST_RETRY_ENABLED": true,
+        "QR_CONTRAST_RETRY_EVERY_N_FRAMES": 3,
+        "SCAN_ORDER_CONFIRMED": true,
+        "SCAN_START_BOUNDARY_CONFIRMED": true,
+        "ALLOW_CANDIDATE_REPORTS": true,
+        "DISPLAY_ENABLED": true,
+        "DISPLAY_WIDTH": 800,
+        "DISPLAY_HEIGHT": 480,
+        "DISPLAY_TO_IDE": false,
+        "DISPLAY_REFRESH_MS": 100,
+        "SNAPSHOT_TIMEOUT_MS": 200,
+        "SNAPSHOT_ATTEMPTS": 3,
+        "MAX_CAMERA_RESTARTS": 2,
+        "CAMERA_RESTART_WAIT_MS": 200,
+        "CAMERA_WARMUP_FRAMES": 10,
+        "HANDEYE_ACCEPTED_BY_USER": true,
+        "SCAN_REQUIRE_BLANK_GAP": false,
+        "SCAN_MAX_AMBIGUOUS_FRAMES": 3,
+        "RESCUE_REFERENCE_MODE": "object",
+        "TOTAL_STOP_POLICY": "restart"
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "target_color.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\target_color.py",
+      "sha256": "2a108bb6d25281590537e6883cbed552bfdd2b491aaaba38c73a3b5e3e64bd77",
+      "bytes": 9533,
+      "lines": 198,
+      "symbols": {
+        "valid_color": 9,
+        "_color_matches": 13,
+        "_neighbors": 28,
+        "_component": 36,
+        "extract_target_rings": 49,
+        "ColorTargetDetector": 154,
+        "ColorTargetDetector.__init__": 156,
+        "ColorTargetDetector.load": 159,
+        "ColorTargetDetector.detect": 163,
+        "ColorTargetDetector.close": 197
+      },
+      "constants": {}
+    },
+    {
+      "group": "ide_cache",
+      "relative": "task_manager.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\task_manager.py",
+      "sha256": "5fa4c53c8ae7614172ffe924416b78f2748986dd190c1c9b6e027909f26c1c57",
+      "bytes": 10333,
+      "lines": 242,
+      "symbols": {
+        "TaskManager": 12,
+        "TaskManager.__init__": 13,
+        "TaskManager.pause": 30,
+        "TaskManager.reset_session": 46,
+        "TaskManager.resume": 56,
+        "TaskManager._elapsed": 67,
+        "TaskManager.active_task": 71,
+        "TaskManager._new_run_id": 74,
+        "TaskManager._seen": 78,
+        "TaskManager._remember": 83,
+        "TaskManager._transmit_once": 87,
+        "TaskManager._discard_active": 105,
+        "TaskManager._finish_active": 116,
+        "TaskManager.on_command": 121,
+        "TaskManager.tick": 155,
+        "TaskManager.observe_camera_epoch": 164,
+        "TaskManager.poll_frame": 178,
+        "TaskManager.flush_report": 217,
+        "TaskManager.fail_active": 227,
+        "TaskManager.reject_command": 232,
+        "TaskManager.close": 240
+      },
+      "constants": {
+        "PAUSED": "PAUSED"
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "vision_measure_example.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\vision_measure_example.py",
+      "sha256": "fed21bde52ef5e27fbb252e523f13ebda9c75a6fc3992a03dc63cebec41858dd",
+      "bytes": 4357,
+      "lines": 110,
+      "symbols": {
+        "main": 21
+      },
+      "constants": {
+        "PROJECT_ROOT": "/data/guanggongsai"
+      }
+    },
+    {
+      "group": "ide_cache",
+      "relative": "yolo_detector.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\yolo_detector.py",
+      "sha256": "336cbf643522e18f1998840294400ab4571ddbd39aa7f0c1b337071770f4098c",
+      "bytes": 6220,
+      "lines": 126,
+      "symbols": {
+        "_failure": 7,
+        "restore_bbox_xywh": 11,
+        "YoloDetector": 32,
+        "YoloDetector.__init__": 40,
+        "YoloDetector.load": 52,
+        "YoloDetector.detect": 90,
+        "YoloDetector.close": 122
+      },
+      "constants": {}
+    },
+    {
+      "group": "ide_cache",
+      "relative": "yolo_video_capture.py",
+      "source": "C:\\Users\\26617\\AppData\\Local\\Temp\\canmv-vscode-Armstrong\\6c1bc1fee0ff007f\\remote\\data\\guanggongsai\\yolo_video_capture.py",
+      "sha256": "333c46b3cd517cd114ae14f7746012ae341610615eb49f46b93a6622bf55e5e3",
+      "bytes": 20866,
+      "lines": 517,
+      "symbols": {
+        "ticks_ms": 38,
+        "ticks_diff": 43,
+        "sleep_ms": 48,
+        "exitpoint": 56,
+        "sync_storage": 62,
+        "exists": 68,
+        "ensure_directory": 78,
+        "free_megabytes": 85,
+        "write_all": 93,
+        "CaptureButton": 102,
+        "CaptureButton.__init__": 103,
+        "CaptureButton.reset": 107,
+        "CaptureButton.pressed": 113,
+        "avi_header": 127,
+        "AviRecorder": 152,
+        "AviRecorder.__init__": 154,
+        "AviRecorder.fps": 179,
+        "AviRecorder._header": 183,
+        "AviRecorder.append": 187,
+        "AviRecorder.checkpoint": 212,
+        "AviRecorder.close": 221,
+        "JpegEncoder": 258,
+        "JpegEncoder.__init__": 259,
+        "JpegEncoder.encode": 264,
+        "JpegEncoder.close": 268,
+        "CaptureApp": 272,
+        "CaptureApp.__init__": 273,
+        "CaptureApp._new_sensor": 284,
+        "CaptureApp.open": 290,
+        "CaptureApp.start_recording": 331,
+        "CaptureApp.finish_recording": 345,
+        "CaptureApp.read_frame": 365,
+        "CaptureApp.show": 392,
+        "CaptureApp.run": 417,
+        "CaptureApp.close": 473,
+        "main": 500
+      },
+      "constants": {
+        "DATASET_NAME": "bomb",
+        "VIDEO_ROOT": "/data/yolo_videos",
+        "DEBOUNCE_MS": 40,
+        "TARGET_FPS": 10,
+        "JPEG_QUALITY": 90,
+        "MAX_RECORD_SECONDS": 120,
+        "PREVIEW_INTERVAL_MS": 200,
+        "SYNC_INTERVAL_MS": 1000,
+        "SNAPSHOT_TIMEOUT_MS": 200,
+        "WARMUP_FRAMES": 20,
+        "APP_VERSION": "yolo-video-capture-v1.1-data"
+      }
+    }
+  ]
+}

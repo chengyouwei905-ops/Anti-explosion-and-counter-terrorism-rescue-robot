@@ -7,6 +7,7 @@
 #include "alg_motion_profile.h"
 #include "app_chassis_motion.h"
 #include "app_chassis_closeloop.h"
+#include "app_chassis.h"
 
 #define PI 3.14159265358979323846f
 #define LINE(d,v,a,b) {ALG_PATH_LINE,(d),0,0,(v),(a),(b)}
@@ -14,8 +15,10 @@
 static const AlgPathLimits_t limits = {30.0f,0.9f,2.0f,400.0f};
 static bool imu_valid = true;
 static float imu_yaw,vx,vy,omega,world_x,world_y;
+bool app_chassis_get_distance_sample(Chassis_DistanceSample_t *out)
+{ (void)out;assert(!"time-based paths must not read encoder mileage");return false; }
 
-bool app_imu_get_euler(float e[3])
+bool app_imu_get_euler(double e[3])
 {
     e[0]=e[1]=0; e[2]=imu_yaw; return imu_valid;
 }
@@ -223,9 +226,68 @@ static void test_app_execution(void)
     assert(app_chassis_motion_get_state()==MOTION_STATE_IDLE);
     assert(app_chassis_motion_path_start(path,3,&limits)==MOTION_START_NO_IMU);
 }
+static void test_app_translation_path(void)
+{
+    for (int sign = -1; sign <= 1; sign += 2) {
+        reset();
+        imu_yaw = 0.7f;
+        app_chassis_motion_init();
+        AlgPathSegment_t path[] = {LINE(400,250,300,300), ARC(200,sign*PI/2,140,200,250),
+                                   LINE(350,220,250,300)};
+        assert(app_chassis_motion_path_translate_start(path,3,&limits)==MOTION_START_OK);
+        AlgPathSample_t prev,now;
+        assert(app_chassis_motion_path_get_sample(&prev));
+        assert(app_chassis_motion_arc_translate(200,PI/2,0,50,50,50)==MOTION_START_BUSY);
+        assert(app_chassis_motion_path_start(NULL,0,NULL)==MOTION_START_BUSY);
+        assert(app_chassis_motion_path_translate_start(NULL,0,NULL)==MOTION_START_BUSY);
+        path[0].distance=99999; /* Copied input and rejected commands cannot affect the plan. */
+        unsigned seams=0,ticks=0;
+        do {
+            tick(.001f);
+            assert(app_chassis_motion_path_get_sample(&now));
+            near(imu_yaw,.7f,1e-5f);near(omega,0,1e-6f);
+            near(world_x,now.x,.3f);near(world_y,now.y,.3f);
+            if(now.segment!=prev.segment) { ++seams;assert(now.speed>1 && prev.speed>1); }
+            prev=now;assert(++ticks<100000U);
+        } while(app_chassis_motion_get_state()==MOTION_STATE_RUNNING);
+        assert(seams==2U);
+        assert(app_chassis_motion_get_result()==MOTION_RESULT_DONE);
+        near(world_x,-sign*550*cosf(.7f)-600*sinf(.7f),.3f);
+        near(world_y,-sign*550*sinf(.7f)+600*cosf(.7f),.3f);
+        near(now.yaw,.7f+sign*PI/2,1e-5f); /* Sample yaw is the TANGENT, not the car heading. */
+        near(vx,0,1e-6f);near(vy,0,1e-6f);
+
+        assert(app_chassis_motion_path_translate_start(NULL,0,&limits)==MOTION_START_INVALID);
+        path[0].distance=400;
+        assert(app_chassis_motion_path_translate_start(path,3,&limits)==MOTION_START_OK);
+        tick(.01f);app_chassis_motion_stop();tick(.01f);
+        assert(app_chassis_motion_get_result()==MOTION_RESULT_CANCELLED);
+        assert(!app_chassis_motion_path_get_sample(&now));
+        near(vx,0,1e-6f);near(vy,0,1e-6f);near(omega,0,1e-6f);
+        assert(app_chassis_motion_path_translate_start(path,3,&limits)==MOTION_START_OK);
+        imu_valid=false;tick(.01f);
+        assert(app_chassis_motion_get_result()==MOTION_RESULT_IMU_ERROR);
+        assert(app_chassis_motion_path_translate_start(path,3,&limits)==MOTION_START_NO_IMU);
+    }
+    reset();
+    AlgPathSegment_t path[]={LINE(100,50,100,100),ARC(200,PI/2,50,100,100)};
+    assert(app_chassis_motion_path_start(path,2,&limits)==MOTION_START_OK);
+    assert(app_chassis_motion_path_translate_start(path,2,&limits)==MOTION_START_BUSY);
+    app_chassis_motion_stop();
+    assert(app_chassis_motion_arc_translate(200,PI/2,0,50,100,100)==MOTION_START_OK);
+    app_chassis_motion_update(.1f);
+    app_chassis_motion_init();
+    assert(!app_chassis_motion_path_get_sample(&(AlgPathSample_t){0}));
+    assert(app_chassis_motion_path_translate_start(path,2,&limits)==MOTION_START_OK);
+    tick(1000);
+    assert(app_chassis_motion_get_result()==MOTION_RESULT_DONE);
+    near(omega,0,1e-6f);near(imu_yaw,0,1e-6f);
+}
+
 int main(void)
 {
     test_boundary_profiles();test_geometry_and_continuity();test_limits_and_time_steps();test_varied_paths();test_app_execution();
-    puts("PASS: continuous path profiles, geometry, limits, boundaries, validation and app lifecycle");
+    test_app_translation_path();
+    puts("PASS: continuous paths, fixed-heading translation paths, geometry, limits, boundaries and app lifecycle");
     return 0;
 }

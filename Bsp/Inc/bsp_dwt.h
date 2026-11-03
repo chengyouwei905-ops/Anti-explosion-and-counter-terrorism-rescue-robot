@@ -11,7 +11,7 @@
   * 用法（测两个时刻之间的间隔）：
   *     uint32_t t0 = bsp_dwt_get_cycles();
   *     ... 干点事 ...
-  *     float us = bsp_dwt_cycles_to_us(bsp_dwt_get_cycles() - t0);
+  *     double us = bsp_dwt_cycles_to_us(bsp_dwt_get_cycles() - t0);
   *
   * ⚠️ 32 位计数器会在 2^32 个周期后回绕（64MHz 下约 67 秒）。上面那种
   *    "无符号减法取差值"的写法能自然处理回绕，只要**单次间隔 < 67 秒**即可。
@@ -50,13 +50,13 @@ uint32_t bsp_dwt_get_cycles(void);
   * @brief  周期数 → 微秒
   * @param  cycles 周期数（两个时刻相减得到，允许回绕）
   */
-float bsp_dwt_cycles_to_us(uint32_t cycles);
+double bsp_dwt_cycles_to_us(uint32_t cycles);
 
 /**
   * @brief  周期数 → 秒
   * @param  cycles 周期数（同上）
   */
-float bsp_dwt_cycles_to_s(uint32_t cycles);
+double bsp_dwt_cycles_to_s(uint32_t cycles);
 
 #ifdef __cplusplus
 }

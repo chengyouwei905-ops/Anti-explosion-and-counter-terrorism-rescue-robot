@@ -30,9 +30,11 @@ typedef struct {
     uint32_t scan_dwell_ms;
     uint32_t arm_timeout_ms;
     uint32_t laser_ms;
-    float scan_speed, correction_speed, accel;
+    float scan_speed, correction_speed, accel; /* accel用于扫描/换位/返回 */
+    float correction_accel; /* 视觉平移纠偏独立加减速度，mm/s^2 */
     float max_correction_mm, max_correction_yaw;
-    float position_tolerance_mm, yaw_tolerance_rad, height_tolerance_mm;
+    float position_tolerance_mm, yaw_tolerance_rad;
+    float height_tolerance_mm; /* 高度诊断阈值，不参与底盘到位判定。 */
     uint8_t max_corrections;
 } TaskWorkConfig_t;
 
@@ -54,6 +56,8 @@ typedef struct {
     TaskWorkKind_t kind;
     TaskWorkPhase_t phase;
     TaskWorkError_t error;
+    uint8_t motion_start_result; /* Chassis_Motion_Start_t，保留里程纠偏启动失败原因 */
+    uint8_t motion_result;       /* Chassis_Motion_Result_t，保留取消前的反馈/停滞错误 */
     uint8_t vision_reason; /* 原样保留 K230 reason，9=MODEL_NOT_READY */
     uint8_t selected_slot;
     uint8_t corrections;
@@ -61,6 +65,9 @@ typedef struct {
     uint8_t request_cmd, request_seq;
     bool alignment_valid;
     VisionAlignment_t alignment; /* 观测时刻的估计；移动/搬动物体后失效 */
+    /* 最近有效观测的高度误差；与 alignment 一同保留供调试，不阻止平面修正。 */
+    float height_error_mm;
+    bool height_out_of_tolerance;
     bool cancel_pending;
     bool cancel_failed;
 } TaskWorkStatus_t;

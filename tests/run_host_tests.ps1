@@ -1,4 +1,4 @@
-param([string]$Compiler = "gcc")
+param([string]$Compiler = "gcc", [string[]]$TestNames = @())
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
@@ -21,6 +21,8 @@ try {
            Sources=@("App/Src/app_imu_uart_debug.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") },
         @{ Name="work_port"; Includes=@("-Itests/work_port_stubs", "-Itests/vision_stubs", "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IProtocol/Inc", "-IAlgorithm/Inc");
            Sources=@("App/Src/app_task_work_port.c", "App/Src/app_roboarm.c", "Protocol/Src/proto_roboarm.c") + $resultSources },
+        @{ Name="bomb_arm_split"; Includes=@("-Itests/work_port_stubs", "-Itests/vision_stubs", "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IProtocol/Inc", "-IAlgorithm/Inc");
+           Sources=@("App/Src/app_task_work_port.c", "App/Src/app_roboarm.c", "Protocol/Src/proto_roboarm.c") + $resultSources },
         @{ Name="roboarm"; Includes=@("-Itests/vision_stubs", "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IProtocol/Inc", "-IAlgorithm/Inc");
            Sources=@("App/Src/app_roboarm.c", "Protocol/Src/proto_roboarm.c", "Algorithm/Src/alg_roboarm_kinematics.c") },
         @{ Name="chassis_motion"; Includes=@("-Itests/stubs", "-IApp/Inc", "-IAlgorithm/Inc"); Sources=$motionSources },
@@ -31,11 +33,17 @@ try {
         @{ Name="vision_result"; Includes=@("-IProtocol/Inc", "-IAlgorithm/Inc", "-ICommon/Inc"); Sources=$resultSources },
         @{ Name="task_vision"; Includes=$taskIncludes;
            Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
+        @{ Name="task_distance"; Includes=$taskIncludes;
+           Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
         @{ Name="task_camera_test"; Includes=$taskIncludes;
            Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources }
     )
+    foreach ($requested in $TestNames) {
+        if ($requested -notin $cases.Name) { throw "Unknown test case: $requested" }
+    }
     foreach ($case in $cases) {
         $name = $case.Name
+        if ($TestNames.Count -gt 0 -and $name -notin $TestNames) { continue }
         $executable = "build/test_$name.exe"
         $compileArgs = @("-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-pedantic") +
                        $case.Includes + @("tests/test_$name.c") + $case.Sources + @("-o", $executable, "-lm")

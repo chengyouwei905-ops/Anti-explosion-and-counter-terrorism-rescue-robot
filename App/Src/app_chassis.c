@@ -20,6 +20,7 @@ static const uint8_t s_motor_of_wheel[WHEEL_NUMBERS] = { 2U, 0U, 3U, 1U };
 static int64_t s_enc_prev[PROTO_CHASSIS_MOTOR_MAX];      /**< 上一次结算时的编码器 total（死区内不推进基准） */
 static bool    s_enc_prev_valid = false;                 /**< 是否已记下基准（第一帧只记基准） */
 static float   s_distance_mm    = 0.0f;                  /**< 累计行驶路程(mm) */
+static uint32_t s_distance_rx_ms, s_distance_frame_id, s_distance_reset_count;
 
 /* 本段四轮计数增量 -> 各轮行程(mm) -> 运动学正解出底盘中心位移 -> 累计路程 */
 static void app_chassis_update_odom(const int32_t enc[PROTO_CHASSIS_MOTOR_MAX])
@@ -83,6 +84,8 @@ static void app_chassis_on_frame(const char *text, uint16_t len)
     }
 
     app_chassis_update_odom(enc);
+    s_distance_rx_ms = HAL_GetTick();
+    ++s_distance_frame_id;
 }
 
 int app_chassis_init(UART_HandleTypeDef *huart)
@@ -91,6 +94,11 @@ int app_chassis_init(UART_HandleTypeDef *huart)
     if (huart == NULL) {
         return RET_PARAM;
     }
+
+    s_inited = false;
+    s_enc_prev_valid = false;
+    s_distance_frame_id = 0U;
+    ++s_distance_reset_count;
 
     /* 1) 绑定串口（HAL_UART_Init 已由 CubeMX 生成的 MX_USART1_Init 完成） */
     if (bsp_uart_attach(BSP_UART_CHASSIS, huart) != RET_OK) {
@@ -218,9 +226,24 @@ float app_chassis_get_distance(void)
     return s_distance_mm;
 }
 
+bool app_chassis_get_distance_sample(Chassis_DistanceSample_t *out)
+{
+    if (out == NULL || !s_inited || !s_enc_prev_valid) {
+        return false;
+    }
+    *out = (Chassis_DistanceSample_t){
+        .distance_mm = app_chassis_get_distance(),
+        .age_ms = (uint32_t)(HAL_GetTick() - s_distance_rx_ms),
+        .reset_count = s_distance_reset_count,
+        .frame_id = s_distance_frame_id
+    };
+    return true;
+}
+
 void app_chassis_reset_distance(void)
 {
     s_distance_mm = 0.0f;
+    ++s_distance_reset_count;
 }
 
 

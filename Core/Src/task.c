@@ -37,112 +37,112 @@ static const AlgPathSegment_t task_route[] = {
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = 1.57079632679f,
-        .max_speed = 140.0f,
-        .accel = 200.0f,
-        .decel = 250.0f
+        .max_speed = 250.0f,
+        .accel = 300.0f,
+        .decel = 300.0f
     },
     {   /* MOVE3：直行 305 mm */
         .type = ALG_PATH_LINE,
         .distance = 305.0f + 20.0f, /* 20mm 直走实测修正 */
-        .max_speed = 180.0f,
-        .accel = 200.0f,
-        .decel = 250.0f
+        .max_speed = 250.0f,
+        .accel = 300.0f,
+        .decel = 300.0f
     },
     {   /* MOVE4：右转 90 度 */
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = -1.57079632679f,
-        .max_speed = 100.0f,
-        .accel = 150.0f,
-        .decel = 150.0f
+        .max_speed = 250.0f,
+        .accel = 300.0f,
+        .decel = 300.0f
     },
     {   /* MOVE5：直行 550 mm */
         .type = ALG_PATH_LINE,
-        .distance = 550.0f,
-        .max_speed = 100.0f,
-        .accel = 150.0f,
-        .decel = 150.0f
+        .distance = 550.0f - 20.0f + 30.0f, /* 20mm 直走实测修正 */
+        .max_speed = 180.0f,
+        .accel = 200.0f,
+        .decel = 200.0f
     },
     {   /* MOVE6：左转 90 度 */
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = 1.57079632679f,
-        .max_speed = 100.0f,
-        .accel = 150.0f,
-        .decel = 150.0f
+        .max_speed = 300.0f,
+        .accel = 250.0f,
+        .decel = 250.0f
     },
     {   /* MOVE7：直行 455 mm */
         .type = ALG_PATH_LINE,
-        .distance = 455.0f + 25.0f + 15.0f - 10.0f, /* 25mm 直走实测修正 */
-        .max_speed = 220.0f,
+        .distance = 455.0f + 25.0f + 15.0f - 10.0f - 30.0f - 15.0f, /* 25mm 直走实测修正 */
+        .max_speed = 300.0f,
         .accel = 250.0f,
-        .decel = 300.0f
+        .decel = 250.0f
     },
     {   /* MOVE8：右转 90 度 */
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = -1.57079632679f,
-        .max_speed = 140.0f,
-        .accel = 200.0f,
+        .max_speed = 300.0f,
+        .accel = 250.0f,
         .decel = 250.0f
     },
     {   /* MOVE9：直行 580 mm */
         .type = ALG_PATH_LINE,
-        .distance = 580.0f + 25.0f - 10.0f + 5.0f, /* 直走实测修正 */
-        .max_speed = 250.0f,
-        .accel = 300.0f,
-        .decel = 350.0f
+        .distance = 580.0f + 25.0f - 10.0f + 5.0f - 30.0f + 20.0f - 10.0f, /* 直走实测修正 */
+        .max_speed = 300.0f,
+        .accel = 250.0f,
+        .decel = 250.0f
     },
     {   /* MOVE10：右转 90 度 */
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = -1.57079632679f,
-        .max_speed = 140.0f,
-        .accel = 200.0f,
+        .max_speed = 300.0f,
+        .accel = 250.0f,
         .decel = 250.0f
     },
     {   /* MOVE11：直行 400 mm（实测修正） */
         .type = ALG_PATH_LINE,
-        .distance = 400.0f - 50.0f - 20.0f + 10.0f, /* 直走实测修正 */
-        .max_speed = 200.0f,
+        .distance = 400.0f - 50.0f - 20.0f + 10.0f + 30.0f, /* 直走实测修正 */
+        .max_speed = 300.0f,
         .accel = 250.0f,
-        .decel = 300.0f
+        .decel = 250.0f
     },
     {   /* MOVE12：直行 1730 mm */
         .type = ALG_PATH_LINE,
-        .distance = 1730.0f - 100.0f + 25.0f + 15.0f, /* 直走实测修正 */
+        .distance = 1730.0f - 100.0f + 25.0f + 15.0f + 30.0f - 5.0f, /* 直走实测修正 */
         .max_speed = 300.0f,
-        .accel = 350.0f,
-        .decel = 400.0f
+        .accel = 250.0f,
+        .decel = 250.0f
     },
     {   /* MOVE13：直行 375 mm */
         .type = ALG_PATH_LINE,
         .distance = 375.0f - 10.0f + 100.0f + 100.0f, /* 直走实测修正 */
-        .max_speed = 220.0f,
+        .max_speed = 300.0f,
         .accel = 250.0f,
-        .decel = 300.0f
+        .decel = 250.0f
     },
     {   /* MOVE14：右转 90 度 */
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = -1.57079632679f,
-        .max_speed = 140.0f,
-        .accel = 200.0f,
+        .max_speed = 300.0f,
+        .accel = 250.0f,
         .decel = 250.0f
     },
     {   /* MOVE15：直行 780 mm */
         .type = ALG_PATH_LINE,
         .distance = 780.0f + 100.0f - 200.0f - 50.0f, /* 直走实测修正 */
-        .max_speed = 220.0f,
+        .max_speed = 300.0f,
         .accel = 250.0f,
-        .decel = 300.0f
+        .decel = 250.0f
     },
     {   /* MOVE16：直行 1600 mm */
         .type = ALG_PATH_LINE,
         .distance = 1600.0f - 70.0f + 30.0f + 50.0f,    /* 直走实测修正 */
-        .max_speed = 250.0f,
+        .max_speed = 300.0f,
         .accel = 250.0f,
-        .decel = 300.0f
+        .decel = 250.0f
     }
 };
 

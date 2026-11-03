@@ -33,7 +33,96 @@ payload 里装的是什么由业务层自己决定。
 
 放错了以后挪一下很便宜，纠结半小时的代价更大。
 
+## 爆炸物机械臂动作：先关节动作，再单独yaw
+
+`app_task_work_port.c::task_work_arm_poll()` 将三处原四关节同步set拆成两次：
+第一段只发ID2/3/4，保持进入时yaw；等待该段结束后，第二段只发ID1转yaw。
+目标仍从 `task_arm_poses` 原XYZ/pitch逆解，零偏/35:44换算共用机械臂应用层。
+
+| 位置 | 拆分后的动作 |
+|---|---|
+| 夹球后到搬运位 | 闭爪 → 保持夹取yaw，ID2/3/4到QR搬运几何姿态 → ID1转到QR方向 |
+| 放置前 | 保持搬运yaw，ID2/3/4到原放置几何姿态 → ID1转到桶方向 → 张爪 |
+| 放置后收回 | 保持放置yaw，ID2/3/4到QR搬运几何姿态 → ID1转回QR方向 |
+
+没有另加固定高度；第一段是原目标的伸缩/高度/pitch关节动作，不是笛卡尔竖直插补。
+按当前坐标，夹球后从Z=-35到QR的Z=60；放置前第一段沿用原放置Z=50；放置后回Z=60。
+如果需要放置前先升到更高的避线高度，需要另设该高度的目标姿态。
+每段使用 `ARM_POSE_TIME_MS=3000`，另等100ms发送裕量和500ms稳定时间，均为非阻塞tick计时。
+没有实际关节到位反馈；每步仍有BUSY重试/错误/取消处理，张闭爪时机保留。
+人质、观察、二维码和打靶动作继续使用原四关节同步方式。
+
 ## 连续底盘路径
+
+### 视觉二次纠偏：时间规划（当前）
+
+`app_task_work.c::start_alignment()` 的平移纠偏已换回 `app_chassis_motion_linear_move()`。
+距离为本次视觉误差长度，方向为 `atan2(-dx,dy)`；在 `app_task_work_port.c` 调整
+`correction_speed=80mm/s` 和 `correction_accel=200mm/s²`（同时用于加速和减速）。
+对应实测 `linear_move(100,-PI/2,80,200,200)` 的速度参数，正式纠偏的距离和方向随视觉变化。
+原 `motion_started()` 按规划时长加2秒做超时检查，不再使用里程模式的31秒等待。
+IMU继续保持起始航向；运动结束后停稳、视觉复测，视觉容差20mm、最多四次纠偏。
+主路线、扫描换位、到桶、返回和原地yaw修正保留当前调用及参数。
+
+### 备用里程移动接口（未接入正式纠偏）
+
+`app_chassis_motion_linear_move_distance(distance, direction, max_speed, accel, decel)` 保留供单独试验。
+
+启动时记录 `app_chassis_get_distance()` 对应的累计里程基准，不清零全局里程。
+运动中根据剩余路程减速，路程差达到目标减20mm时置零速度并返回DONE；
+目标距离不超过20mm时直接完成。例如目标100mm，累计走到80mm即可结束本次移动，再由视觉复测。
+即使实际执行速度低于指令速度，也不会因原速度曲线的时间结束而提前成功。
+这里用的是编码器累计路程，不是IMU加速度积分或完整X/Y位置闭环，侧滑及往返
+也会计入，因此仍由K230复测决定是否继续纠偏和进入下一步。
+
+参数集中在 `App/Inc/app_chassis_motion.h`：里程容差20mm，末段最低目标速度50mm/s
+（不超过本次max_speed，起步仍受加速度限制），反馈最大年龄500ms，无0.1mm进展
+持续2s报STALLED，总时限30s报TIMEOUT。末段最低速度需按实车低速能力标定。
+没有收到有效编码器帧或反馈已过期时返回NO_ODOM；运动中断流、里程清零/回退时
+报ODOM_ERROR。静止时的有效编码器帧仍刷新反馈时间，不会误认为通信断开。
+
+直接调用该备用接口时检查启动返回值及 `app_chassis_motion_get_result()`。
+正式时间纠偏的执行结果仍保留在作业状态 `motion_result` 中。
+
+2026-11-03 用户实测：原时间接口 `linear_move(100,-PI/2,80,200,200)` 的右移距离
+稳定到100mm附近。据此将作业 `correction_speed` 设为80mm/s，独立的
+`correction_accel` 设为200mm/s²（加速与减速共用），只作用于二次平移纠偏。
+扫描速度80mm/s、扫描/换位/返回加减速度 `accel=100mm/s²` 继续使用原值。
+保留用户调整的末段速度50mm/s和视觉容差20mm；100mm测试尚不能证明50mm/s
+是最小稳定速度，或小距离纠偏也有同等精度。里程接口末端速度曲线与时间接口有差异，需实车复测。
+
+### 圆弧平移：保持车头朝向
+
+`app_chassis_motion_arc_translate(radius, angle, direction, max_speed, accel, decel)`
+用于单段严格定半径圆弧平移，车头保持开始时的 IMU 航向。`angle` 是带符号扫角，
+正值向左弯、负值向右弯；`direction` 是起始平移切线相对开始时车头的方向，
+0 向前、+PI/2 向左。半径单位 mm，角度 rad，切向速度 mm/s，加减速度 mm/s²。
+
+```c
+/* 从静止起步，向左走R200的90度圆弧；终点相对起点左200、前200mm，车头不转。 */
+Chassis_Motion_Start_t result = app_chassis_motion_arc_translate(
+    200.0f, 1.57079632679f, 0.0f, 100.0f, 150.0f, 150.0f);
+```
+
+只在状态入口启动一次；返回 `MOTION_START_OK` 后等待
+`app_chassis_motion_get_result()` 为 `MOTION_RESULT_DONE`，再进入下一步。
+忙、参数错误、IMU 无效分别返回 `MOTION_START_BUSY`、`MOTION_START_INVALID`、
+`MOTION_START_NO_IMU`。`radius` 必须大于零，零扫角立即完成，速度规划零速起止。
+仍由主循环周期调用 `app_chassis_motion_update()` 和 `app_chassis_closeloop_update()`。
+航向闭环继续修正车头偏差，圆弧切线不会作为车头目标或角速度前馈。
+本接口未另设向心加速度上限，选速时需考虑 `max_speed² / radius` 和实际轮速限幅。
+
+需要直线与圆弧之间不停顿时，使用
+`app_chassis_motion_path_translate_start(segments, count, limits)`。它复用下面的连续
+路径规划，但整组车头保持起始朝向。第一段沿初始车头方向，后续直线沿上一弯的
+出口切线继续平移；`path_get_sample()` 的 `yaw/omega/angular_accel` 表示路径切线，
+不表示车头目标。圆弧仍使用曲率过渡，`limits` 继续约束切线变化和向心加速度。
+
+当前 `task.c` 仍使用原 `path_start()`，车头随弯转动。以后切换平移走法时，需一起
+核对每组路线的起始方向、停车时车头朝向、机械臂观察方向和视觉参考点；后一组
+不会自动继承上一组的出口切线。原 `circular_move()` 的车头随弯转动及原地转动语义保持不变。
+
+### 车头随路径转动
 
 `app_chassis_motion_path_start(segments, count, limits)` 一次提交一组前进直线和带曲率过渡的转弯。参数会复制，单组最多16段；忙时返回 `MOTION_START_BUSY`，不覆盖在途路径。原有直线、圆弧和原地转动接口继续可用。
 

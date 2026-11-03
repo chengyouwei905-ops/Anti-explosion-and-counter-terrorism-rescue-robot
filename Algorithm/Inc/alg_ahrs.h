@@ -39,11 +39,11 @@ typedef enum {
 
 /** @brief 姿态解算状态 */
 typedef struct {
-    float quat[4];          /**< 姿态四元数 [w, x, y, z]：机体系 -> 导航系 */
-    float integral_fb[3];   /**< 积分反馈项（等效陀螺零偏估计），单位 rad/s */
-    float two_kp;           /**< 2 × 比例增益，见 alg_ahrs_set_gain() */
-    float two_ki;           /**< 2 × 积分增益，见 alg_ahrs_set_gain() */
-    float sample_freq;      /**< 最近一次解算的等效采样率 Hz，只读，可用于观察 */
+    double quat[4];          /**< 姿态四元数 [w, x, y, z]：机体系 -> 导航系 */
+    double integral_fb[3];   /**< 积分反馈项（等效陀螺零偏估计），单位 rad/s */
+    double two_kp;           /**< 2 × 比例增益，见 alg_ahrs_set_gain() */
+    double two_ki;           /**< 2 × 积分增益，见 alg_ahrs_set_gain() */
+    double sample_freq;      /**< 最近一次解算的等效采样率 Hz，只读，可用于观察 */
 } Ahrs_State_t;
 
 /**
@@ -54,11 +54,11 @@ void alg_ahrs_init(Ahrs_State_t *ahrs);
 
 /**
   * @brief  设置增益
-  * @param  two_kp 2 × Kp，默认 1.0f（即 Kp = 0.5）。越大跟随越快、抗振越差
-  * @param  two_ki 2 × Ki，默认 0.0f。设为 0 表示不做零偏估计（不会积分饱和，
-  *                但陀螺零偏会让倾角长期存在一个固定偏差，典型值 0.005f 左右可消掉）
+  * @param  two_kp 2 × Kp，默认 1.0（即 Kp = 0.5）。越大跟随越快、抗振越差
+  * @param  two_ki 2 × Ki，默认 0.0。设为 0 表示不做零偏估计（不会积分饱和，
+  *                但陀螺零偏会让倾角长期存在一个固定偏差，典型值 0.005 左右可消掉）
   */
-void alg_ahrs_set_gain(Ahrs_State_t *ahrs, float two_kp, float two_ki);
+void alg_ahrs_set_gain(Ahrs_State_t *ahrs, double two_kp, double two_ki);
 
 /**
   * @brief  一次姿态解算（每个控制周期调用一次）
@@ -68,21 +68,21 @@ void alg_ahrs_set_gain(Ahrs_State_t *ahrs, float two_kp, float two_ki);
   * @param  dt_s        距上次调用的时间间隔，单位 **秒**，必须由调用方用实测时间算
   * @note   dt_s <= 0 或过大（> 0.1s，说明被打断过）时会直接丢弃本次调用
   */
-void alg_ahrs_update(Ahrs_State_t *ahrs, const float gyro_radps[3],
-                     const float accel[3], float dt_s);
+void alg_ahrs_update(Ahrs_State_t *ahrs, const double gyro_radps[3],
+                     const double accel[3], double dt_s);
 
 /**
   * @brief  取欧拉角
   * @param  ahrs      状态对象
   * @param  euler_rad 输出 [roll, pitch, yaw]，单位 **弧度**
-  *                   转角度制乘 57.29578f；yaw 范围 (-π, π]，跨 ±π 会跳变
+  *                   转角度制乘 57.29578；yaw 范围 (-π, π]，跨 ±π 会跳变
   */
-void alg_ahrs_get_euler(const Ahrs_State_t *ahrs, float euler_rad[3]);
+void alg_ahrs_get_euler(const Ahrs_State_t *ahrs, double euler_rad[3]);
 
 /**
   * @brief  取四元数（需要做插值/发给上位机时用）
   * @param  quat 输出 [w, x, y, z]，注意 q 与 -q 表示同一姿态
   */
-void alg_ahrs_get_quat(const Ahrs_State_t *ahrs, float quat[4]);
+void alg_ahrs_get_quat(const Ahrs_State_t *ahrs, double quat[4]);
 
 #endif /* __ALG_AHRS_H__ */

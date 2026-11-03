@@ -13,11 +13,22 @@ static UART_HandleTypeDef vision_uart;
 static uint8_t *rx_byte;
 static uint32_t elapsed, clock_base;
 static float px,py,yaw,vx,vy,omega;
+static float encoder_distance, translation_scale = 1.0f;
+static bool encoder_ready = true;
+static uint32_t encoder_age;
+float app_chassis_get_distance(void) { return encoder_distance; }
+bool app_chassis_get_distance_sample(Chassis_DistanceSample_t *out)
+{
+    if (!encoder_ready || out == NULL) return false;
+    *out = (Chassis_DistanceSample_t){app_chassis_get_distance(),encoder_age,0,0};
+    return true;
+}
 static bool imu_ok, config_ready, automatic_reply, laser;
 static bool nonconverging, arm_wait;
 static unsigned laser_starts, arm_stops, pick_calls, place_calls;
 static uint8_t scene_slot = 2U;
 static float picked_x, picked_y, placed_x, placed_y;
+static float scene_height_error;
 static HAL_StatusTypeDef force_tx;
 static uint8_t tx_cmd,tx_seq,peer_seq;
 static uint32_t tx_time;
@@ -43,7 +54,7 @@ HAL_StatusTypeDef HAL_UART_Transmit_IT(UART_HandleTypeDef *u,const uint8_t *p,ui
 }
 HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef *u,uint8_t *p,uint16_t n)
 { assert(u==&vision_uart && n==1);rx_byte=p;return HAL_OK; }
-bool app_imu_get_euler(float e[3]) { e[0]=e[1]=0;e[2]=yaw;return imu_ok; }
+bool app_imu_get_euler(double e[3]) { e[0]=e[1]=0;e[2]=yaw;return imu_ok; }
 int app_chassis_move(float x,float y,float w)
 { assert(isfinite(x)&&isfinite(y)&&isfinite(w));vx=x;vy=y;omega=w;return 0; }
 void task_work_laser_set(bool on) { if(on&&!laser) ++laser_starts;laser=on; }
@@ -63,8 +74,8 @@ bool task_work_load_config(TaskWorkKind_t kind,TaskWorkConfig_t *c)
 {
     if(!config_ready) return false;
     *c=(TaskWorkConfig_t){.settle_ms=250,.scan_dwell_ms=300,.arm_timeout_ms=3000,.laser_ms=1000,
-        .scan_speed=100,.correction_speed=60,.accel=120,.max_correction_mm=100,
-        .max_correction_yaw=.174532925f,.position_tolerance_mm=3,.yaw_tolerance_rad=.008726646f,
+        .scan_speed=100,.correction_speed=60,.accel=120,.correction_accel=120,.max_correction_mm=100,
+        .max_correction_yaw=.174532925f,.position_tolerance_mm=20,.yaw_tolerance_rad=.008726646f,
         .height_tolerance_mm=10,.max_corrections=4};
     for(unsigned i=0;i<3;++i) {
         float x=kind==WORK_QR?0:80.0f*i;
@@ -119,8 +130,8 @@ static uint8_t make_scene_result(uint8_t *p)
     VisionAlignmentConfig_t *c=&cfg.slot[slot].alignment;
     VisionTransform_t t;assert(alg_vision_transform_from_arm_pose(&cfg.slot[slot].observe_pose,&t));
     float mx=c->reference_map[0]-px,my=c->reference_map[1]-py;
-    float b[3]={cosf(yaw)*mx+sinf(yaw)*my,-sinf(yaw)*mx+cosf(yaw)*my,100};
-    if(nonconverging) { b[0]=20;b[1]=300; }
+    float b[3]={cosf(yaw)*mx+sinf(yaw)*my,-sinf(yaw)*mx+cosf(yaw)*my,100+scene_height_error};
+    if(nonconverging) { b[0]=40;b[1]=300; }
     float e[3]={0};
     for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)e[i]+=t.rotation[j][i]*(b[j]-t.translation[j]);
     p[4]=3;p[6]=s->kind==WORK_QR?0:scene_slot;p[7]=5;
@@ -149,6 +160,8 @@ static void reset(uint32_t base)
     elapsed=0;clock_base=base;px=3350;py=1750;yaw=PI/2;vx=vy=omega=0;
     imu_ok=config_ready=automatic_reply=true;laser=false;laser_starts=arm_stops=pick_calls=place_calls=0;
     nonconverging=arm_wait=false;
+    scene_height_error=0;
+    encoder_distance=1000;translation_scale=1;encoder_ready=true;encoder_age=0;
     scene_slot=2U;
     force_tx=HAL_OK;reply_pending=false;memset(send_count,0,sizeof(send_count));peer_seq=0;
     vision_uart=(UART_HandleTypeDef){.gState=HAL_UART_STATE_READY};
@@ -178,8 +191,9 @@ static void step(bool control)
     if(control&&elapsed%10U==0U) {
         app_chassis_motion_update(.01f);app_chassis_closeloop_update();
         float mid=yaw+.005f*omega;
-        px+=(cosf(mid)*vx-sinf(mid)*vy)*.01f;
-        py+=(sinf(mid)*vx+cosf(mid)*vy)*.01f;yaw+=omega*.01f;
+        px+=(cosf(mid)*vx-sinf(mid)*vy)*.01f*translation_scale;
+        py+=(sinf(mid)*vx+cosf(mid)*vy)*.01f*translation_scale;yaw+=omega*.01f;
+        encoder_distance+=hypotf(vx,vy)*.01f*translation_scale;
     }
     ++elapsed;
 }
@@ -336,8 +350,33 @@ static void test_bucket_transport(void)
     puts("PASS: all bomb selections transport to slot2 and return; rescue skips place");
 }
 
+static void test_height_diagnostics(void)
+{
+    for(int sign=-1;sign<=1;sign+=2) {
+        reset(0);scene_height_error=sign*20.0f;
+        enter_work(WORK_RESCUE,true);
+        until_phase(WORK_PICK,40000);
+        const TaskWorkStatus_t *s=app_task_work_get_status();
+        assert(s->error==WORK_ERR_NONE && s->height_out_of_tolerance);
+        assert(fabsf(s->height_error_mm-sign*20.0f)<.001f);
+        assert(s->corrections>0);
+        assert(hypotf(s->alignment.delta_body[0],s->alignment.delta_body[1])<=20);
+    }
+    /* A new in-tolerance measurement clears the diagnostic after a move. */
+    reset(0);scene_height_error=20;
+    enter_work(WORK_QR,true);until_phase(WORK_WAIT_MOTION,5000);
+    assert(app_task_work_get_status()->height_out_of_tolerance);
+    scene_height_error=0;
+    until_phase(WORK_COMPLETE,30000);
+    assert(!app_task_work_get_status()->height_out_of_tolerance);
+    assert(fabsf(app_task_work_get_status()->height_error_mm)<.001f);
+    puts("PASS: +/-20mm height diagnostics allow XY correction/work and clear after remeasurement");
+}
+
 int main(void)
 {
+    setvbuf(stdout,NULL,_IONBF,0);
+    test_height_diagnostics();
     test_seq_and_events();test_full_course(0);test_full_course(UINT32_MAX-5000U);test_stop_and_errors();
     test_bucket_transport();
     return 0;

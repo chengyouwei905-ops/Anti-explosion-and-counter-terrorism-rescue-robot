@@ -6,15 +6,14 @@
   * 三块职责，互不耦合：
   *   1. 节拍：app_imu_poll() 用 DWT 实测 dt 自限速，**调用频率不敏感**
   *   2. 解算：bsp_imu_read() -> 减零偏及温漂 -> alg_ahrs_update()
-  *   3. 发布：每拍把结果直接写进快照 s_snap；读取侧 app_imu_get_xxx() 直接读它，
-  *            无锁、不关中断，随便哪个上下文调都行
+  *   3. 发布：每拍把结果写进双精度快照 s_snap；读取侧 app_imu_get_xxx() 复制快照
   *
   * 发布/读取约定（刻意保持最简单）：
   *   - 只有 app_imu_poll() 写 s_snap，其它任何地方一律只读
   *   - 读到的可能是上一拍的旧值（最多旧一个 poll 周期，约 1ms）——本项目可以接受
-  *   - 每个字段都是 32 位对齐标量，Cortex-M 上单次读写不会撕裂；极端情况下可能
-  *     读到"新 euler + 旧 gyro"这种跨两拍的组合，对业务无影响
-  *   - 所以不需要序号、不需要重试、不需要关中断
+  *   - double 是 64 位，32 位 MCU 不能保证单次读写原子性。
+  *     发布和复制快照时短暂关中断，并恢复原 PRIMASK；计算和传感器通信不在临界区。
+  *   - 主循环/普通中断均可读取，不自旋等待；NMI/HardFault 中不要调用读取接口。
   *   - 快照里的 yaw 是**连续角**：跨 ±180° 不跳变（179° -> 180° -> 181°），会一直
   *     累加，不再限制在 (-180°, 180°]；roll / pitch 仍是 (-180°, 180°]
   *
@@ -35,12 +34,12 @@
 #include "bsp_imu.h"
 #include "bsp_dwt.h"
 
-/** @brief 开机零偏标定的采样次数（配合下面的 1ms 间隔，至少约 7 秒） */
-#define APP_IMU_CALI_SAMPLES      7000U     //此处给7s的采样时间，保证低零飘
+/** @brief 开机零偏标定的采样次数（配合下面的 1ms 间隔，至少约 8 秒） */
+#define APP_IMU_CALI_SAMPLES      8000U     //此处给8s的采样时间，保证低零飘
 /** @brief 标定采样间隔（ms），BMI088 陀螺 ODR 是 1kHz，刚好每次拿到新数据 */
 #define APP_IMU_CALI_INTERVAL_MS  1U
 /** @brief 标定期间允许的零偏抖动峰峰值（rad/s）。超过就说明板子在被晃，标定作废 */
-#define APP_IMU_CALI_MAX_SPREAD   0.05f
+#define APP_IMU_CALI_MAX_SPREAD   0.05
 
 /**
   * @brief 三轴零偏温度系数，单位 (rad/s)/℃；0 表示禁用该轴，按本机静止实测值填写
@@ -48,13 +47,13 @@
   *        补偿时减去 K * (当前温度 - 标定基准温度)；若三轴共用一个 K，填相同值。
   */
 #ifndef APP_IMU_GYRO_TEMP_COEFF_X
-#define APP_IMU_GYRO_TEMP_COEFF_X  0.0f
+#define APP_IMU_GYRO_TEMP_COEFF_X  0.0
 #endif
 #ifndef APP_IMU_GYRO_TEMP_COEFF_Y
-#define APP_IMU_GYRO_TEMP_COEFF_Y  0.0f
+#define APP_IMU_GYRO_TEMP_COEFF_Y  0.0
 #endif
 #ifndef APP_IMU_GYRO_TEMP_COEFF_Z
-#define APP_IMU_GYRO_TEMP_COEFF_Z  0.000010f
+#define APP_IMU_GYRO_TEMP_COEFF_Z  0.000004
 #endif
 
 /**
@@ -62,43 +61,42 @@
   * @note  陀螺 ODR 是 1000Hz。想把解算频率提到 1kHz 以上：把这里调小，**同时**
   *        改 bsp_imu.c 里陀螺的 ODR（GYRO_BANDWIDTH 那一条）
   */
-#define APP_IMU_MIN_DT_S          0.001f
+#define APP_IMU_MIN_DT_S          0.001
 /**
   * @brief 单拍 dt 上限（秒）—— 夹取用
   * @note  实测 dt 超过它就按它算。目的是兜住断点恢复 / 长时间阻塞那种异常间隔，
   *        而不是"因为调用得慢就不更新姿态"：1s 以内都按真实 dt 积分，不会冻结。
   */
-#define APP_IMU_MAX_DT_S          1.0f
+#define APP_IMU_MAX_DT_S          1.0
 
 /** @brief π / 2π：把两拍之间的 yaw 增量归一化到 (-π, π] 用 */
-#define IMU_PI_F                  3.14159265358979f
-#define IMU_TWO_PI_F              6.28318530717959f
+#define IMU_PI                    3.14159265358979323846
+#define IMU_TWO_PI                6.28318530717958647692
 
 /**
   * @brief 发布给读取侧的姿态快照
-  * @note  只有 app_imu_poll() 写它。读取侧按 volatile 读，保证每次都从内存取最新值
-  *        （编译器不会把它缓存到寄存器里），不加锁、不改中断状态
+  * @note  volatile 保证实际访问内存；64 位字段的一致性由短临界区保证。
   */
 typedef struct
 {
-    float euler[3];    /**< [roll, pitch, yaw]，弧度；**yaw 是连续角**，见下 */
-    float quat[4];     /**< [w, x, y, z] */
-    float gyro[3];     /**< 已减零偏及温漂的角速度，rad/s */
-    float accel[3];    /**< 加速度，m/s^2 */
-    float temp_c;      /**< 芯片温度，℃ */
-    float rate_hz;     /**< 最近一拍的等效采样率，Hz */
+    double euler[3];    /**< [roll, pitch, yaw]，弧度；**yaw 是连续角**，见下 */
+    double quat[4];     /**< [w, x, y, z] */
+    double gyro[3];     /**< 已减零偏及温漂的角速度，rad/s */
+    double accel[3];    /**< 加速度，m/s^2 */
+    double temp_c;      /**< 芯片温度，℃ */
+    double rate_hz;     /**< 最近一拍的等效采样率，Hz */
     bool  valid;       /**< false = 还没有有效姿态 */
 } app_imu_snapshot_t;
 
 static bool          s_ready;
 static bool          s_calibrated;
 static Ahrs_State_t  s_ahrs;
-static float         s_gyro_bias[3];       /**< 基准温度对应的三轴零偏，rad/s */
-static float         s_gyro_ref_temp_c;    /**< 标定首尾温度的均值，℃ */
-static float         s_gyro_cali_start_temp_c; /**< 标定第一个有效样本的温度，℃ */
-static float         s_gyro_cali_end_temp_c;   /**< 标定最后一个有效样本的温度，℃ */
-static float         s_gyro_cali_mean_temp_c;  /**< 标定全部样本的平均温度，℃ */
-static const float   s_gyro_temp_coeff[3] = {
+static double         s_gyro_bias[3];       /**< 基准温度对应的三轴零偏，rad/s */
+static double         s_gyro_ref_temp_c;    /**< 标定全部有效样本的平均温度，℃ */
+static double         s_gyro_cali_start_temp_c; /**< 标定第一个有效样本的温度，℃ */
+static double         s_gyro_cali_end_temp_c;   /**< 标定最后一个有效样本的温度，℃ */
+static double         s_gyro_cali_mean_temp_c;  /**< 标定全部样本的平均温度，℃ */
+static const double   s_gyro_temp_coeff[3] = {
     APP_IMU_GYRO_TEMP_COEFF_X,
     APP_IMU_GYRO_TEMP_COEFF_Y,
     APP_IMU_GYRO_TEMP_COEFF_Z
@@ -115,27 +113,61 @@ static uint32_t      s_err_count;
   *        完全安全）。只有在"长时间不调 poll（>0.3s）且期间转过半圈以上"时，
   *        增量才会判错方向 —— 属于极端情况，正常使用不会碰到
   */
-static float         s_yaw_cont;         /**< 连续 yaw（弧度），会一直累加 */
-static float         s_yaw_prev;         /**< 上一拍解算出的 (-π, π] yaw */
+static double         s_yaw_cont;         /**< 连续 yaw（弧度），会一直累加 */
+static double         s_yaw_prev;         /**< 上一拍解算出的 (-π, π] yaw */
 static bool          s_yaw_cont_ready;   /**< false = 还没有基准拍 */
 
 static volatile app_imu_snapshot_t s_snap;   /**< 最新一次解算结果，读取侧直接读 */
 
+/* 只保护快照搬运。保存/恢复 PRIMASK，避免在原本关中断的调用者中意外开中断。 */
+static void imu_publish_snapshot(const app_imu_snapshot_t *snapshot)
+{
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    s_snap = *snapshot;
+    __set_PRIMASK(primask);
+}
+
+static bool imu_read_vector(const volatile double *values, double *out, uint32_t count)
+{
+    if (out == NULL) {
+        return false;
+    }
+
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    bool valid = s_snap.valid;
+    for (uint32_t k = 0U; k < count; k++) {
+        out[k] = valid ? values[k] : 0.0;
+    }
+    __set_PRIMASK(primask);
+    return valid;
+}
+
+static double imu_read_scalar(const volatile double *value)
+{
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    double result = s_snap.valid ? *value : 0.0;
+    __set_PRIMASK(primask);
+    return result;
+}
+
 /**
   * @brief 开机陀螺零偏标定：静止采样取平均
   * @note  同时用峰峰值判断板子是否真的静止，静止是标定的前提
-  * @note  记录首尾温度，以两者均值作为基准；平均零偏同步折算到此基准温度。
-  *        全部样本的均温仍参与折算，避免非匀速升温时产生额外固定零偏。
+  * @note  温度与陀螺使用同一批样本取算术平均，均温作为温漂补偿基准。
+  *        首尾温度仅保留用于观察，不参与补偿计算。
   */
 static ret_code_t imu_calibrate_gyro(void)
 {
     bsp_imu_data_t data;
-    float       sum[3]  = { 0.0f, 0.0f, 0.0f };
-    float       vmin[3] = { 0.0f, 0.0f, 0.0f };
-    float       vmax[3] = { 0.0f, 0.0f, 0.0f };
-    float       temp_sum = 0.0f;
-    float       temp_start_c = 0.0f;
-    float       temp_end_c = 0.0f;
+    double       sum[3]  = { 0.0, 0.0, 0.0 };
+    double       vmin[3] = { 0.0, 0.0, 0.0 };
+    double       vmax[3] = { 0.0, 0.0, 0.0 };
+    double       temp_sum = 0.0;
+    double       temp_start_c = 0.0;
+    double       temp_end_c = 0.0;
     uint32_t    i;
     uint32_t    k;
     ret_code_t  ret;
@@ -152,7 +184,7 @@ static ret_code_t imu_calibrate_gyro(void)
         temp_end_c = data.temp_c;
 
         for (k = 0U; k < 3U; k++) {
-            float v = data.gyro_radps[k];
+            double v = data.gyro_radps[k];
 
             if (i == 0U) {
                 vmin[k] = v;
@@ -176,15 +208,12 @@ static ret_code_t imu_calibrate_gyro(void)
     /* 全部轴通过后才提交温度和零偏，失败时不保留部分标定结果。 */
     s_gyro_cali_start_temp_c = temp_start_c;
     s_gyro_cali_end_temp_c   = temp_end_c;
-    s_gyro_cali_mean_temp_c  = temp_sum / (float)APP_IMU_CALI_SAMPLES;
-    s_gyro_ref_temp_c       = 0.5f * (temp_start_c + temp_end_c);
+    s_gyro_cali_mean_temp_c  = temp_sum / (double)APP_IMU_CALI_SAMPLES;
+    s_gyro_ref_temp_c       = s_gyro_cali_mean_temp_c;
 
-    /* 平均零偏对应全部样本的均温，而首尾均温在非匀速升温时可能不同。
-     * 将零偏折算到新基准：bias_ref = bias_mean + K * (T_ref - T_mean)。
-     * 后续仍按 gyro = raw - bias_ref - K * (T - T_ref) 补偿。 */
+    /* 平均零偏与平均温度直接配对；运行时 gyro = raw - bias_mean - K * (T - T_mean)。 */
     for (k = 0U; k < 3U; k++) {
-        s_gyro_bias[k] = sum[k] / (float)APP_IMU_CALI_SAMPLES
-                      + s_gyro_temp_coeff[k] * (s_gyro_ref_temp_c - s_gyro_cali_mean_temp_c);
+        s_gyro_bias[k] = sum[k] / (double)APP_IMU_CALI_SAMPLES;
     }
 
     return RET_OK;
@@ -193,32 +222,24 @@ static ret_code_t imu_calibrate_gyro(void)
 int app_imu_init(SPI_HandleTypeDef *hspi)
 {
     ret_code_t ret;
+    app_imu_snapshot_t initial = { .quat = { 1.0, 0.0, 0.0, 0.0 } };
 
     s_ready          = false;
     s_calibrated     = false;
-    s_gyro_ref_temp_c = 0.0f;
-    s_gyro_cali_start_temp_c = 0.0f;
-    s_gyro_cali_end_temp_c   = 0.0f;
-    s_gyro_cali_mean_temp_c  = 0.0f;
+    s_gyro_ref_temp_c = 0.0;
+    s_gyro_cali_start_temp_c = 0.0;
+    s_gyro_cali_end_temp_c   = 0.0;
+    s_gyro_cali_mean_temp_c  = 0.0;
     s_err_count      = 0U;
-    s_yaw_cont       = 0.0f;
-    s_yaw_prev       = 0.0f;
+    s_yaw_cont       = 0.0;
+    s_yaw_prev       = 0.0;
     s_yaw_cont_ready = false;
 
     /* 快照清零：还没解算出姿态之前，读取侧拿到的是全 0 + valid = false */
     for (uint32_t k = 0U; k < 3U; k++) {
-        s_gyro_bias[k]  = 0.0f;
-        s_snap.euler[k] = 0.0f;
-        s_snap.gyro[k]  = 0.0f;
-        s_snap.accel[k] = 0.0f;
+        s_gyro_bias[k] = 0.0;
     }
-    for (uint32_t k = 0U; k < 4U; k++) {
-        s_snap.quat[k] = 0.0f;
-    }
-    s_snap.quat[0] = 1.0f;
-    s_snap.temp_c  = 0.0f;
-    s_snap.rate_hz = 0.0f;
-    s_snap.valid   = false;
+    imu_publish_snapshot(&initial);
 
     /* 1) 跑 BSP：SPI2+DMA 通信、BMI088 初始化（含 WHO_AM_I 校验）*/
     ret = bsp_imu_init(hspi);
@@ -251,13 +272,13 @@ int app_imu_init(SPI_HandleTypeDef *hspi)
   * @note  只用于处理"两拍之间的 yaw 增量"：输入必定落在 (-2π, 2π) 内，
   *        所以一次加减就够，不需要反复缠绕
   */
-static float wrap_pi(float a)
+static double wrap_pi(double a)
 {
-    if (a > IMU_PI_F) {
-        a -= IMU_TWO_PI_F;
+    if (a > IMU_PI) {
+        a -= IMU_TWO_PI;
     }
-    if (a <= -IMU_PI_F) {
-        a += IMU_TWO_PI_F;
+    if (a <= -IMU_PI) {
+        a += IMU_TWO_PI;
     }
     return a;
 }
@@ -265,11 +286,12 @@ static float wrap_pi(float a)
 int app_imu_poll(void)
 {
     bsp_imu_data_t data;
-    float          gyro[3];
-    float          euler[3];
+    app_imu_snapshot_t next = { 0 };
+    double          gyro[3];
+    double          euler[3];
     uint32_t       now_cycle;
-    float          dt_s;
-    float          temp_delta_c;
+    double          dt_s;
+    double          temp_delta_c;
     uint32_t       k;
     ret_code_t     ret;
 
@@ -300,7 +322,7 @@ int app_imu_poll(void)
     }
 
     /* ---- 3) 减零偏及温漂；温差保留符号，升温/降温都能补偿 ---- */
-    temp_delta_c = s_calibrated ? (data.temp_c - s_gyro_ref_temp_c) : 0.0f;
+    temp_delta_c = s_calibrated ? (data.temp_c - s_gyro_ref_temp_c) : 0.0;
     for (k = 0U; k < 3U; k++) {
         gyro[k] = data.gyro_radps[k] - s_gyro_bias[k]
                 - s_gyro_temp_coeff[k] * temp_delta_c;
@@ -312,7 +334,7 @@ int app_imu_poll(void)
     /* ---- 5) 发布：先把 yaw 连续化，再直接写快照；读取侧下一瞬间就能取到最新值 ----
      *      连续化必须在写入侧做（唯一写者、约 1kHz）：1ms 内最多转约 0.5°，
      *      所以两拍增量必定落在 (-π, π] 内，方向不会判错。
-     *      各字段是 32 位对齐标量，写入本身是原子的；读者最多读到旧一拍 */
+     *      先完成局部双精度计算，最后在短临界区内统一发布 */
     alg_ahrs_get_euler(&s_ahrs, euler);
 
     if (!s_yaw_cont_ready) {
@@ -326,98 +348,49 @@ int app_imu_poll(void)
     euler[AHRS_YAW] = s_yaw_cont;               /* 快照里存的是连续角 */
 
     for (k = 0U; k < 3U; k++) {
-        s_snap.euler[k] = euler[k];
-        s_snap.gyro[k]  = gyro[k];
-        s_snap.accel[k] = data.accel_mps2[k];
+        next.euler[k] = euler[k];
+        next.gyro[k]  = gyro[k];
+        next.accel[k] = data.accel_mps2[k];
     }
 
-    /* 四元数先解到局部变量再逐个搬进快照：s_snap 是 volatile，
-     * 不能把它的成员地址直接传给 alg_ahrs_get_quat() */
-    float quat[4];
-    alg_ahrs_get_quat(&s_ahrs, quat);
-    for (k = 0U; k < 4U; k++) {
-        s_snap.quat[k] = quat[k];
-    }
+    alg_ahrs_get_quat(&s_ahrs, next.quat);
 
-    s_snap.temp_c  = data.temp_c;
-    s_snap.rate_hz = 1.0f / dt_s;
-    s_snap.valid   = true;
+    next.temp_c  = data.temp_c;
+    next.rate_hz = 1.0 / dt_s;
+    next.valid   = true;
+    imu_publish_snapshot(&next);
 
     return RET_OK;
 }
 
-bool app_imu_get_euler(float euler_rad[3])
+bool app_imu_get_euler(double euler_rad[3])
 {
-    if (euler_rad == NULL) {
-        return false;
-    }
-    if (!s_snap.valid) {
-        euler_rad[AHRS_ROLL]  = 0.0f;
-        euler_rad[AHRS_PITCH] = 0.0f;
-        euler_rad[AHRS_YAW]   = 0.0f;
-        return false;
-    }
-
-    euler_rad[AHRS_ROLL]  = s_snap.euler[AHRS_ROLL];
-    euler_rad[AHRS_PITCH] = s_snap.euler[AHRS_PITCH];
-    euler_rad[AHRS_YAW]   = s_snap.euler[AHRS_YAW];
-    return true;
+    return imu_read_vector(s_snap.euler, euler_rad, 3U);
 }
 
-bool app_imu_get_quat(float quat[4])
+bool app_imu_get_quat(double quat[4])
 {
-    bool ok;
-
-    if (quat == NULL) {
-        return false;
-    }
-
-    /* valid 只读一次：避免在"写 0"和"返回 true"之间被 poll 更新，出现返回有效却是 0 的组合 */
-    ok = s_snap.valid;
-    for (uint32_t k = 0U; k < 4U; k++) {
-        quat[k] = ok ? s_snap.quat[k] : 0.0f;
-    }
-    return ok;
+    return imu_read_vector(s_snap.quat, quat, 4U);
 }
 
-bool app_imu_get_gyro(float gyro_radps[3])
+bool app_imu_get_gyro(double gyro_radps[3])
 {
-    bool ok;
-
-    if (gyro_radps == NULL) {
-        return false;
-    }
-
-    ok = s_snap.valid;
-    for (uint32_t k = 0U; k < 3U; k++) {
-        gyro_radps[k] = ok ? s_snap.gyro[k] : 0.0f;
-    }
-    return ok;
+    return imu_read_vector(s_snap.gyro, gyro_radps, 3U);
 }
 
-bool app_imu_get_accel(float accel_mps2[3])
+bool app_imu_get_accel(double accel_mps2[3])
 {
-    bool ok;
-
-    if (accel_mps2 == NULL) {
-        return false;
-    }
-
-    ok = s_snap.valid;
-    for (uint32_t k = 0U; k < 3U; k++) {
-        accel_mps2[k] = ok ? s_snap.accel[k] : 0.0f;
-    }
-    return ok;
+    return imu_read_vector(s_snap.accel, accel_mps2, 3U);
 }
 
-float app_imu_get_temp(void)
+double app_imu_get_temp(void)
 {
-    return s_snap.valid ? s_snap.temp_c : 0.0f;
+    return imu_read_scalar(&s_snap.temp_c);
 }
 
-float app_imu_get_rate_hz(void)
+double app_imu_get_rate_hz(void)
 {
-    return s_snap.valid ? s_snap.rate_hz : 0.0f;
+    return imu_read_scalar(&s_snap.rate_hz);
 }
 
 bool app_imu_is_ready(void)

@@ -40,13 +40,13 @@ void app_chassis_closeloop_set_target_ff(float vx, float vy, float yawangle, flo
 
 void app_chassis_closeloop_update(void)
 {
-    float current_yaw[3];
+    double current_yaw[3];
     if (!app_imu_get_euler(current_yaw) || !isfinite(current_yaw[2])) {
         (void)app_chassis_move(0.0f, 0.0f, 0.0f);
         return;
     }
     /* IMU和目标均为连续弧度角；不取最短角，允许执行指定方向的多圈转动。 */
-    angle_pid_t.Actual = current_yaw[2];
+    angle_pid_t.Actual = (float)current_yaw[2];
     angle_pid_t.Target = chassis_closeloop_state.yaw;
     PID_Update(&angle_pid_t);
 

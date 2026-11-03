@@ -49,7 +49,8 @@ Roboarm_Kinematics_Status_t alg_roboarm_forward(const Roboarm_State_t *roboarm_s
         return ROBOARM_KINEMATICS_ERR;
     }
     /* 最后检查joint1本身角度限制 */
-    if ((roboarm_state->joint1_angle < (-0.38888889 * PI)) || (roboarm_state->joint1_angle > (0.3888888889 * PI)))      //-70°~+70°     joint1本身角度限制
+    if (roboarm_state->joint1_angle < ROBOARM_JOINT1_MIN_RAD ||
+        roboarm_state->joint1_angle > ROBOARM_JOINT1_MAX_RAD) /* -78°～+78° */
     {
         return ROBOARM_KINEMATICS_ERR;
     }
@@ -115,23 +116,24 @@ Roboarm_Kinematics_Status_t alg_roboarm_invert(const End_Effector_Pos_t *end_eff
         return ROBOARM_KINEMATICS_ERR;
     }
     /* 先检查joint2 */
-    if (roboarm_state->joint2_angle < ROBOARM_JOINT2_MIN_RAD || roboarm_state->joint2_angle > ROBOARM_JOINT2_MAX_RAD) /* -60..140 degrees */
+    if (roboarm_state->joint2_angle < ROBOARM_JOINT2_MIN_RAD || roboarm_state->joint2_angle > ROBOARM_JOINT2_MAX_RAD) /* -60..150 degrees */
     {
         return ROBOARM_KINEMATICS_ERR;
     }
     /* 再检查joint1和joint2的连杆是否几何冲突 */
     if (((roboarm_state->joint2_angle - roboarm_state->joint1_angle) < ROBOARM_JOINT_DIFF_MIN_RAD) ||
-        ((roboarm_state->joint2_angle - roboarm_state->joint1_angle) > ROBOARM_JOINT_DIFF_MAX_RAD)) /* 30°～150° */
+        ((roboarm_state->joint2_angle - roboarm_state->joint1_angle) > ROBOARM_JOINT_DIFF_MAX_RAD)) /* 20°～160° */
     {
         return ROBOARM_KINEMATICS_ERR;
     }
     /* 最后检查joint1本身角度限制 */
-    if ((roboarm_state->joint1_angle < (-0.38888889 * PI)) || (roboarm_state->joint1_angle > (0.3888888889 * PI)))      //-70°~+70°     joint1本身角度限制
+    if (roboarm_state->joint1_angle < ROBOARM_JOINT1_MIN_RAD ||
+        roboarm_state->joint1_angle > ROBOARM_JOINT1_MAX_RAD) /* -78°～+78° */
     {
         return ROBOARM_KINEMATICS_ERR;
     }
     /* 检查joint3（pitch角度）本身角度限制 */
-    if (roboarm_state->joint3_angle < ROBOARM_JOINT3_MIN_RAD || roboarm_state->joint3_angle > ROBOARM_JOINT3_MAX_RAD) /* -75..75 degrees */
+    if (roboarm_state->joint3_angle < ROBOARM_JOINT3_MIN_RAD || roboarm_state->joint3_angle > ROBOARM_JOINT3_MAX_RAD) /* -70..70 degrees */
     {
         return ROBOARM_KINEMATICS_ERR;
     }

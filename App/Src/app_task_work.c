@@ -8,7 +8,7 @@
 
 #define WORK_TX_TIMEOUT_MS 1000U
 #define WORK_TX_RETRY_MS 20U
-#define WORK_LOCATE_TIMEOUT_MS 23000U
+#define WORK_LOCATE_TIMEOUT_MS 65000U
 #define WORK_SCAN_TIMEOUT_MS 63000U
 #define WORK_ROTATE_SPEED 0.20f
 #define WORK_ROTATE_ACCEL 0.40f
@@ -43,11 +43,11 @@ static void phase_enter(TaskWorkPhase_t phase, uint32_t now)
 
 static bool read_yaw(float *yaw)
 {
-    float euler[3];
+    double euler[3];
     if (!app_imu_get_euler(euler) || !isfinite(euler[2])) {
         return false;
     }
-    *yaw = euler[2];
+    *yaw = (float)euler[2]; /* 作业层的位姿/运动配置仍使用 float。 */
     return true;
 }
 
@@ -198,6 +198,7 @@ static bool validate_config(void)
         !positive(config.scan_speed) || config.scan_speed > 200.0f ||
         !positive(config.correction_speed) || config.correction_speed > 100.0f ||
         !positive(config.accel) || config.accel > 500.0f ||
+        !positive(config.correction_accel) || config.correction_accel > 500.0f ||
         !positive(config.max_correction_mm) || config.max_correction_mm > 300.0f ||
         !positive(config.max_correction_yaw) || config.max_correction_yaw > 0.523599f ||
         !positive(config.position_tolerance_mm) ||
@@ -349,7 +350,7 @@ static bool arm_done(TaskArmStep_t step, uint32_t now)
 
 static void start_alignment(uint32_t now)
 {
-    if (!proto_vision_result_control_ready(&received, 5U, 8.0f) ||
+    if (!proto_vision_result_control_ready(&received, 3U, 16.0f) ||
         (s.kind == WORK_QR ? received.slot_id != 0U : received.slot_id != s.selected_slot) ||
         !alg_vision_alignment_compute(&received, &config.slot[target_slot].alignment,
                                        request_yaw, &s.alignment)) {
@@ -361,12 +362,13 @@ static void start_alignment(uint32_t now)
     float dy = s.alignment.delta_body[1];
     float distance = hypotf(dx, dy);
     float angle = s.alignment.delta_yaw;
-    float height_error = s.alignment.reference_body[2] -
-                         config.slot[target_slot].alignment.desired_reference_body[2];
-    if (distance > config.max_correction_mm || fabsf(angle) > config.max_correction_yaw ||
-        fabsf(height_error) > config.height_tolerance_mm) {
+    s.height_error_mm = s.alignment.reference_body[2] -
+                        config.slot[target_slot].alignment.desired_reference_body[2];
+    s.height_out_of_tolerance = fabsf(s.height_error_mm) > config.height_tolerance_mm;
+    /* 底盘不能修正 Z；高度只作诊断。三维换算/观测范围检查仍在算法层执行。 */
+    if (distance > config.max_correction_mm || fabsf(angle) > config.max_correction_yaw) {
         work_fail(WORK_ERR_ALIGNMENT, now);
-        return; /* 不截断大误差后继续，Z 误差也不能靠平面底盘消除 */
+        return; /* 不截断过大的平面位移或转角后继续。 */
     }
     if (distance <= config.position_tolerance_mm && fabsf(angle) <= config.yaw_tolerance_rad) {
         if (!read_yaw(&anchor_yaw)) {
@@ -395,9 +397,12 @@ static void start_alignment(uint32_t now)
                                          WORK_ROTATE_ACCEL, WORK_ROTATE_ACCEL);
         motion_started(fabsf(angle), WORK_ROTATE_SPEED, WORK_ROTATE_ACCEL, WORK_PREPARE_ARM, now);
     } else {
-        app_chassis_motion_linear_move(distance, atan2f(-dx, dy), config.correction_speed,
-                                       config.accel, config.accel);
-        motion_started(distance, config.correction_speed, config.accel, WORK_PREPARE_ARM, now);
+        /* 时间规划纠偏：距离/方向取本次视觉误差，速度和加减速度在port配置。 */
+        app_chassis_motion_linear_move(
+            distance, atan2f(-dx, dy), config.correction_speed,
+            config.correction_accel, config.correction_accel);
+        /* 原接口无返回值，由motion_started检查是否已进入RUNNING。 */
+        motion_started(distance, config.correction_speed, config.correction_accel, WORK_PREPARE_ARM, now);
     }
 }
 
@@ -418,7 +423,7 @@ static void camera_test_result(void)
          * 不能把底盘XYZ直接填进K230的E系字段。
          */
         received.flags = VISION_POSITION | VISION_CONTROL_READY;
-        received.sample_count = 5U;
+        received.sample_count = 3U;
         const VisionTransform_t *transform = &alignment->body_from_tcp;
         for (unsigned i = 0U; i < 3U; ++i) {
             for (unsigned j = 0U; j < 3U; ++j) {
@@ -498,6 +503,7 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
 
     case WORK_WAIT_MOTION: {
         Chassis_Motion_Result_t result = app_chassis_motion_get_result();
+        s.motion_result = (uint8_t)result;
         if (result == MOTION_RESULT_DONE) {
             if (motion_changes_slot) {
                 current_offset[0] = pending_offset[0];

@@ -51,12 +51,11 @@ typedef enum{
   JOINT_CLAMP = 5
 } Roboarm_Servo_ID_t;
 
-/* 2026-10-31 实测：ID1=480，ID4=443；ID2/ID3 保持原值。 */
 typedef enum{
-  YAW_SERVO_OFFSET = 480,
+  YAW_SERVO_OFFSET = 500,
   JOINT1_OFFSET = 766,
   JOINT2_OFFSET = 960+375,    //375对应90度
-  JOINT3_OFFSET = 443
+  JOINT3_OFFSET = 485
 } Roboarm_Servo_Offset_Position_t;
 
 typedef enum{
@@ -96,9 +95,15 @@ int  app_roboarm_init(UART_HandleTypeDef *huart);
   */
 int  app_roboarm_servo_move_direct(const Roboarm_Servo_t *servos, uint8_t count,
                             uint16_t time_ms);
+/* 同一角度/零偏/位置校验，非阻塞发送；支持仅ID2..4或仅ID1，RET_BUSY时重试。 */
+int app_roboarm_servo_move_direct_it(const Roboarm_Servo_t *servos, uint8_t count,
+                                   uint16_t time_ms);
 
 
 int app_roboarm_servo_move_to(double x, double y, double z, double pitch);
+/* 与 move_to 共用逆解/位置检查；非阻塞发送，RET_BUSY 时由调用方重试。 */
+int app_roboarm_servo_move_to_it(double x, double y, double z, double pitch,
+                                uint16_t time_ms);
 
 /* 实测原始位置，数组顺序固定为 ID 1、2、3、4；不经过角度/零偏转换。
  * 这些姿态只记录用户实测值，不代表已验证各姿态之间的运动路径无碰撞。

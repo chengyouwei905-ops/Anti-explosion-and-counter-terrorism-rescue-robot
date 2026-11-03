@@ -77,6 +77,19 @@ int  app_chassis_move(float speed_x, float speed_y, float omega);
   */
 float app_chassis_get_distance(void);
 
+/* 与get_distance相同的累计路程，并附上编码器反馈的时效及清零代次。
+ * 仅在初始化成功且至少收到一帧有效编码器数据后返回true。
+ * age_ms按HAL tick无符号差值计算；静止时有效的重复计数帧也会刷新时效。
+ * reset_count在重新初始化/里程清零时变化，供在途位移指令检测基准失效。
+ */
+typedef struct {
+    float distance_mm;
+    uint32_t age_ms;
+    uint32_t reset_count;
+    uint32_t frame_id;
+} Chassis_DistanceSample_t;
+bool app_chassis_get_distance_sample(Chassis_DistanceSample_t *out);
+
 /** @brief 里程清零（重新设起点，不影响底盘控制） */
 void app_chassis_reset_distance(void);
 

@@ -32,9 +32,9 @@ extern "C" {
 /** @brief 一次 IMU 采样结果 */
 typedef struct
 {
-    float accel_mps2[3];   /**< 加速度 x/y/z，单位 m/s^2 */
-    float gyro_radps[3];   /**< 角速度 x/y/z，单位 rad/s */
-    float temp_c;          /**< 芯片温度，单位 ℃ */
+    double accel_mps2[3];   /**< 加速度 x/y/z，单位 m/s^2 */
+    double gyro_radps[3];   /**< 角速度 x/y/z，单位 rad/s */
+    double temp_c;          /**< 芯片温度，单位 ℃ */
 } bsp_imu_data_t;
 
 /**

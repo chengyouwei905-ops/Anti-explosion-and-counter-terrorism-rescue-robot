@@ -53,15 +53,15 @@
 
 /* 1：独立QR坐标验证，使用USART10控制机械臂，暂停路线和IMU串口日志。 */
 #ifndef VISION_COORD_DEBUG_ENABLE
-#define VISION_COORD_DEBUG_ENABLE 1
+#define VISION_COORD_DEBUG_ENABLE 0
 #endif
 
 #ifndef CHASSIS_TCP_CONFIRM_DEBUG
-#define CHASSIS_TCP_CONFIRM_DEBUG 1
+#define CHASSIS_TCP_CONFIRM_DEBUG 0
 #endif
 
-#define CORRECT_TCP_QR_X -100
-#define CORRECT_TCP_QR_Y -1150
+#define CORRECT_TCP_QR_X 220
+#define CORRECT_TCP_QR_Y 13
 
 /* USER CODE END PD */
 
@@ -84,16 +84,19 @@ UART_HandleTypeDef huart10;
 
 /* USER CODE BEGIN PV */
 int s_imu_ret;
-float testangle[3] = {0.0f, 0.0f, 0.0f};
-float yawangle = 0.0f;
-float temperature = 0.0f;
+double testangle[3] = {0.0, 0.0, 0.0};
+double yawangle = 0.0;
+double temperature = 0.0;
 float distance = 0.0f;
 volatile uint8_t chassis_motion_count = 0U;
 
 int s_imu_uart_debug_ret;  /* 调试器可查看 RET_OK / RET_BUSY / 错误码 */
 
 /* 每次测试只修改这组XYZ/pitch，控制机械臂与坐标换算共用同一份姿态。 */
-End_Effector_Pos_t vision_arm_pose = {0.0, 250.0, 100.0, -0.304533};
+//End_Effector_Pos_t vision_arm_pose = {0.0, 260.0, 60.0, 0.0};//观察二维码
+End_Effector_Pos_t vision_arm_pose = {154.0, 0.0,   26.0, -1.0};//观察爆炸物
+//End_Effector_Pos_t vision_arm_pose = {180.0, 0.0, 25.0, -0.0};//观察恐怖分子
+//End_Effector_Pos_t vision_arm_pose = {133.537333615, 1.525593299, 82.971289222, -0.338};//观察人质
 int vision_arm_move_ret = RET_NOTREADY;
 volatile VisionResult_t vision_result;       /* K230原始结果，xyz_mm为TCP系坐标 */
 volatile float qr_position_body[3];          /* QR中心相对基座，X右/Y前/Z上，mm */
@@ -320,20 +323,22 @@ int main(void)
       float distance = ((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X) * (arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)) 
                         +((arm_origin_relative_qr[1] - CORRECT_TCP_QR_Y) * (arm_origin_relative_qr[1] - CORRECT_TCP_QR_Y));
       distance = sqrtf(distance);
-      float direction = atan((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X) / (arm_origin_relative_qr[1] - CORRECT_TCP_QR_Y));
+      float direction = atan(fabsf(arm_origin_relative_qr[0] - CORRECT_TCP_QR_X) / fabsf(arm_origin_relative_qr[1] - CORRECT_TCP_QR_Y));
       if((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)<0&&(arm_origin_relative_qr[1]-CORRECT_TCP_QR_Y)<0)direction = -direction;
       if((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)<0&&(arm_origin_relative_qr[1]-CORRECT_TCP_QR_Y)>0)direction = direction - 3.1415926535f;
       if((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)>0&&(arm_origin_relative_qr[1]-CORRECT_TCP_QR_Y)>0)direction = 3.1415926535f-direction;
       if((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)>0&&(arm_origin_relative_qr[1]-CORRECT_TCP_QR_Y)<0)direction = direction;
-      app_chassis_motion_linear_move(distance,direction,100.0f,100.0f,100.0f);
+      //app_chassis_motion_linear_move(distance,direction,100.0f,100.0f,100.0f);
+      app_chassis_motion_linear_move(100.0f, -1.5707963f, 80.0f, 200.0f, 200.0f);
     }
     if (chassis_motion_count >= CHASSIS_MOTION_UPDATE_PERIOD) {
       chassis_motion_count = 0U;
       app_chassis_motion_update(0.01f);
       app_chassis_closeloop_update();
     }
-  }
 #endif
+  }
+
   /* USER CODE END 3 */
 }
 

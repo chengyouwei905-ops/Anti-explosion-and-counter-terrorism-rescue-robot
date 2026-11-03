@@ -23,6 +23,9 @@ static const uint16_t roboarm_servo_offset_position[ROBOARM_DOF] = {
     JOINT3_OFFSET
 };
 
+/* 舵机位置单位；仅容忍坐标舍入/正逆解浮点误差，远小于一格位置。 */
+#define ROBOARM_POSITION_EPSILON 0.1
+
 /* --------------------------------------------------------------------------
  * 组帧 + 发送的公共出口
  * ------------------------------------------------------------------------ */
@@ -111,7 +114,7 @@ int app_roboarm_init(UART_HandleTypeDef *huart)
     alg_roboarm_init();     /* 机械臂运动学参数初始化 */
     app_roboarm_clamp_open();          /* 机械臂夹爪初始化为张开状态 */
     const Roboarm_Servo_t roboarm_servo[ROBOARM_DOF]= {
-        {YAW_SERVO, 0.0},  
+        {YAW_SERVO, 0.0},        
         {JOINT1, 0.0},  
         {JOINT2, 90/57.2958},  
         {JOINT3, 0.0}
@@ -128,11 +131,10 @@ int app_roboarm_init(UART_HandleTypeDef *huart)
  * 注意Roboarm_Servo_t结构体的角度单位为弧度制，且以使机械臂竖直时的朝向为各舵机0度位置（含0点标定逻辑）
  * 不含死区检测，该指令会导致舵机与机械限位相撞，使用时应当注意
  * ------------------------------------------------------------------------ */
-int  app_roboarm_servo_move_direct(const Roboarm_Servo_t *servos, uint8_t count, uint16_t time_ms)
+static int pack_servo_move(const Roboarm_Servo_t *servos, uint8_t count,
+                           uint16_t time_ms, uint8_t *frame, uint8_t capacity,
+                           uint8_t *frame_len)
 {
-    uint8_t frame[PROTO_ROBOARM_MAX_FRAME];
-    uint8_t n;
-
     proto_roboarm_servo_t servos_sendcommand[ROBOARM_DOF + 1];      //用于底层proto控制命令发送端使用的中间变量
 
     if (servos == NULL || count == 0U || count > ROBOARM_DOF + 1U) {
@@ -171,17 +173,67 @@ int  app_roboarm_servo_move_direct(const Roboarm_Servo_t *servos, uint8_t count,
         default:
             return RET_PARAM;
         }
-        /* 先验证浮点结果再转换，避免溢出/NaN 转整数；不静默截断到限位。 */
-        if (!isfinite(position) || position < 0.0 || position > 1000.0) {
+        /* 边界姿态经 XYZ 舍入/逆解后可能略低于 0 或略高于 1000。
+         * 仅吸收极小数值误差，真实越界仍拒绝；验证后再取最近整数位置。
+         */
+        if (!isfinite(position) || position < -ROBOARM_POSITION_EPSILON ||
+            position > 1000.0 + ROBOARM_POSITION_EPSILON) {
             return RET_PARAM;
         }
+        if (position < 0.0) {
+            position = 0.0;
+        } else if (position > 1000.0) {
+            position = 1000.0;
+        }
         servos_sendcommand[i].id = (uint8_t)id;
-        servos_sendcommand[i].position = (uint16_t)position;
+        servos_sendcommand[i].position = (uint16_t)lround(position);
     }
 
-    n = proto_roboarm_pack_servo_move(servos_sendcommand, count, time_ms, frame, (uint8_t)sizeof(frame));
+    *frame_len = proto_roboarm_pack_servo_move(servos_sendcommand, count, time_ms,
+                                              frame, capacity);
+    return *frame_len != 0U ? RET_OK : RET_PARAM;
+}
 
+int app_roboarm_servo_move_direct(const Roboarm_Servo_t *servos, uint8_t count,
+                                 uint16_t time_ms)
+{
+    uint8_t frame[PROTO_ROBOARM_MAX_FRAME];
+    uint8_t n;
+    int result = pack_servo_move(servos, count, time_ms, frame, sizeof(frame), &n);
+    if (result != RET_OK) {
+        return result;
+    }
     return send_frame(frame, n);
+}
+
+int app_roboarm_servo_move_direct_it(const Roboarm_Servo_t *servos, uint8_t count,
+                                   uint16_t time_ms)
+{
+    uint8_t frame[PROTO_ROBOARM_MAX_FRAME];
+    uint8_t n;
+    int result = pack_servo_move(servos, count, time_ms, frame, sizeof(frame), &n);
+    if (result != RET_OK) {
+        return result;
+    }
+    return bsp_uart_send_it(BSP_UART_ROBOARM, frame, n);
+}
+
+int app_roboarm_servo_move_to_it(double x, double y, double z, double pitch,
+                                uint16_t time_ms)
+{
+    if (!isfinite(x) || !isfinite(y) || !isfinite(z) || !isfinite(pitch)) {
+        return RET_PARAM;
+    }
+    const End_Effector_Pos_t target = {x, y, z, pitch};
+    Roboarm_State_t joints;
+    if (alg_roboarm_invert(&target, &joints) != ROBOARM_KINEMATICS_OK) {
+        return RET_ERROR;
+    }
+    const Roboarm_Servo_t servos[ROBOARM_DOF] = {
+        {YAW_SERVO, joints.yaw_angle}, {JOINT1, joints.joint1_angle},
+        {JOINT2, joints.joint2_angle}, {JOINT3, joints.joint3_angle}
+    };
+    return app_roboarm_servo_move_direct_it(servos, ROBOARM_DOF, time_ms);
 }
 
 int app_roboarm_servo_move_to(double x, double y, double z, double pitch)

@@ -34,8 +34,8 @@ int app_imu_uart_debug_init(UART_HandleTypeDef *huart, uint32_t now_ms)
 
 int app_imu_uart_debug_poll(uint32_t now_ms)
 {
-    float euler[3];
-    float temp_c;
+    double euler[3];
+    double temp_c;
     char line[BSP_UART_TX_BUFSIZE];
     int length;
 

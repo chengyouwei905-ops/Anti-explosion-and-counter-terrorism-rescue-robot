@@ -1,0 +1,16 @@
+{
+  "local_links_and_images_checked": 607,
+  "broken_links": [],
+  "source_changes_since_snapshot": [],
+  "browser_errors": [],
+  "screenshots": [
+    "D:\\32\\creature\\STM32H723VGT6test\\build\\vision_manual_support\\qa\\top.png",
+    "D:\\32\\creature\\STM32H723VGT6test\\build\\vision_manual_support\\qa\\qr.png",
+    "D:\\32\\creature\\STM32H723VGT6test\\build\\vision_manual_support\\qa\\parameters.png",
+    "D:\\32\\creature\\STM32H723VGT6test\\build\\vision_manual_support\\qa\\errors.png",
+    "D:\\32\\creature\\STM32H723VGT6test\\build\\vision_manual_support\\qa\\appendix.png",
+    "D:\\32\\creature\\STM32H723VGT6test\\build\\vision_manual_support\\qa\\mobile.png"
+  ],
+  "search_matches": 2,
+  "source_jump_verified": true
+}

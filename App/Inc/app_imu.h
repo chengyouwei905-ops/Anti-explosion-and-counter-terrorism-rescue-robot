@@ -10,9 +10,9 @@
   *          **本层把"节拍"和"读取"彻底分开**：
   *
   *            节拍侧  app_imu_poll()     —— 谁来调、多久调一次都不会错（写者，只能有一个）
-  *            读取侧  app_imu_get_xxx()  —— 任意时刻、任意上下文（含中断）调，无锁、
-  *                                        不关中断，直接读最近一次快照；最坏情况读到
-  *                                        的是上一拍的值（约旧 1ms），本项目可接受
+  *            读取侧  app_imu_get_xxx()  —— 主循环或普通中断读取最近一次双精度快照；
+  *                                        仅复制时短暂关中断，恢复调用前的 PRIMASK。
+  *                                        不自旋等待；不支持在 NMI/HardFault 中读取。
   *
   *          典型用法（两种放法效果一样，A 的节拍更稳，推荐）：
   *            // A. 放在 1ms 定时中断里
@@ -21,10 +21,10 @@
   *            while (1) { (void)app_imu_poll(); }
   *
   *            // 业务代码在任何地方、任何时候取姿态
-  *            float e[3];
+  *            double e[3];
   *            if (app_imu_get_euler(e)) { 此时 e = [roll, pitch, yaw] }
   *
-  *          ⚠️ 欧拉角单位是**弧度**，转角度制乘 57.29578f
+  *          ⚠️ 欧拉角单位是**弧度**，转角度制乘 57.29578
   *          ⚠️ yaw 是**连续角**：跨 ±180° 不跳变（179° -> 180° -> 181°），会一直累加，
   *             不再限制在 (-180°, 180°]；给目标角时要按同一口径给
   *          ⚠️ yaw 没有绝对参考，上电瞬间为 0，之后靠陀螺积分会缓慢漂移
@@ -48,10 +48,11 @@ extern "C" {
   * @brief  初始化 IMU：跑 BSP 驱动 + 开机陀螺零偏/基准温度标定 + 复位姿态解算
   * @param  hspi SPI 句柄（本工程为 &hspi2），需已由 MX_SPI2_Init() 初始化
   * @retval RET_OK 成功；其它见 ret_code_t
-  * @note   本函数会阻塞至少约 7 秒做零偏标定，期间板子必须**静止**
-  *         标定首尾温度的均值作为温漂补偿基准，平均零偏同步折算到此基准温度。
+  * @note   本函数会阻塞至少约 8 秒做零偏标定，期间板子必须**静止**
+  *         全部有效样本的平均温度作为温漂补偿基准，与同批样本的平均零偏配对。
   *         调试器可观察 app_imu.c 中 s_gyro_cali_start_temp_c / s_gyro_cali_end_temp_c，
-  *         s_gyro_cali_mean_temp_c 为全部样本均温，s_gyro_ref_temp_c 为首尾均温。
+  *         s_gyro_cali_mean_temp_c 与 s_gyro_ref_temp_c 均为全部样本均温。
+  *         APP_IMU_GYRO_TEMP_COEFF_X/Y/Z 是预先配置的斜率，开机校准不重新估计它们。
   *         （标定失败不致命：零偏按 0 处理并禁用温漂补偿，可用 app_imu_is_calibrated() 查询）
   */
 int app_imu_init(SPI_HandleTypeDef *hspi);
@@ -73,34 +74,35 @@ int app_imu_init(SPI_HandleTypeDef *hspi);
   *         - 姿态只在"传感器读失败"时才停止更新
   * @note   推荐放进 1ms 定时中断里调用（节拍最稳）；放主循环里空转也同样正确。
   * @note   本函数**不可重入**：同一时刻只能有一个调用者（中断里调了就别再在主循环调）。
-  *         读取侧 app_imu_get_xxx() 不受此限制：任何上下文都能随时调，
-  *         它只读快照、不等写者，既不阻塞也不关中断。
+  *         读取侧 app_imu_get_xxx() 可在主循环和普通中断随时调，
+  *         它只读快照、不等写者；仅搬运 64 位字段时短暂关中断。
   */
 int app_imu_poll(void);
 
 /**
   * @brief  取欧拉角（读最近一次解算结果，任意时刻、任意频率可调）
   * @param  euler_rad 输出 [roll, pitch, yaw]，**弧度**，用 AHRS_ROLL 等枚举当下标
+  *                   所有向量输出缓冲区必须为 double 数组，不可传 float 数组。
   * @note   yaw 是**连续角**（可超过 ±π，跨 ±180° 不跳变）；roll/pitch 在 (-π, π]
   * @retval true  数据有效
   *         false 还没有有效姿态（此时 euler_rad 被清零）
   */
-bool app_imu_get_euler(float euler_rad[3]);
+bool app_imu_get_euler(double euler_rad[3]);
 
 /** @brief 取四元数 [w, x, y, z]；返回 false 时输出清零 */
-bool app_imu_get_quat(float quat[4]);
+bool app_imu_get_quat(double quat[4]);
 
 /** @brief 取角速度（已减掉标定零偏及配置的温漂），单位 rad/s；返回 false 时输出清零 */
-bool app_imu_get_gyro(float gyro_radps[3]);
+bool app_imu_get_gyro(double gyro_radps[3]);
 
 /** @brief 取加速度，单位 m/s^2（含重力）；返回 false 时输出清零 */
-bool app_imu_get_accel(float accel_mps2[3]);
+bool app_imu_get_accel(double accel_mps2[3]);
 
 /** @brief 取芯片温度，单位 ℃；暂无有效数据时返回 0 */
-float app_imu_get_temp(void);
+double app_imu_get_temp(void);
 
 /** @brief 最近一次解算的等效采样率 Hz；暂无有效数据时返回 0。正常应接近 1000 */
-float app_imu_get_rate_hz(void);
+double app_imu_get_rate_hz(void);
 
 /** @brief 姿态解算是否已就绪（app_imu_init 成功后为 true） */
 bool app_imu_is_ready(void);

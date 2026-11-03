@@ -63,12 +63,12 @@
 
 /* ========================= 灵敏度换算系数 ========================= */
 /* 加速度 ±3g：原始值 -> m/s^2（沿用参考例程的官方系数） */
-#define IMU_ACCEL_3G_SEN           0.0008974358974f
+#define IMU_ACCEL_3G_SEN           0.0008974358974
 /* 角速度 ±2000dps：原始值 -> rad/s */
-#define IMU_GYRO_2000_SEN          0.00106526443603169529841533860381f
+#define IMU_GYRO_2000_SEN          0.00106526443603169529841533860381
 /* 温度：原始值 * 0.125 + 23.0 */
-#define IMU_TEMP_FACTOR            0.125f
-#define IMU_TEMP_OFFSET            23.0f
+#define IMU_TEMP_FACTOR            0.125
+#define IMU_TEMP_OFFSET            23.0
 
 /* ========================= 时序参数 ========================= */
 #define IMU_LONG_DELAY_TIME        80U     /**< 软复位后等待，单位 ms */
@@ -492,7 +492,7 @@ ret_code_t bsp_imu_read(bsp_imu_data_t *out)
     for (i = 0U; i < 3U; i++)
     {
         raw = (int16_t)(((uint16_t)buf[2U * i + 1U] << 8) | (uint16_t)buf[2U * i]);
-        out->accel_mps2[i] = (float)raw * IMU_ACCEL_3G_SEN;
+        out->accel_mps2[i] = (double)raw * IMU_ACCEL_3G_SEN;
     }
 
     /* --- 陀螺仪：0x00 起连续 8 字节 = WHO_AM_I + 状态 + 6 字节角速度 --- */
@@ -508,7 +508,7 @@ ret_code_t bsp_imu_read(bsp_imu_data_t *out)
     for (i = 0U; i < 3U; i++)
     {
         raw = (int16_t)(((uint16_t)buf[2U * i + 3U] << 8) | (uint16_t)buf[2U * i + 2U]);
-        out->gyro_radps[i] = (float)raw * IMU_GYRO_2000_SEN;
+        out->gyro_radps[i] = (double)raw * IMU_GYRO_2000_SEN;
     }
 
     /* --- 温度：0x22/0x23，11 位有符号数 --- */
@@ -522,7 +522,7 @@ ret_code_t bsp_imu_read(bsp_imu_data_t *out)
     {
         raw = (int16_t)(raw - 2048);
     }
-    out->temp_c = (float)raw * IMU_TEMP_FACTOR + IMU_TEMP_OFFSET;
+    out->temp_c = (double)raw * IMU_TEMP_FACTOR + IMU_TEMP_OFFSET;
 
     return RET_OK;
 }

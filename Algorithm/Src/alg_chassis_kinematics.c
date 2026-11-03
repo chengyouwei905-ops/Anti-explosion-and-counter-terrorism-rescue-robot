@@ -7,7 +7,8 @@
  */
 void alg_chassis_invert(const Chassis_State_t *state, float wheel_speed[WHEEL_NUMBERS])
 {
-    float sx = state->speed_x;
+    /* 实车纯横移校准：反转横向轮速组合，使 +X 对应向右。 */
+    float sx = -state->speed_x;
     float sy = state->speed_y;
     float kw = CHASSIS_K_MM * state->omega;      /* mm × rad/s = mm/s */
 
@@ -27,7 +28,7 @@ void alg_chassis_forward(const float wheel_speed[WHEEL_NUMBERS], Chassis_State_t
     float lr = wheel_speed[LEFT_REAR_WHELL];
     float rr = wheel_speed[RIGHT_REAR_WHELL];
 
-    state->speed_x = (lf - rf - lr + rr) * 0.25f;
+    state->speed_x = (-lf + rf + lr - rr) * 0.25f;
     state->speed_y = (lf + rf + lr + rr) * 0.25f;
     state->omega   = (rf + rr - lf - lr) * 0.25f / CHASSIS_K_MM;
 }

@@ -127,11 +127,59 @@ int main(void)
         close_to(recovered.joint1_angle,measured.joint1_angle);
         close_to(recovered.joint2_angle,measured.joint2_angle);
         close_to(recovered.joint3_angle,measured.joint3_angle);
+        assert(app_roboarm_servo_move_to(measured_pose.x,measured_pose.y,
+                                         measured_pose.z,measured_pose.pitch)==RET_OK);
+        for(unsigned j=0;j<4;++j) {
+            assert(frame[7+3*j]==j+1 && position(j)==p[j]);
+        }
         assert(app_roboarm_pose_it((Roboarm_Pose_t)i,3000)==RET_OK);
         for(unsigned j=0;j<4;++j) {
             assert(frame[7+3*j]==j+1 && position(j)==p[j]);
         }
     }
+
+    /* Published rounded XYZ/pitch values must survive the full command path,
+     * including poses whose yaw position is exactly zero.
+     */
+    const End_Effector_Pos_t rounded_poses[] = {
+        {0.000000,204.662676,99.824932,-0.217817091},
+        {-225.141372,-6.431771,28.898666,-0.196873140},
+        {222.130620,-6.345761,-41.874941,-1.055575132},
+        {190.624889,-5.445715,20.177960,-0.594808209},
+        {154.215426,-4.405580,-4.916010,-0.950855376},
+        {250.683197,-7.161443,14.658957,-0.234572251},
+        {186.472176,-5.327081,29.339224,-0.900589894},
+        {154.215426,-4.405580176,-4.916010291,-0.950855376}
+    };
+    const unsigned expected_positions[][4] = {
+        {480,755,900,435}, {960,920,780,310}, {0,985,800,535},
+        {0,800,800,425}, {0,735,800,510}, {0,1000,800,339},
+        {0,770,865,563}, {0,735,800,510}
+    };
+    for(unsigned i=0;i<sizeof(rounded_poses)/sizeof(rounded_poses[0]);++i) {
+        const End_Effector_Pos_t *p=&rounded_poses[i];
+        assert(app_roboarm_servo_move_to(p->x,p->y,p->z,p->pitch)==RET_OK);
+        for(unsigned j=0;j<4;++j) {
+            assert(frame[7+3*j]==j+1 && position(j)==expected_positions[i][j]);
+        }
+    }
+
+    /* Numerical tolerance at both endpoints must not admit real overtravel. */
+    const double accepted_positions[] = {0,1000,-0.00005,1000.00005,734.6};
+    const unsigned quantized_positions[] = {0,1000,0,1000,735};
+    servo.servoname=JOINT3;
+    for(unsigned i=0;i<sizeof(accepted_positions)/sizeof(accepted_positions[0]);++i) {
+        servo.angle=(accepted_positions[i]-JOINT3_OFFSET)*.24*radians;
+        assert(app_roboarm_servo_move_direct(&servo,1,3000)==RET_OK);
+        assert(position(0)==quantized_positions[i]);
+    }
+    before=sends;
+    const double rejected_positions[] = {-0.001,1000.001,-0.49,1000.49};
+    for(unsigned i=0;i<sizeof(rejected_positions)/sizeof(rejected_positions[0]);++i) {
+        servo.angle=(rejected_positions[i]-JOINT3_OFFSET)*.24*radians;
+        assert(app_roboarm_servo_move_direct(&servo,1,3000)==RET_PARAM);
+    }
+    assert(sends==before);
     before=sends;
     tx_result=RET_BUSY;
     assert(app_roboarm_pose_it(ROBOARM_POSE_QR_OBSERVE,3000)==RET_BUSY);
@@ -142,6 +190,6 @@ int main(void)
     const proto_roboarm_servo_t invalid[]={{1,1001}};
     assert(app_roboarm_positions_it(invalid,1,3000)==RET_PARAM);
     assert(sends==before);
-    puts("PASS: arm offsets by ID, input guards, clamp units, 35:44 FK/IK, move_to and raw pose IT");
+    puts("PASS: arm offsets, guards, clamp, 35:44 FK/IK, rounded pose commands, endpoint tolerance and raw pose IT");
     return 0;
 }

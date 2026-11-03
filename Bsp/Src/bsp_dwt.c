@@ -19,7 +19,8 @@
 #define DWT_LSR_LOCKIMP_Msk  0x00000001U
 
 static bool  s_ready       = false;
-static float s_us_per_cycle = 1.0f;
+static double s_us_per_cycle = 1.0;
+static double s_s_per_cycle = 1.0;
 
 void bsp_dwt_init(void)
 {
@@ -47,7 +48,8 @@ void bsp_dwt_init(void)
      *    "CM7 CPU frequency"（= SYSCLK >> D1CPRE，这里是 64MHz / 1）——
      *    注意它不是 SystemD2Clock(AXI/AHB)，两者在 D1CPRE ≠ HPRE 时会不一样。
      *    本工程 64MHz 下 1000000/64000000 = 0.015625 是精确的 2 的幂，毫无舍入误差 */
-    s_us_per_cycle = 1000000.0f / (float)SystemCoreClock;
+    s_us_per_cycle = 1000000.0 / (double)SystemCoreClock;
+    s_s_per_cycle  = 1.0 / (double)SystemCoreClock;
 
     s_ready = true;
 }
@@ -62,15 +64,13 @@ uint32_t bsp_dwt_get_cycles(void)
     return DWT->CYCCNT;
 }
 
-float bsp_dwt_cycles_to_us(uint32_t cycles)
+double bsp_dwt_cycles_to_us(uint32_t cycles)
 {
-    /* dt 正常都远小于 2^23（0.1s @64MHz 也才 6.4e6），float 能精确表示，
-     * 所以这里不会有精度问题；只有断点恢复那种超大 interval 才会粗化，
-     * 而那种值本来就会被解算层丢掉 */
-    return (float)cycles * s_us_per_cycle;
+    /* 32 位周期差先转为 double，完整保留整数位，再按双精度比例换算。 */
+    return (double)cycles * s_us_per_cycle;
 }
 
-float bsp_dwt_cycles_to_s(uint32_t cycles)
+double bsp_dwt_cycles_to_s(uint32_t cycles)
 {
-    return ((float)cycles * s_us_per_cycle) * 0.000001f;
+    return (double)cycles * s_s_per_cycle;
 }

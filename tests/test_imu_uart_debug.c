@@ -6,21 +6,21 @@
 #include "app_imu_uart_debug.h"
 #include "bsp_uart.h"
 
-static float yaw;
-static float temperature;
+static double yaw;
+static double temperature;
 static bool imu_valid = true;
 static unsigned it_sends;
 static HAL_StatusTypeDef it_result = HAL_OK;
 
-bool app_imu_get_euler(float euler[3])
+bool app_imu_get_euler(double euler[3])
 {
-    euler[0] = 0.0f;
-    euler[1] = 0.0f;
+    euler[0] = 0.0;
+    euler[1] = 0.0;
     euler[2] = yaw;
     return imu_valid;
 }
 
-float app_imu_get_temp(void) { return temperature; }
+double app_imu_get_temp(void) { return temperature; }
 
 HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef *uart, const uint8_t *data,
                                     uint16_t length, uint32_t timeout)
@@ -64,8 +64,8 @@ int main(void)
     expect_pending(&uart, "time_ms,yaw_rad,temp_c\r\n");
     uart.gState = HAL_UART_STATE_READY;
 
-    yaw = -0.00125f;
-    temperature = 30.125f;
+    yaw = -0.00125;
+    temperature = 30.125;
     assert(app_imu_uart_debug_poll(1099U) == RET_IDLE);
     assert(app_imu_uart_debug_poll(1100U) == RET_OK);
     expect_pending(&uart, "1000,-0.001250000,30.125\r\n");
@@ -73,8 +73,8 @@ int main(void)
     assert(it_sends == 2U);
 
     /* Busy skips one report without overwriting the in-flight bytes or retry spinning. */
-    yaw = 12.5f;
-    temperature = -5.125f;
+    yaw = 12.5;
+    temperature = -5.125;
     assert(app_imu_uart_debug_poll(2100U) == RET_BUSY);
     expect_pending(&uart, "1000,-0.001250000,30.125\r\n");
     uart.gState = HAL_UART_STATE_READY;
@@ -89,13 +89,13 @@ int main(void)
     imu_valid = true;
     yaw = NAN;
     assert(app_imu_uart_debug_poll(5100U) == RET_ERROR);
-    yaw = 0.0f;
+    yaw = 0.0;
     temperature = INFINITY;
     assert(app_imu_uart_debug_poll(6100U) == RET_ERROR);
     assert(it_sends == 3U);
 
     /* A delayed main loop emits one current report, with no burst of catch-up rows. */
-    temperature = 25.0f;
+    temperature = 25.0;
     assert(app_imu_uart_debug_poll(10100U) == RET_OK);
     expect_pending(&uart, "10000,0.000000000,25.000\r\n");
     assert(app_imu_uart_debug_poll(10101U) == RET_IDLE);
