@@ -1,0 +1,39 @@
+打靶多候选筛选更新（兼容CanMV v1.8-75）
+
+请同时更新以下3个文件，保留tasks子目录：
+aim_config.py     -> /data/guanggongsai/aim_config.py
+target_color.py   -> /data/guanggongsai/target_color.py
+tasks/task_aim.py -> /data/guanggongsai/tasks/task_aim.py
+完成后自行重启K230，使导入的模块重新加载。
+
+面积在aim_config.py中调：
+TARGET_MIN_COLOR_PIXELS = 200
+  LAB命中的彩色像素数下限；提高可过滤小面积彩色干扰。
+TARGET_MIN_BBOX_AREA_PX = 900
+  外接矩形width*height下限；900相当于30x30矩形，单位是原始640x480图像像素面积。
+  这不是圆环的物理面积，也不等于圆环彩色部分的像素数。
+两个值同时用于原生find_blobs初筛和候选复核。非原生检测器没有color_pixels字段时，
+用提取轮廓的color_area_px估计值复核；纯外部轮廓未提供颜色面积时保留bbox和几何检查。
+
+纠偏选择顺序：
+1. 保留MCU指定颜色、中心位于TARGET_DETECTION_ROI_RAW_PX内的候选。
+2. 剔除面积不足的候选，其余按外接框面积从大到小排列；同面积优先框中心附近的。
+3. 逐个检查已有轮廓、圆环定位、深度及位置可靠性等条件。
+4. 当前候选不合格就尝试下一个；首个合格候选作为本帧靶标。
+5. 全部不合格时返回具体失败原因，并清空未完成采样；不会输出虚构坐标。
+
+原生颜色检测候选过多时，最多对面积较大的MAX_CANDIDATES个候选提取轮廓，
+本包仍为9，不再只因原始候选数量大于9就整帧报TOO_MANY_TARGET_CANDIDATES。
+若多个真实靶均合格，采用外接框面积最大的一个；请用现有工作框约束当前工位目标。
+此修改针对AIM_MEASURE纠偏。AIM_SCAN顺序扫描仍要求门框内单目标，不合并多个靶的顺序。
+
+本包aim_config.py基于当前IDE缓存配置：保留现有LAB、MAX_POINTS_PER_RING=24、
+MAX_POSITION_3SIGMA_MM=50、工作框(250,170,150,150)等现场参数。
+电脑部署源码保留其原有初筛默认值40/120；本包沿用当前IDE缓存的200/900，优先使用本包。
+HOLE_AREA_RATIO是内孔面积比例，不是总面积下限；本包不改变BOUNDARY_CHECKS_ENABLED策略。
+保留现有多帧采样、协议和MCU流程；不需要修改MCU或更新固件。
+
+离线验证：本地打靶、严格/宽松轮廓和TCP测试入口55项通过；当前缓存参数下12项新测试通过。
+包含真实投影圆环定位、较大无效靶回退、多个合格靶排序、面积过滤和三帧采样检查。
+按v1.8-75的image.blob.pixels和find_blobs接口核对，没有引入新固件接口。
+开发板当前未连接，本次没有向板端上传、运行或重启程序，需自行上传后现场验证。

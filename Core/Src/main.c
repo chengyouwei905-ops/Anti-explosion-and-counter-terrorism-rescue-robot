@@ -53,15 +53,15 @@
 
 /* 1：独立QR坐标验证，使用USART10控制机械臂，暂停路线和IMU串口日志。 */
 #ifndef VISION_COORD_DEBUG_ENABLE
-#define VISION_COORD_DEBUG_ENABLE 0
+#define VISION_COORD_DEBUG_ENABLE 1
 #endif
 
 #ifndef CHASSIS_TCP_CONFIRM_DEBUG
-#define CHASSIS_TCP_CONFIRM_DEBUG 0
+#define CHASSIS_TCP_CONFIRM_DEBUG 1
 #endif
 
-#define CORRECT_TCP_QR_X 220
-#define CORRECT_TCP_QR_Y 13
+#define CORRECT_TCP_QR_X 205
+#define CORRECT_TCP_QR_Y -13
 
 /* USER CODE END PD */
 
@@ -93,8 +93,9 @@ volatile uint8_t chassis_motion_count = 0U;
 int s_imu_uart_debug_ret;  /* 调试器可查看 RET_OK / RET_BUSY / 错误码 */
 
 /* 每次测试只修改这组XYZ/pitch，控制机械臂与坐标换算共用同一份姿态。 */
+End_Effector_Pos_t vision_arm_pose = {137.0, 0.0, 84.0, -0.338 - 0.05};//11月4日测试用观察人质
 //End_Effector_Pos_t vision_arm_pose = {0.0, 260.0, 60.0, 0.0};//观察二维码
-End_Effector_Pos_t vision_arm_pose = {154.0, 0.0,   26.0, -1.0};//观察爆炸物
+//End_Effector_Pos_t vision_arm_pose = {154.0, 0.0,   26.0, -1.0};//观察爆炸物
 //End_Effector_Pos_t vision_arm_pose = {180.0, 0.0, 25.0, -0.0};//观察恐怖分子
 //End_Effector_Pos_t vision_arm_pose = {133.537333615, 1.525593299, 82.971289222, -0.338};//观察人质
 int vision_arm_move_ret = RET_NOTREADY;
@@ -213,9 +214,10 @@ int main(void)
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   bsp_rgb_init();
-  bsp_rgb_set(50, 0, 0);   //上电后先亮红灯，表示系统初始化中
+  bsp_rgb_set(40, 0, 0);   //上电后先亮红灯，表示系统初始化中
   //除mcu外其他部分供电使能
   HAL_GPIO_WritePin(Power_OUT2_EN_GPIO_Port,Power_OUT2_EN_Pin,GPIO_PIN_SET);
+  /* OUT5V_EN直接控制激光，启动时保持关闭。 */
   HAL_GPIO_WritePin(OUT5V_EN_GPIO_Port,OUT5V_EN_Pin,GPIO_PIN_RESET);
   HAL_Delay(2000);    //等待其他设备稳定
   //视觉链路初始化
@@ -257,7 +259,7 @@ int main(void)
   app_chassis_motion_init();
   task_init();   //任务初始化
   HAL_TIM_Base_Start_IT(&htim6);  //闭环开启区域
-  bsp_rgb_set(0, 50, 0);
+  bsp_rgb_set(0, 40, 0);
 
 #if VISION_COORD_DEBUG_ENABLE
   app_vision_set_rx_cb(vision_confirm_function);
@@ -328,8 +330,8 @@ int main(void)
       if((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)<0&&(arm_origin_relative_qr[1]-CORRECT_TCP_QR_Y)>0)direction = direction - 3.1415926535f;
       if((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)>0&&(arm_origin_relative_qr[1]-CORRECT_TCP_QR_Y)>0)direction = 3.1415926535f-direction;
       if((arm_origin_relative_qr[0] - CORRECT_TCP_QR_X)>0&&(arm_origin_relative_qr[1]-CORRECT_TCP_QR_Y)<0)direction = direction;
-      //app_chassis_motion_linear_move(distance,direction,100.0f,100.0f,100.0f);
-      app_chassis_motion_linear_move(100.0f, -1.5707963f, 80.0f, 200.0f, 200.0f);
+      app_chassis_motion_linear_move(distance,direction,100.0f,200.0f,200.0f);
+      //(100.0f, -1.5707963f, 80.0f, 200.0f, 200.0f);
     }
     if (chassis_motion_count >= CHASSIS_MOTION_UPDATE_PERIOD) {
       chassis_motion_count = 0U;
@@ -669,7 +671,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, Power_OUT2_EN_Pin|OUT5V_EN_Pin|SPI2_CS0_Pin|SPI2_CS1_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOC, Power_OUT2_EN_Pin|SPI2_CS0_Pin|SPI2_CS1_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(OUT5V_EN_GPIO_Port, OUT5V_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(Power_OUT1_EN_GPIO_Port, Power_OUT1_EN_Pin, GPIO_PIN_RESET);

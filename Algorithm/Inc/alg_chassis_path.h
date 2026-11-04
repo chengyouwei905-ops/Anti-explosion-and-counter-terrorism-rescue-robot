@@ -19,6 +19,7 @@ typedef struct {
     float max_speed;      /* mm/s */
     float accel;          /* tangential mm/s^2 */
     float decel;          /* tangential mm/s^2 */
+    float right_offset_mm; /* final line only: sideways displacement, right positive; 0 disables */
 } AlgPathSegment_t;
 
 typedef struct {
@@ -42,11 +43,14 @@ typedef struct {
     uint8_t segment;
     uint8_t segment_count;
     bool finished;
+    float direction;          /* absolute translation tangent; may differ from yaw on final line */
 } AlgPathSample_t;
 
 /* One main-loop-owned path, static storage, no allocation or I/O.
  * Copies inputs. Call only while the owner is idle. Invalid input clears plan.
- * Lines and arcs are tangent-connected; arcs preserve the nominal circular
+ * Lines and arcs are tangent-connected by default; a final line may include
+ * right_offset_mm relative to its nominal heading while keeping yaw unchanged.
+ * Its speed profile uses hypot(distance, right_offset_mm). Arcs preserve the nominal circular
  * endpoint and angle, with quintic curvature ramps (not constant-radius arcs).
  * transition_mm/(radius*abs(angle)) must be in [0.001, 0.25] for every arc.
  * |start_yaw| <= 10000 rad avoids unusable float heading resolution.

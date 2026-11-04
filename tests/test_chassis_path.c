@@ -10,8 +10,8 @@
 #include "app_chassis.h"
 
 #define PI 3.14159265358979323846f
-#define LINE(d,v,a,b) {ALG_PATH_LINE,(d),0,0,(v),(a),(b)}
-#define ARC(r,angle,v,a,b) {ALG_PATH_ARC,0,(r),(angle),(v),(a),(b)}
+#define LINE(d,v,a,b) {ALG_PATH_LINE,(d),0,0,(v),(a),(b),0}
+#define ARC(r,angle,v,a,b) {ALG_PATH_ARC,0,(r),(angle),(v),(a),(b),0}
 static const AlgPathLimits_t limits = {30.0f,0.9f,2.0f,400.0f};
 static bool imu_valid = true;
 static float imu_yaw,vx,vy,omega,world_x,world_y;
@@ -284,10 +284,41 @@ static void test_app_translation_path(void)
     near(omega,0,1e-6f);near(imu_yaw,0,1e-6f);
 }
 
+static void test_final_line_offsets(void)
+{
+    for (int sign = -1; sign <= 1; sign += 2) {
+        reset();
+        imu_yaw = 0.7f;
+        AlgPathSegment_t line = LINE(200,80,100,100);
+        line.right_offset_mm = sign * 5.0f;
+        assert(app_chassis_motion_path_start(&line,1,&limits) == MOTION_START_OK);
+        AlgPathSample_t sample;
+        while (app_chassis_motion_get_state() == MOTION_STATE_RUNNING) {
+            tick(.001f);
+            assert(app_chassis_motion_path_get_sample(&sample));
+            near(sample.yaw,0.7f,1e-6f);
+            near(sample.direction,0.7f+atan2f(-sign*5.0f,200.0f),1e-6f);
+            near(imu_yaw,0.7f,1e-6f);
+            assert(hypotf(vx,vy) <= 80.001f);
+        }
+        near(world_x,sign*5*cosf(.7f)-200*sinf(.7f),.03f);
+        near(world_y,sign*5*sinf(.7f)+200*cosf(.7f),.03f);
+        near(sample.distance,hypotf(200,5),1e-4f);
+    }
+    AlgPathSegment_t path[] = {LINE(100,80,100,100),ARC(200,PI/2,80,100,100)};
+    path[0].right_offset_mm = 5;
+    assert(!alg_chassis_path_plan(path,2,&limits,0)); /* Only the final line may drift. */
+    path[0].right_offset_mm = 0; path[1].right_offset_mm = 5;
+    assert(!alg_chassis_path_plan(path,2,&limits,0)); /* No sideways offset on arcs. */
+    path[0].right_offset_mm = NAN;
+    assert(!alg_chassis_path_plan(path,1,&limits,0));
+}
+
 int main(void)
 {
     test_boundary_profiles();test_geometry_and_continuity();test_limits_and_time_steps();test_varied_paths();test_app_execution();
     test_app_translation_path();
+    test_final_line_offsets();
     puts("PASS: continuous paths, fixed-heading translation paths, geometry, limits, boundaries and app lifecycle");
     return 0;
 }

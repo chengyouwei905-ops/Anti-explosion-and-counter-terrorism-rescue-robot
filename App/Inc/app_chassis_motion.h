@@ -80,8 +80,15 @@ void app_chassis_motion_circular_move(float radius, float angle, bool orientatio
  * direction是起始切线相对开始时车头的方向，0向前，+PI/2向左。
  * 例如R200、angle=+PI/2、direction=0：终点在起点左200mm、前200mm。
  * 速度/加减速度为切向mm/s、mm/s^2，沿弧长从零速加速并减速到零。
- * angle=0立即DONE；其余不可规划参数返回INVALID。忙/参数错/IMU无效均不覆盖在途指令。
+ * 与linear_move相同，仅启动一次非阻塞运动；忙/参数错/IMU无效时忽略本次调用。
+ * angle=0立即DONE；其余参数必须可规划，不覆盖在途指令。
  * 仍需周期调用update及closeloop_update；DONE仅表示参考轨迹结束。
+ */
+void app_chassis_motion_arc_move(float radius, float angle, float direction,
+                                 float max_speed, float accel, float decel);
+
+/* 同一圆弧平移的状态返回版本：成功/忙/参数错/IMU无效分别返回
+ * OK/BUSY/INVALID/NO_IMU；参数和运动原理与arc_move一致。
  */
 Chassis_Motion_Start_t app_chassis_motion_arc_translate(float radius, float angle,
                                                        float direction, float max_speed,
@@ -96,6 +103,7 @@ Chassis_Motion_Result_t app_chassis_motion_get_result(void);
 
 /* 连续前进路径：直线与带曲率过渡的转弯，整组零速起止，内部边界不停。
  * 转弯保留名义圆弧的终点/转角，但实际半径随曲率变化。
+ * 末段直线可设置right_offset_mm叠加右移，车头仍沿该段名义航向。
  * 参数会复制；忙时拒绝且不影响在途路径。所有调用仍在主循环。
  * limits.max_omega应低于闭环限幅，为航向误差修正保留余量。
  */
@@ -103,7 +111,8 @@ Chassis_Motion_Start_t app_chassis_motion_path_start(const AlgPathSegment_t *seg
                                                     uint8_t count,
                                                     const AlgPathLimits_t *limits);
 /* 相同连续路径几何/速度规划，整组保持开始时车头朝向，仅平移方向随路径变化。
- * 第一段起始切线仍是开始时车头方向；后续直线沿上一圆弧的出口切线移动。
+ * 默认第一段起始切线是开始时车头方向；后续直线沿上一圆弧的出口切线移动。
+ * 末段直线可设置right_offset_mm叠加相对该段名义方向的右移。
  * 圆弧仍有曲率过渡，并非严格定半径。limits继续约束路径切线的变化。
  * 注意：改变整组车头姿态后，观察姿态/停车参考及后续组的方向需重新核对。
  */
@@ -111,7 +120,8 @@ Chassis_Motion_Start_t app_chassis_motion_path_translate_start(const AlgPathSegm
                                                               uint8_t count,
                                                               const AlgPathLimits_t *limits);
 /* 参考状态/预计总时长，不是实际定位。路径完成后仍可读，stop/init后失效。
- * 平移路径的yaw/omega/angular_accel描述路径切线，车头目标保持开始时yaw。
+ * direction描述实际平移切线；yaw/omega/angular_accel描述名义航向及其变化。
+ * 平移路径的车头目标保持开始时yaw。
  */
 bool app_chassis_motion_path_get_sample(AlgPathSample_t *out);
 

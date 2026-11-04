@@ -93,21 +93,25 @@ IMU继续保持起始航向；运动结束后停稳、视觉复测，视觉容�
 
 ### 圆弧平移：保持车头朝向
 
-`app_chassis_motion_arc_translate(radius, angle, direction, max_speed, accel, decel)`
+`app_chassis_motion_arc_move(radius, angle, direction, max_speed, accel, decel)`
 用于单段严格定半径圆弧平移，车头保持开始时的 IMU 航向。`angle` 是带符号扫角，
 正值向左弯、负值向右弯；`direction` 是起始平移切线相对开始时车头的方向，
 0 向前、+PI/2 向左。半径单位 mm，角度 rad，切向速度 mm/s，加减速度 mm/s²。
 
 ```c
 /* 从静止起步，向左走R200的90度圆弧；终点相对起点左200、前200mm，车头不转。 */
-Chassis_Motion_Start_t result = app_chassis_motion_arc_translate(
+app_chassis_motion_arc_move(
     200.0f, 1.57079632679f, 0.0f, 100.0f, 150.0f, 150.0f);
 ```
 
-只在状态入口启动一次；返回 `MOTION_START_OK` 后等待
-`app_chassis_motion_get_result()` 为 `MOTION_RESULT_DONE`，再进入下一步。
-忙、参数错误、IMU 无效分别返回 `MOTION_START_BUSY`、`MOTION_START_INVALID`、
-`MOTION_START_NO_IMU`。`radius` 必须大于零，零扫角立即完成，速度规划零速起止。
+与 `linear_move()` 一样返回 `void`，只在状态入口启动一次；忙、参数错误、IMU 无效
+时忽略本次调用。通过 `app_chassis_motion_get_state()` 和 `app_chassis_motion_get_result()`
+读取执行状态。需要判断本次是否启动成功时，使用保留的状态返回接口
+`app_chassis_motion_arc_translate()`，成功/忙/参数错误/IMU 无效分别返回
+`MOTION_START_OK`、`MOTION_START_BUSY`、`MOTION_START_INVALID`、`MOTION_START_NO_IMU`。
+两者共用同一规划和更新逻辑：以 `radius * fabsf(angle)` 为总路程，按与直线相同的
+三角形或梯形速度曲线加减速，再用 `direction + sign(angle) * 弧长 / radius`
+计算相对起始车头的平移切线方向。`radius` 必须大于零，零扫角立即完成，速度规划零速起止。
 仍由主循环周期调用 `app_chassis_motion_update()` 和 `app_chassis_closeloop_update()`。
 航向闭环继续修正车头偏差，圆弧切线不会作为车头目标或角速度前馈。
 本接口未另设向心加速度上限，选速时需考虑 `max_speed² / radius` 和实际轮速限幅。
@@ -128,15 +132,20 @@ Chassis_Motion_Start_t result = app_chassis_motion_arc_translate(
 
 ```c
 const AlgPathSegment_t path[] = {
-    {ALG_PATH_LINE, 400.0f, 0.0f, 0.0f, 250.0f, 300.0f, 300.0f},
-    {ALG_PATH_ARC, 0.0f, 200.0f, 1.57079632679f, 140.0f, 200.0f, 250.0f},
-    {ALG_PATH_LINE, 350.0f, 0.0f, 0.0f, 220.0f, 250.0f, 300.0f}
+    {ALG_PATH_LINE, 400.0f, 0.0f, 0.0f, 250.0f, 300.0f, 300.0f, 0.0f},
+    {ALG_PATH_ARC, 0.0f, 200.0f, 1.57079632679f, 140.0f, 200.0f, 250.0f, 0.0f},
+    {ALG_PATH_LINE, 350.0f, 0.0f, 0.0f, 220.0f, 250.0f, 300.0f, 0.0f}
 };
 const AlgPathLimits_t limits = {30.0f, 0.9f, 2.0f, 400.0f};
 Chassis_Motion_Start_t result = app_chassis_motion_path_start(path, 3U, &limits);
 ```
 
 直线的 `distance` 是前进距离；转弯的 `radius` 和带符号 `angle` 定义名义圆弧终点，正角左转、负角右转。转弯使用两端五次多项式曲率过渡，中间保持定曲率，并归一化弧长以保持名义终点和转角；实际半径随位置变化。当前R200、90度、30mm过渡相对名义圆弧的最大几何偏移约6.25mm，场地净空仍需实车检查。
+
+末段直线可设置 `right_offset_mm`，相对该段名义车头方向向右偏移指定距离，
+前进距离和车头目标保持原值；速度规划使用合成路程 `hypotf(distance, right_offset_mm)`。
+MOVE15、MOVE16 分别配置为右移5mm，MOVE13～15仍连续执行。采样的 `direction`
+给出实际平移切线，`yaw` 保留名义车头方向；其余段的横向补偿必须为零。
 
 规划器根据后续限速做前后向速度约束，在段间保留非零速度；曲率变化项 `k' * v^2` 与切向加速度项 `k * a` 分别预留角加速度预算。`max_omega` 是参考角速度上限，应低于闭环1.2rad/s限幅，保留误差修正余量。参考角速度连续且角加速度有界；切向加速度仍采用分段常值，不承诺全程加加速度连续。
 

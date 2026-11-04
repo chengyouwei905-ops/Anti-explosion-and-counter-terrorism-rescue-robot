@@ -192,6 +192,13 @@ void app_chassis_motion_circular_move(float radius, float angle, bool orientatio
     app_chassis_closeloop_set_target(0.0f, 0.0f, g_start_yaw);
 }
 
+void app_chassis_motion_arc_move(float radius, float angle, float direction,
+                                 float max_speed, float accel, float decel)
+{
+    /* 与linear_move一样由update推进；复用弧长加减速规划和起始航向保持。 */
+    (void)app_chassis_motion_arc_translate(radius, angle, direction, max_speed, accel, decel);
+}
+
 Chassis_Motion_Start_t app_chassis_motion_arc_translate(float radius, float angle,
                                                        float direction, float max_speed,
                                                        float accel, float decel)
@@ -254,7 +261,7 @@ void app_chassis_motion_update(float addtime)
         }
         bool translate = g_motion_type == MOTION_TYPE_PATH_TRANSLATION;
         g_target_yaw = translate ? g_start_yaw : reference.yaw;
-        float relative_direction = reference.yaw - actual_yaw;
+        float relative_direction = reference.direction - actual_yaw;
         app_chassis_closeloop_set_target_ff(-reference.speed * sinf(relative_direction),
                                             reference.speed * cosf(relative_direction),
                                             g_target_yaw, translate ? 0.0f : reference.omega);

@@ -15,9 +15,10 @@ typedef struct {
 } WorkReference_t;
 static const WorkReference_t work_reference[WORK_COUNT] = {
     /* 2026-11-01 用户确认；高度相对机械臂基座原点，不是离地高度。 */
-    [WORK_QR] = {true, {43.0f, 1410.0f, 150.0f}},
-    [WORK_BOMB] = {true, {-220.29f, -0.0f, -87.88f}},
-    [WORK_TARGET] = {true, {-710.0f, 50.0f, 81.0f}},
+    /* 晚上qr85，1400，150，白天40 */
+    [WORK_QR] = {true, {75.0f, 1380.0f, 150.0f}},
+    [WORK_BOMB] = {true, {-220.29f, 10.0f, -87.88f}},
+    [WORK_TARGET] = {true, {-710.0f, 20.0f, 70.0f}},
     /* 2026-11-03 到位实测；目标坐标为 -arm_origin_relative_qr，而非原始 TCP XYZ。 */
     [WORK_RESCUE] = {true, {-247.784439f, 19.8726902f, 33.2348137f}}
 };
@@ -38,11 +39,11 @@ static const struct {
 } task_arm_poses[ROBOARM_POSE_COUNT] = {
     [ROBOARM_POSE_QR_OBSERVE]     = {true, {0.0, 260.0, 60.0, 0.0}},
     [ROBOARM_POSE_BOMB_OBSERVE]   = {true, {154.0, 0.0,   26.0, -1.0}},
-    [ROBOARM_POSE_BOMB_PICK]      = {true, {190.0, 0.0, -35.0, -1.25}},
-    [ROBOARM_POSE_BOMB_PLACE]     = {true, {-175.0, 0.0, 50.0, -1.2}},
-    [ROBOARM_POSE_TARGET_OBSERVE] = {true, {180.0, 0.0,  25.0,  0.0}},
-    [ROBOARM_POSE_RESCUE_OBSERVE] = {true, {133.537333615, 0.0, 82.971289222, -0.28}},
-    [ROBOARM_POSE_RESCUE_PICK]    = {true, {185.0, 0.0,  78.0, -0.5}}
+    [ROBOARM_POSE_BOMB_PICK]      = {true, {200.0, 0.0, -23.0, -1.25}},
+    [ROBOARM_POSE_BOMB_PLACE]     = {true, {-174.0, 0.0, 20.0, -1.2}},
+    [ROBOARM_POSE_TARGET_OBSERVE] = {true, {170.0, 0.0,  25.0,  0.0}},
+    [ROBOARM_POSE_RESCUE_OBSERVE] = {true, {133.537333615+2.0, 0.0, 84.0 + 5.0, -0.338 - 0.05}},
+    [ROBOARM_POSE_RESCUE_PICK]    = {true, {195.0, 0.0,  78.0, -0.5}}
 };
 
 typedef enum {
@@ -126,18 +127,18 @@ bool task_work_load_config(TaskWorkKind_t kind, TaskWorkConfig_t *out)
     }
     *out = (TaskWorkConfig_t){
         .settle_ms = 1000U,
-        .scan_dwell_ms = 3000U,
+        .scan_dwell_ms = 5000U,
         .arm_timeout_ms = 30000U,
-        .laser_ms = 2000U,          /* 激光照射时间，后续按实物判定调试 */
-        .scan_speed = 80.0f,
-        /* 100mm右移、80mm/s、200mm/s^2实测距离稳定；短距离仍需视觉复测。 */
-        .correction_speed = 80.0f,
+        .laser_ms = 3000U,          /* 激光照射时间，后续按实物判定调试 */
+        .scan_speed = 100.0f,
+        /* 100mm右移、100mm/s、200mm/s^2实测距离稳定；短距离仍需视觉复测。 */
+        .correction_speed = 100.0f,
         .correction_accel = 200.0f,
-        .accel = 100.0f,
-        .max_correction_mm = 100.0f,
+        .accel = 200.0f,
+        .max_correction_mm = 200.0f,
         .max_correction_yaw = 0.174532925f, /* 单次最大 10 度，超出时报错 */
-        .position_tolerance_mm = 15.0f,
-        .yaw_tolerance_rad = 0.017453293f,  /* 1 度，第一版实际只做平移 */
+        .position_tolerance_mm = 13.0f,
+        .yaw_tolerance_rad = 0.017453293f * 5.0f,  /* 5.0 度，第一版实际只做平移 */
         .height_tolerance_mm =30.0f, /* 仅诊断，不阻止底盘 X/Y 微调或作业。 */
         .max_corrections = 4U
     };
@@ -305,8 +306,8 @@ TaskArmResult_t task_work_arm_poll(TaskWorkKind_t kind, TaskArmStep_t step,
 
 void task_work_laser_set(bool on)
 {
-    /* CubeMX 已配置 PA0 推挽输出；不在此重复初始化引脚。 */
-    HAL_GPIO_WritePin(LASER_GPIO_Port, LASER_Pin, on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    /* 直接通过PC15的5V输出使能控制激光：高电平开启，低电平关闭。 */
+    HAL_GPIO_WritePin(OUT5V_EN_GPIO_Port, OUT5V_EN_Pin, on ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 int task_work_arm_stop_it(void)

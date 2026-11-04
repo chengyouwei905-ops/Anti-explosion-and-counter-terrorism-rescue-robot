@@ -1,0 +1,25 @@
+二维码连续三帧和12mm参数更新
+
+本包基于2026-11-04实际从板端读取的文件，仅针对本次要求修改。
+
+正式比赛入口必须更新：
+  config.py -> /data/guanggongsai/config.py
+  runtime_config.py -> /data/guanggongsai/runtime_config.py
+
+如果也运行独立二维码测试入口，再更新：
+  field_qr_tcp_test.py -> /data/guanggongsai/field_qr_tcp_test.py
+  field_tcp_stream.py -> /data/guanggongsai/field_tcp_stream.py
+  qr_tcp_stream.py -> /data/guanggongsai/qr_tcp_stream.py
+
+新参数：MEASUREMENT_SAMPLES=3，QR_SAMPLE_WINDOW_MS=0，
+QR_MAX_CENTER_DISAGREEMENT_MM=12.0，MAX_POSITION_SCATTER_MM=12.0。
+无效观测打断二维码定位采样，必须重新获得连续3个有效位置。
+独立二维码入口同步连续3帧并引用正式12mm散布配置。
+
+本包保留板端原有QR_MAX_POSITION_3SIGMA_MM=50.0；
+电脑部署源码/IDE缓存原有该项为25.0，本次未改动它们的该项。
+请优先使用本包，避免上传另一版本时一并改变其它现场参数。
+
+MCU两处最大散布验收目前为16mm，可以接收K230的<=12mm结果，无需为兼容性改MCU。
+本次没有向板端写入文件，也没有运行或重启程序。
+请自行上传后重启K230，使新配置重新加载。

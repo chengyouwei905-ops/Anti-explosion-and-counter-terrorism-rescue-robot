@@ -243,8 +243,9 @@ static void test_arc_translation(void)
         for (unsigned d = 0U; d < sizeof(directions) / sizeof(directions[0]); ++d) {
             for (unsigned a = 0U; a < sizeof(angles) / sizeof(angles[0]); ++a) {
                 reset(headings[h]);
-                assert(app_chassis_motion_arc_translate(200.0f, angles[a], directions[d],
-                                                        80.0f, 120.0f, 70.0f) == MOTION_START_OK);
+                app_chassis_motion_arc_move(200.0f, angles[a], directions[d],
+                                            80.0f, 120.0f, 70.0f);
+                assert(app_chassis_motion_get_state() == MOTION_STATE_RUNNING);
                 assert(app_chassis_motion_get_result() == MOTION_RESULT_RUNNING);
                 /* Independent circle geometry in the fixed frame. */
                 double tangent = (double)headings[h] + directions[d];
@@ -271,12 +272,12 @@ static void test_arc_translation(void)
 
     /* A yaw disturbance changes body-frame components, not the world tangent. */
     reset(0.4f);
-    assert(app_chassis_motion_arc_translate(200, PI / 2, 0, 80, 120, 70) == MOTION_START_OK);
+    app_chassis_motion_arc_move(200, PI / 2, 0, 80, 120, 70);
     tick(0.1f);
     float expected_x = cosf(0.4f) * out_vx - sinf(0.4f) * out_vy;
     float expected_y = sinf(0.4f) * out_vx + cosf(0.4f) * out_vy;
     reset(0.4f);
-    assert(app_chassis_motion_arc_translate(200, PI / 2, 0, 80, 120, 70) == MOTION_START_OK);
+    app_chassis_motion_arc_move(200, PI / 2, 0, 80, 120, 70);
     imu_yaw = 0.5f;
     app_chassis_motion_update(0.1f);
     app_chassis_closeloop_update();
@@ -285,7 +286,7 @@ static void test_arc_translation(void)
     assert(out_omega < 0.0f); /* Correct back to 0.4 rad, not toward the tangent. */
 
     reset(0.6f);
-    assert(app_chassis_motion_arc_translate(200, PI / 2, 0, 80, 120, 70) == MOTION_START_OK);
+    app_chassis_motion_arc_move(200, PI / 2, 0, 80, 120, 70);
     finish();
     float x = world_x, y = world_y;
     app_chassis_motion_linear_move(25, 0, 50, 50, 50);
@@ -312,16 +313,21 @@ static void test_arc_translation_lifecycle(void)
     for (unsigned i = 0U; i < sizeof(bad) / sizeof(bad[0]); ++i) {
         assert(app_chassis_motion_arc_translate(bad[i][0], bad[i][1], bad[i][2],
                                                 bad[i][3], bad[i][4], bad[i][5]) == MOTION_START_INVALID);
+        app_chassis_motion_arc_move(bad[i][0], bad[i][1], bad[i][2],
+                                    bad[i][3], bad[i][4], bad[i][5]);
         assert(app_chassis_motion_get_state() == MOTION_STATE_IDLE);
         assert(app_chassis_motion_get_result() == MOTION_RESULT_IDLE);
     }
     imu_valid = false;
     assert(app_chassis_motion_arc_translate(200, 1, 0, 50, 50, 50) == MOTION_START_NO_IMU);
+    app_chassis_motion_arc_move(200, 1, 0, 50, 50, 50);
+    assert(app_chassis_motion_get_state() == MOTION_STATE_IDLE);
+    assert(app_chassis_motion_get_result() == MOTION_RESULT_IDLE);
     imu_valid = true;
     imu_yaw = NAN;
     assert(app_chassis_motion_arc_translate(200, 1, 0, 50, 50, 50) == MOTION_START_NO_IMU);
     imu_yaw = 0.4f;
-    assert(app_chassis_motion_arc_translate(200, 0, PI / 2, 50, 50, 50) == MOTION_START_OK);
+    app_chassis_motion_arc_move(200, 0, PI / 2, 50, 50, 50);
     assert(app_chassis_motion_get_state() == MOTION_STATE_IDLE);
     assert(app_chassis_motion_get_result() == MOTION_RESULT_DONE);
     tick(0.01f);
@@ -339,6 +345,7 @@ static void test_arc_translation_lifecycle(void)
     assert(app_chassis_motion_path_start(NULL, 0, NULL) == MOTION_START_BUSY);
     assert(app_chassis_motion_path_translate_start(NULL, 0, NULL) == MOTION_START_BUSY);
     app_chassis_motion_linear_move(999, 0, 100, 100, 100); /* Busy: old API must not overwrite. */
+    app_chassis_motion_arc_move(100, -PI, PI / 2, 100, 100, 100); /* Busy: ignore the new command. */
     finish();
     near_value(world_x, -200 * cosf(0.4f) - 200 * sinf(0.4f), 0.25f);
     near_value(world_y, -200 * sinf(0.4f) + 200 * cosf(0.4f), 0.25f);

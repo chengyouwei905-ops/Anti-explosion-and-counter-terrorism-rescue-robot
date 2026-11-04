@@ -17,7 +17,7 @@ static bool laser;
 static bool allow_blocking;
 uint32_t HAL_GetTick(void) { return tick; }
 void HAL_GPIO_WritePin(void *port,uint16_t pin,GPIO_PinState state)
-{ assert(port==LASER_GPIO_Port && pin==LASER_Pin);laser=state==GPIO_PIN_SET; }
+{ assert(port==OUT5V_EN_GPIO_Port && pin==OUT5V_EN_Pin);laser=state==GPIO_PIN_SET; }
 int bsp_uart_attach(bsp_uart_id_t id,UART_HandleTypeDef *u)
 { (void)id;(void)u;return RET_OK; }
 int bsp_uart_send(bsp_uart_id_t id,const uint8_t *p,uint16_t n,uint32_t timeout)

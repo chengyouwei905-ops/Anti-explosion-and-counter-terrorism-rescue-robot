@@ -1,0 +1,35 @@
+二维码屏幕调试更新（CanMV v1.8-75）
+
+适用板卡：LCKFB-LSPI-K230-1G-CanMV
+核对固件：K230-v1.8-75-g2ed654466151c7333df8487852516258d7a9c299
+API依据：与该固件提交匹配的 image.pyi；只使用已有 draw_rectangle / draw_string_advanced。
+
+请同时上传以下5个文件，保留 tasks 子目录：
+camera_service.py    -> /data/guanggongsai/camera_service.py
+vision_debug.py      -> /data/guanggongsai/vision_debug.py
+competition_main.py  -> /data/guanggongsai/competition_main.py
+task_manager.py      -> /data/guanggongsai/task_manager.py
+tasks/task_qr.py     -> /data/guanggongsai/tasks/task_qr.py
+完成后自行重启K230，避免模块仍保留旧版本。
+现有启动入口通过 competition_main 启动本程序，无需替换 /sdcard/main.py。
+
+新增显示：
+1. 预览区底部96像素大字状态条：错误为红色、采样为黄色、定位成功为绿色。
+2. 显示当前错误码、连续有效采样数、耗时、中心差及其上限、3sigma及其上限。
+3. 右栏显示二维码检测数量、读出的载荷、当前原因和最近失败原因。
+4. 超时或MCU发送取消后，仍保留最近一次定位失败原因，不只显示TIMEOUT/CANCELLED。
+5. 单帧定位被拒绝时也保留对应的中心差/3sigma诊断值；缺失值显示 --。
+
+注意：右栏的“检测:1个”只表示读到了1个二维码，是否成为有效定位样本看“连续:n/3”。
+“最近失败”是历史诊断；当前已恢复时，大字状态和连续计数会显示当前进度。
+长错误码在底部可能省略，右栏保留完整原始错误码并自动换行。
+
+本包基于本次实际读取的板端源码制作，只增加调试显示及元数据。
+不包含config.py/runtime_config.py，不覆盖现场阈值、颜色参数或采样设置；
+中心差和3sigma上限直接读取板端config.py，散布及采样数读取runtime_config.py。
+保持现有连续3帧采样、定位判定、通信格式和MCU流程；无需更换固件或修改MCU。
+只在显示副本上画字，不在识别原图上画字，不增加二维码检测或求解次数。
+
+离线验证：板端源码版本62项相关测试通过，本地部署源码版本71项通过。
+包含：无效帧清零、拒绝帧诊断值、超时/取消后原因保留、连续3帧成功及既有LCD兼容检查。
+本次没有上传、运行或重启开发板；最终LCD显示仍需自行上传后现场确认。

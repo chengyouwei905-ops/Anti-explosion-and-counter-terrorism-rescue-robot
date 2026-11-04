@@ -9,7 +9,7 @@
 
 typedef struct {
     AlgPathSegment_t input;
-    float x, y, yaw;
+    float x, y, yaw, direction;
     float end_x, end_y;
     float length, offset;
     float beta, curvature_peak, curvature_derivative_peak;
@@ -115,8 +115,8 @@ static void evaluate_geometry(const PathGeometry_t *g, float progress,
 {
     progress = fmaxf(0.0f, fminf(progress, g->length));
     if (g->input.type == ALG_PATH_LINE) {
-        s_sample.x = g->x - progress * sinf(g->yaw);
-        s_sample.y = g->y + progress * cosf(g->yaw);
+        s_sample.x = g->x - progress * sinf(g->direction);
+        s_sample.y = g->y + progress * cosf(g->direction);
         s_sample.yaw = g->yaw;
         *k = *dk = 0.0f;
     } else {
@@ -136,6 +136,7 @@ static void evaluate_geometry(const PathGeometry_t *g, float progress,
         s_sample.y = g->end_y;
         s_sample.yaw = g->yaw + (g->input.type == ALG_PATH_ARC ? g->input.angle : 0.0f);
     }
+    s_sample.direction = g->input.type == ALG_PATH_LINE ? g->direction : s_sample.yaw;
 }
 
 static void update_sample(void)
@@ -170,7 +171,10 @@ bool alg_chassis_path_plan(const AlgPathSegment_t *segments, uint8_t count,
         const AlgPathSegment_t *in = &segments[n];
         if (!isfinite(in->max_speed) || in->max_speed <= 0.0f ||
             !isfinite(in->accel) || in->accel <= 0.0f ||
-            !isfinite(in->decel) || in->decel <= 0.0f) {
+            !isfinite(in->decel) || in->decel <= 0.0f ||
+            !isfinite(in->right_offset_mm) ||
+            (in->right_offset_mm != 0.0f &&
+             (in->type != ALG_PATH_LINE || n + 1U != count))) {
             goto invalid;
         }
         PathGeometry_t *g = &s_geometry[n];
@@ -179,9 +183,10 @@ bool alg_chassis_path_plan(const AlgPathSegment_t *segments, uint8_t count,
             if (!isfinite(in->distance) || in->distance < 0.01f) {
                 goto invalid;
             }
-            g->length = in->distance;
-            g->end_x = x - g->length * sinf(yaw);
-            g->end_y = y + g->length * cosf(yaw);
+            g->length = hypotf(in->distance, in->right_offset_mm);
+            g->direction = yaw + atan2f(-in->right_offset_mm, in->distance);
+            g->end_x = x - in->distance * sinf(yaw) + in->right_offset_mm * cosf(yaw);
+            g->end_y = y + in->distance * cosf(yaw) + in->right_offset_mm * sinf(yaw);
             if (!add_phase(n, 0.0f, g->length, in->max_speed, in->accel, in->decel)) {
                 goto invalid;
             }

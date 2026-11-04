@@ -1,5 +1,6 @@
 #include "task.h"
 #include "app_task_work.h"
+#include "alg_motion_profile.h"
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -28,7 +29,7 @@ static bool task_running;
 static const AlgPathSegment_t task_route[] = {
     {   /* MOVE1：直行 450 mm */
         .type = ALG_PATH_LINE,
-        .distance = 450.0f + 40.0f, /* 50mm 直走实测修正 */
+        .distance = 450.0f + 40.0f - 40.0f, /* 50mm 直走实测修正 */
         .max_speed = 250.0f,
         .accel = 300.0f,
         .decel = 300.0f
@@ -43,7 +44,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE3：直行 305 mm */
         .type = ALG_PATH_LINE,
-        .distance = 305.0f + 20.0f, /* 20mm 直走实测修正 */
+        .distance = 305.0f + 20.0f - 20.0f, /* 20mm 直走实测修正 */
         .max_speed = 250.0f,
         .accel = 300.0f,
         .decel = 300.0f
@@ -58,7 +59,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE5：直行 550 mm */
         .type = ALG_PATH_LINE,
-        .distance = 550.0f - 20.0f + 30.0f, /* 20mm 直走实测修正 */
+        .distance = 550.0f - 20.0f + 30.0f - 15.0f, /* 20mm 直走实测修正 */
         .max_speed = 180.0f,
         .accel = 200.0f,
         .decel = 200.0f
@@ -73,7 +74,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE7：直行 455 mm */
         .type = ALG_PATH_LINE,
-        .distance = 455.0f + 25.0f + 15.0f - 10.0f - 30.0f - 15.0f, /* 25mm 直走实测修正 */
+        .distance = 455.0f + 25.0f + 15.0f - 10.0f - 30.0f - 15.0f - 10.0f - 10.0f - 5.0f + 15.0f, /* 25mm 直走实测修正 */
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
@@ -88,7 +89,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE9：直行 580 mm */
         .type = ALG_PATH_LINE,
-        .distance = 580.0f + 25.0f - 10.0f + 5.0f - 30.0f + 20.0f - 10.0f, /* 直走实测修正 */
+        .distance = 580.0f + 25.0f - 10.0f + 5.0f - 30.0f + 20.0f - 10.0f - 20.0f, /* 直走实测修正 */
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
@@ -108,7 +109,7 @@ static const AlgPathSegment_t task_route[] = {
         .accel = 250.0f,
         .decel = 250.0f
     },
-    {   /* MOVE12：直行 1730 mm */
+    {   /* MOVE12：前进距离保留实测修正，启动时合成横向补偿 */
         .type = ALG_PATH_LINE,
         .distance = 1730.0f - 100.0f + 25.0f + 15.0f + 30.0f - 5.0f, /* 直走实测修正 */
         .max_speed = 300.0f,
@@ -117,7 +118,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE13：直行 375 mm */
         .type = ALG_PATH_LINE,
-        .distance = 375.0f - 10.0f + 100.0f + 100.0f, /* 直走实测修正 */
+        .distance = 375.0f - 10.0f + 100.0f + 100.0f - 50.0f - 20.0f + 8.0f, /* 直走实测修正 */
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
@@ -130,16 +131,18 @@ static const AlgPathSegment_t task_route[] = {
         .accel = 250.0f,
         .decel = 250.0f
     },
-    {   /* MOVE15：直行 780 mm */
+    {   /* MOVE15：前进距离保留实测修正，同时右移 5 mm */
         .type = ALG_PATH_LINE,
-        .distance = 780.0f + 100.0f - 200.0f - 50.0f, /* 直走实测修正 */
+        .distance = 780.0f + 100.0f - 200.0f - 50.0f + 80.0f, /* 直走实测修正 */
+        .right_offset_mm = 0.0f,
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
     },
-    {   /* MOVE16：直行 1600 mm */
+    {   /* MOVE16：前进距离保留实测修正，同时右移 5 mm */
         .type = ALG_PATH_LINE,
-        .distance = 1600.0f - 70.0f + 30.0f + 50.0f,    /* 直走实测修正 */
+        .distance = 1600.0f - 70.0f + 30.0f + 50.0f - 20.0f,    /* 直走实测修正 */
+        .right_offset_mm = 5.0f,
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
@@ -164,6 +167,7 @@ static const AlgPathLimits_t task_path_limits = {
 /* 每组路线结束后停稳 1 秒，再进入对应作业流程。 */
 #define TASK_STOP_DWELL_MS 1000U
 #define TASK_TIMEOUT_MARGIN_MS 2000U
+#define TASK_MOVE12_RIGHT_MM 10.0f
 /* 这些变量只负责一组连续运动，不涉及扫码、机械臂或视觉纠偏。 */
 static uint8_t task_first_segment;       /* 当前组在 task_route 中的起始下标 */
 static uint8_t task_segment_count;       /* 当前组包含几段移动 */
@@ -247,15 +251,36 @@ static void task_start_path(uint8_t first_move, uint8_t count, uint32_t now)
     }
 
     uint8_t first_segment = first_move - 1U;
-    result = app_chassis_motion_path_start(&task_route[first_segment],
-                                          count, &task_path_limits);
-    if (result != MOTION_START_OK) {
-        task_fault();
-        return;
-    }
-    if (!app_chassis_motion_path_get_sample(&sample)) {
-        task_fault();
-        return;
+    if (first_move == 12U && count == 1U) {
+        const AlgPathSegment_t *move = &task_route[first_segment];
+        float distance = hypotf(move->distance, TASK_MOVE12_RIGHT_MM);
+        float direction = atan2f(-TASK_MOVE12_RIGHT_MM, move->distance);
+        MotionProfilePlan_t profile;
+        if (app_chassis_motion_get_state() != MOTION_STATE_IDLE ||
+            !alg_motion_profile_plan(&profile, distance, 0.0f, 0.0f,
+                                      move->max_speed, move->accel, move->decel)) {
+            task_fault();
+            return;
+        }
+        /* 同时前进和右移，direction为负；保持本段开始时的车头朝向。 */
+        app_chassis_motion_linear_move(distance, direction, move->max_speed,
+                                        move->accel, move->decel);
+        if (app_chassis_motion_get_state() != MOTION_STATE_RUNNING) {
+            task_fault();
+            return;
+        }
+        sample.duration = profile.duration;
+    } else {
+        result = app_chassis_motion_path_start(&task_route[first_segment],
+                                              count, &task_path_limits);
+        if (result != MOTION_START_OK) {
+            task_fault();
+            return;
+        }
+        if (!app_chassis_motion_path_get_sample(&sample)) {
+            task_fault();
+            return;
+        }
     }
 
     task_first_segment = first_segment;
@@ -275,9 +300,10 @@ static void task_start_path(uint8_t first_move, uint8_t count, uint32_t now)
  */
 static bool task_move_finished(uint8_t move_number, uint32_t now)
 {
-    AlgPathSample_t sample;
+    AlgPathSample_t sample = {0};
     Chassis_Motion_Result_t result;
     uint8_t last_move = task_first_segment + task_segment_count;
+    bool move12_linear = task_first_segment == 11U && task_segment_count == 1U;
 
     if (!task_path_active || move_number <= task_first_segment ||
         move_number > last_move) {
@@ -290,8 +316,8 @@ static bool task_move_finished(uint8_t move_number, uint32_t now)
         task_fault();
         return false;
     }
-    if (!app_chassis_motion_path_get_sample(&sample) ||
-        sample.segment >= task_segment_count) {
+    if (!move12_linear && (!app_chassis_motion_path_get_sample(&sample) ||
+                          sample.segment >= task_segment_count)) {
         task_fault();
         return false;
     }
@@ -485,14 +511,14 @@ void task_poll(void)
     }
 
     case TASK_MOVE12:
-        /* 直行 1730 mm；到反恐位置后停稳 1 秒。 */
+        /* 沿实测修正后的距离前进，同时右移 5 mm；到反恐位置后停稳 1 秒。 */
         if (task_move_finished(12U, now)) {
             task_state = TASK_CS;
         }
         break;
 
     case TASK_CS: {
-        /* 发 0x30/0x31 -> 微调并复测对准 -> PA0 高电平照射 -> 关闭激光。 */
+        /* 发 0x30/0x31 -> 微调并复测对准 -> OUT5V_EN 高电平照射 -> 关闭激光。 */
         TaskWorkResult_t result = app_task_work_poll(WORK_TARGET, now);
         if (result == WORK_DONE) {
             task_start_path(13U, 3U, now);
@@ -517,7 +543,7 @@ void task_poll(void)
         break;
 
     case TASK_MOVE15:
-        /* 直行 780 mm；到救援位置后停稳 1 秒。 */
+        /* 前进并右移 5 mm；到救援位置后停稳 1 秒。 */
         if (task_move_finished(15U, now)) {
             task_state = TASK_RESCUE;
         }
@@ -535,7 +561,7 @@ void task_poll(void)
     }
 
     case TASK_MOVE16:
-        /* 直行 1600 mm；到终点后停稳 1 秒。 */
+        /* 前进并右移 5 mm；到终点后停稳 1 秒。 */
         if (task_move_finished(16U, now)) {
             task_state = TASK_END;
         }

@@ -53,7 +53,7 @@
 #define APP_IMU_GYRO_TEMP_COEFF_Y  0.0
 #endif
 #ifndef APP_IMU_GYRO_TEMP_COEFF_Z
-#define APP_IMU_GYRO_TEMP_COEFF_Z  0.000004
+#define APP_IMU_GYRO_TEMP_COEFF_Z  0.00000080
 #endif
 
 /**

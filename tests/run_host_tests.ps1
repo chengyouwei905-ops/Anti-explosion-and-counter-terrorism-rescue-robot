@@ -30,6 +30,7 @@ try {
         @{ Name="uart_it"; Includes=@("-Itests/uart_stubs", "-IBsp/Inc", "-IApp/Inc", "-ICommon/Inc", "-IProtocol/Inc", "-IAlgorithm/Inc");
            Sources=@("Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c", "App/Src/app_chassis.c", "Protocol/Src/proto_chassis.c", "Algorithm/Src/alg_chassis_kinematics.c") },
         @{ Name="task_path"; Includes=$taskIncludes; Sources=@("Protocol/Src/proto_vision.c") + $motionSources },
+        @{ Name="task_move12"; Includes=$taskIncludes; Sources=@("Protocol/Src/proto_vision.c") + $motionSources },
         @{ Name="vision_result"; Includes=@("-IProtocol/Inc", "-IAlgorithm/Inc", "-ICommon/Inc"); Sources=$resultSources },
         @{ Name="task_vision"; Includes=$taskIncludes;
            Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
