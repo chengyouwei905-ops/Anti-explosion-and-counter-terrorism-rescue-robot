@@ -47,8 +47,6 @@ static void until_config_phase(TaskWorkPhase_t phase,unsigned limit)
         if(automatic_reply && reply_pending && elapsed-tx_time>=300U &&
            (!proto_vision_is_scan(tx_cmd) || status->phase==WORK_WAIT_SCAN)) {
             last_payload_len=make_scene_result(last_payload);
-            /* The legacy scene fixture sends five samples; production requires three. */
-            if(proto_vision_is_measure(tx_cmd)) last_payload[7]=3U;
             deliver(VISION_CMD_RESULT,last_payload,last_payload_len);
             deliver(VISION_CMD_RESULT,last_payload,last_payload_len);
             reply_pending=false;
@@ -66,7 +64,7 @@ static void production_startup(uint32_t base)
     use_production_config=true;override_yaw=false;
     for(unsigned kind=0;kind<WORK_COUNT;++kind) {
         reset(base);automatic_reply=false;enter_work((TaskWorkKind_t)kind,false);
-        until_config_phase(kind==WORK_QR ? WORK_WAIT_LOCATE : WORK_SCAN_DWELL,5000);
+        until_config_phase(kind==WORK_QR ? WORK_WAIT_LOCATE : WORK_WAIT_SCAN,5000);
         assert(app_task_work_get_status()->error==WORK_ERR_NONE);
         const uint8_t commands[]={VISION_CMD_QR,VISION_CMD_BOMB_SCAN,
             VISION_CMD_TARGET_SCAN,VISION_CMD_RESCUE_SCAN};

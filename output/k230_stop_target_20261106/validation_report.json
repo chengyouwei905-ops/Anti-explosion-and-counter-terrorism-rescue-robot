@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-06",
+  "timezone": "Asia/Hong_Kong",
+  "status": "passed_host_checks",
+  "k230_python_unittest": {
+    "passed": 9,
+    "source_files_syntax_checked": 48
+  },
+  "mcu_host_tests": {
+    "task_stop_scan": "passed",
+    "task_config": "passed",
+    "task_camera_test": "passed",
+    "bomb_arm_split": "passed",
+    "chassis_motion": "passed"
+  },
+  "mcu_stop_scan_scenarios": 36,
+  "firmware_build": {
+    "status": "passed",
+    "configuration": "Debug",
+    "compiler": "arm-none-eabi-gcc 14.3.1",
+    "directory": "build/target_arm_split",
+    "flash_bytes": 120800,
+    "dtcm_bytes": 11760
+  },
+  "git_diff_check": "passed",
+  "mcu_flashed": false,
+  "k230_uploaded_or_run": false,
+  "hardware_validation_required": [
+    "actual image detection",
+    "stop timing",
+    "return-position error",
+    "bucket/laser/rescue execution"
+  ]
+}

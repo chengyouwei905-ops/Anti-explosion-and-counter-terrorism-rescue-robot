@@ -21,13 +21,15 @@ static bool result_pending;
 static uint32_t phase_ms, request_ms, motion_timeout_ms;
 static uint32_t last_tx_ms;
 static bool tx_tried, arm_entered;
-static bool scan_started, scan_complete;
+static bool scan_complete;
 static uint8_t target_slot; /* 内部下标 0..2，线上序号 1..3 */
 static float current_offset[2];
 static float pending_offset[2];
 static float anchor_yaw, request_yaw;
 static TaskWorkPhase_t motion_next, settle_next;
 static bool motion_changes_slot;
+static bool motion_is_correction;
+static float correction_offset[2], pending_correction[2]; /* 扫描起点坐标系，X右/Y前。 */
 static bool cancel_vision, cancel_arm, cancel_hook;
 static bool cancel_hook_entered;
 static uint32_t cancel_ms, cancel_try_ms;
@@ -273,7 +275,13 @@ static bool send_request(uint8_t cmd, uint32_t now)
         return false;
     }
     uint8_t seq;
-    int result = app_vision_send_with_seq(cmd, NULL, 0U, &seq);
+    const uint8_t scan_payload[4] = {
+        0U, (uint8_t)(target_slot + 1U),
+        (uint8_t)config.scan_dwell_ms, (uint8_t)(config.scan_dwell_ms >> 8)
+    };
+    bool scanning = proto_vision_is_scan(cmd);
+    int result = app_vision_send_with_seq(cmd, scanning ? scan_payload : NULL,
+                                          scanning ? sizeof(scan_payload) : 0U, &seq);
     if (result == RET_BUSY) {
         return false;
     }
@@ -330,6 +338,7 @@ static void move_offset(float x, float y, TaskWorkPhase_t next, uint32_t now)
     pending_offset[0] = x;
     pending_offset[1] = y;
     motion_changes_slot = true;
+    motion_is_correction = false;
     app_chassis_motion_linear_move(distance, direction, config.scan_speed, config.accel, config.accel);
     motion_started(distance, config.scan_speed, config.accel, next, now);
 }
@@ -378,10 +387,13 @@ static void start_alignment(uint32_t now)
     }
     if (distance <= config.position_tolerance_mm &&
         (!correct_yaw || fabsf(angle) <= config.yaw_tolerance_rad)) {
-        if (!read_yaw(&anchor_yaw)) {
+        float yaw;
+        if (!read_yaw(&yaw)) {
             work_fail(WORK_ERR_IMU, now);
             return;
         }
+        /* 非QR作业保留进入扫描时的坐标轴，返回时撤销本区纠偏。 */
+        if (s.kind == WORK_QR) anchor_yaw = yaw;
         if (s.kind == WORK_QR) {
             phase_enter(WORK_TRAVEL_ARM, now);
         } else if (s.kind == WORK_TARGET) {
@@ -399,11 +411,16 @@ static void start_alignment(uint32_t now)
     }
     ++s.corrections;
     motion_changes_slot = false;
+    motion_is_correction = false;
     if (correct_yaw && fabsf(angle) > config.yaw_tolerance_rad) {
         app_chassis_motion_circular_move(0.0f, angle, true, WORK_ROTATE_SPEED,
                                          WORK_ROTATE_ACCEL, WORK_ROTATE_ACCEL);
         motion_started(fabsf(angle), WORK_ROTATE_SPEED, WORK_ROTATE_ACCEL, WORK_PREPARE_ARM, now);
     } else {
+        float rotation = request_yaw - anchor_yaw;
+        pending_correction[0] = cosf(rotation) * dx - sinf(rotation) * dy;
+        pending_correction[1] = sinf(rotation) * dx + cosf(rotation) * dy;
+        motion_is_correction = s.kind != WORK_QR;
         /* 时间规划纠偏：距离/方向取本次视觉误差，速度和加减速度在port配置。 */
         app_chassis_motion_linear_move(
             distance, atan2f(-dx, dy), config.correction_speed,
@@ -455,7 +472,9 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
     if (s.phase == WORK_IDLE || (s.phase == WORK_COMPLETE && s.kind != kind)) {
         s = (TaskWorkStatus_t){.kind = kind};
         result_pending = false;
-        scan_started = scan_complete = false;
+        scan_complete = false;
+        motion_is_correction = false;
+        correction_offset[0] = correction_offset[1] = 0.0f;
         target_slot = 0U;
         current_offset[0] = current_offset[1] = 0.0f;
         task_work_laser_set(false);
@@ -469,7 +488,11 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
     if (s.phase == WORK_ERROR) {
         return WORK_FAILED;
     }
-    if (result_pending && received.status != VISION_SUCCESS) {
+    bool scan_miss = result_pending && received.status == VISION_FAILURE &&
+                     received.reason == VISION_REASON_SCAN_NOT_TARGET &&
+                     proto_vision_is_scan(received.task_cmd) &&
+                     (s.phase == WORK_WAIT_SCAN || s.phase == WORK_SCAN_DWELL);
+    if (result_pending && received.status != VISION_SUCCESS && !scan_miss) {
         s.vision_reason = received.reason;
         work_fail(WORK_ERR_VISION, now);
         return WORK_FAILED;
@@ -516,6 +539,11 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
                 current_offset[0] = pending_offset[0];
                 current_offset[1] = pending_offset[1];
             }
+            if (motion_is_correction) {
+                correction_offset[0] += pending_correction[0];
+                correction_offset[1] += pending_correction[1];
+                motion_is_correction = false;
+            }
             /* 下一步观察姿态也会执行停稳等待；返回路线时单独停稳。 */
             if (motion_next == WORK_COMPLETE) {
                 settle_next = WORK_COMPLETE;
@@ -533,10 +561,8 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
         if (arm_done(ARM_OBSERVE, now)) {
             if (s.kind == WORK_QR || scan_complete) {
                 settle_next = WORK_SEND_LOCATE;
-            } else if (!scan_started) {
-                settle_next = WORK_SEND_SCAN;
             } else {
-                settle_next = WORK_SCAN_DWELL;
+                settle_next = WORK_SEND_SCAN;
             }
             phase_enter(WORK_SETTLE, now);
         }
@@ -550,43 +576,49 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
 
     case WORK_SEND_SCAN:
         if (send_request(scan_command(), now)) {
-            scan_started = true;
-            phase_enter(WORK_SCAN_DWELL, now);
+            phase_enter(WORK_WAIT_SCAN, now);
         }
         break;
 
     case WORK_SCAN_DWELL:
+    case WORK_WAIT_SCAN:
+#if TASK_WORK_CAMERA_TEST
+        camera_test_result(); /* 第一个停车位即模拟命中，不扫描后续位置。 */
+#endif
+        {
+            float yaw;
+            if (!read_yaw(&yaw) || fabsf(yaw - request_yaw) > WORK_OBSERVE_YAW_TOLERANCE) {
+                work_fail(WORK_ERR_OBSERVATION_MOVED, now);
+                break;
+            }
+        }
         if (result_pending) {
-            phase_enter(WORK_SELECT_SLOT, now);
-        } else if ((uint32_t)(now - phase_ms) >= config.scan_dwell_ms) {
-            if (target_slot < 2U) {
-                ++target_slot;
-                phase_enter(WORK_MOVE_SLOT, now);
+            if (received.slot_id != target_slot + 1U) {
+                work_fail(WORK_ERR_DATA, now);
+            } else if (scan_miss) {
+                result_pending = false;
+                if (target_slot < 2U) {
+                    ++target_slot;
+                    phase_enter(WORK_MOVE_SLOT, now);
+                } else {
+                    s.vision_reason = received.reason;
+                    work_fail(WORK_ERR_VISION, now); /* 三位均未命中，不假报完成。 */
+                }
             } else {
-                phase_enter(WORK_WAIT_SCAN, now);
+                phase_enter(WORK_SELECT_SLOT, now);
             }
         }
         break;
 
-    case WORK_WAIT_SCAN:
-#if TASK_WORK_CAMERA_TEST
-        camera_test_result(); /* 三个观察位走完后，模拟扫描成功并选择第1位。 */
-#endif
-        if (result_pending) {
-            phase_enter(WORK_SELECT_SLOT, now);
-        }
-        break;
-
     case WORK_SELECT_SLOT:
-        if (!result_pending || received.slot_id < 1U || received.slot_id > 3U) {
+        if (!result_pending || received.slot_id != target_slot + 1U) {
             work_fail(WORK_ERR_DATA, now);
             break;
         }
         s.selected_slot = received.slot_id;
-        target_slot = received.slot_id - 1U;
         result_pending = false;
         scan_complete = true;
-        phase_enter(WORK_MOVE_SLOT, now);
+        phase_enter(WORK_SEND_LOCATE, now); /* 已在当前位停稳，无需折返/重发观察姿态。 */
         break;
 
     case WORK_SEND_LOCATE:
@@ -658,11 +690,32 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
         break;
 
     case WORK_RETURN:
-        /* 从选中观察位回到该作业区的路线停车点，下一段原路线才仍然成立。
-         * 不撤销视觉微调：各 slot 的期望坐标必须对应同一地图基准和航向。
-         */
-        move_offset(0.0f, 0.0f, WORK_COMPLETE, now);
+        /* 非QR作业撤销扫描位移和本区成功执行的视觉平移，回到开始扫描的位置。 */
+        if (s.kind == WORK_QR) {
+            move_offset(0.0f, 0.0f, WORK_COMPLETE, now);
+        } else {
+            move_offset(-correction_offset[0], -correction_offset[1], WORK_RETURN_YAW, now);
+        }
         break;
+
+    case WORK_RETURN_YAW: {
+        float yaw;
+        if (!read_yaw(&yaw)) {
+            work_fail(WORK_ERR_IMU, now);
+            break;
+        }
+        float angle = anchor_yaw - yaw;
+        if (fabsf(angle) <= WORK_OBSERVE_YAW_TOLERANCE) {
+            settle_next = WORK_COMPLETE;
+            phase_enter(WORK_SETTLE, now);
+        } else {
+            motion_changes_slot = motion_is_correction = false;
+            app_chassis_motion_circular_move(0.0f, angle, true, WORK_ROTATE_SPEED,
+                                             WORK_ROTATE_ACCEL, WORK_ROTATE_ACCEL);
+            motion_started(fabsf(angle), WORK_ROTATE_SPEED, WORK_ROTATE_ACCEL, WORK_COMPLETE, now);
+        }
+        break;
+    }
 
     case WORK_COMPLETE:
         s.alignment_valid = false; /* 即将回到路线运动，保留数值仅供回看 */

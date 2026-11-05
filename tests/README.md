@@ -1,5 +1,13 @@
 # 底盘运动模块本机测试
 
+2026-11-06逐位停稳命中即作业：`./tests/run_host_tests.ps1 -TestNames task_stop_scan,task_config,task_camera_test,bomb_arm_split,chassis_motion`。
+`task_stop_scan`覆盖排爆/打靶/救援、目标在1/2/3位、时钟回绕及有/无纠偏的36组场景，
+验证命中即结束扫描、每位只在停车时请求、放桶/照射/夹紧救援、回扫描起点及航向，再进入下一段MOVE。
+另检查旧SEQ/错位回包、三位无目标、模型故障、无回包保持停车和超时、航向变化及总停。
+K230交付代码回归：`python -B tests/test_k230_stop_scan.py`，模拟检测结果与时钟，验证真实factory/manager/protocol，
+涵盖QR目标缓存、三种作业/停车位、非目标、空位、稳定帧、歧义、异常、取消、暂停及旧空载荷兼容。
+共享视觉场景桩已更新为当前3帧定位结果和4字节逐位扫描请求；硬件图像识别和实车运动仍需联调。
+
 排爆/打靶/救援机械臂拆分回归：`./tests/run_host_tests.ps1 -TestNames bomb_arm_split`。
 编译实际port、机械臂应用、正逆解及协议，验证夹取后/放置前/放置后收回三处先ID2/3/4再ID1，
 通过发送帧及正解检查中间/最终坐标、夹爪时机、每段等待、第二段BUSY重试/错误/取消/超时和tick回绕，

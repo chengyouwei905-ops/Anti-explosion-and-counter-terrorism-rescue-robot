@@ -500,7 +500,7 @@ void task_poll(void)
         break;
 
     case TASK_EXPLOSIVE: {
-        /* 发 0x20 扫描三处 -> 按序号选位 -> 发 0x21 -> 微调 -> 夹取/放置。 */
+        /* 逐位停稳发0x20，命中即0x21/纠偏/夹取放桶；回扫描起点后进入MOVE12。 */
         TaskWorkResult_t result = app_task_work_poll(WORK_BOMB, now);
         if (result == WORK_DONE) {
             task_start_path(12U, 1U, now);
@@ -518,7 +518,7 @@ void task_poll(void)
         break;
 
     case TASK_CS: {
-        /* 发 0x30/0x31 -> 微调并复测对准 -> OUT5V_EN 高电平照射 -> 关闭激光。 */
+        /* 逐位停稳发0x30，命中即0x31/纠偏/照射关光；回扫描起点再进入MOVE13。 */
         TaskWorkResult_t result = app_task_work_poll(WORK_TARGET, now);
         if (result == WORK_DONE) {
             task_start_path(13U, 3U, now);
@@ -550,7 +550,7 @@ void task_poll(void)
         break;
 
     case TASK_RESCUE: {
-        /* 预留 0x40/0x41；模型未就绪 reason=9 时停止，不假装作业成功。 */
+        /* 逐位停稳发0x40，命中即0x41/纠偏/夹取；夹紧回扫描起点再进入MOVE16。 */
         TaskWorkResult_t result = app_task_work_poll(WORK_RESCUE, now);
         if (result == WORK_DONE) {
             task_start_path(16U, 1U, now);

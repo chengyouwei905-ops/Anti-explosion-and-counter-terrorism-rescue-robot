@@ -4,7 +4,9 @@
 #include "proto_vision.h"
 #include <stddef.h>
 
-/* MCU_VISION_HANDOFF.md，2026-10-29，版本 1。全部任务请求为空载荷。 */
+/* 版本1结果帧。扫描请求4字节：[0=沿用QR目标, 停车位1..3, 窗口ms低字节, 高字节]。
+ * QR/定位/取消仍为空载荷；扫描成功返回当前位，失败reason=20表示该位非目标。
+ */
 enum {
     VISION_CMD_QR = 0x10,
     VISION_CMD_BOMB_SCAN = 0x20,
@@ -20,6 +22,7 @@ enum {
     VISION_SUCCESS = 0, VISION_FAILURE = 1,
     VISION_CANCELLED = 2, VISION_OBSERVATION = 3
 };
+enum { VISION_REASON_SCAN_NOT_TARGET = 20 };
 enum {
     VISION_POSITION = 0x01, VISION_CONTROL_READY = 0x02,
     VISION_QUATERNION = 0x04, VISION_NORMAL = 0x08,

@@ -18,7 +18,7 @@ typedef enum { ARM_WAITING, ARM_DONE, ARM_FAILED } TaskArmResult_t;
 
 typedef struct {
     /* 相对该作业区路线停车点，沿停车时底盘 X右/Y前 的三个观察位置。
-     * 数组顺序必须与扫描稳定首次出现的 1/2/3 顺序一致，每次仅让一个目标进入门。
+     * 数组顺序就是MCU停车位1/2/3；停稳后逐位识别，命中目标即结束扫描。
      * QR 只使用 slot[0]，不执行扫描。
      */
     struct {
@@ -27,7 +27,7 @@ typedef struct {
         VisionAlignmentConfig_t alignment;
     } slot[3];
     uint32_t settle_ms;
-    uint32_t scan_dwell_ms;
+    uint32_t scan_dwell_ms; /* 每个停车位的K230识别窗口，ms；非盲目等待/移动计时。 */
     uint32_t arm_timeout_ms;
     uint32_t laser_ms;
     float scan_speed, correction_speed, accel; /* accel用于扫描/换位/返回 */
@@ -45,7 +45,8 @@ typedef enum {
     WORK_WAIT_SCAN, WORK_SELECT_SLOT, WORK_SEND_LOCATE, WORK_WAIT_LOCATE,
     WORK_ALIGN, WORK_PICK, WORK_PLACE, WORK_LASER, WORK_TRAVEL_ARM,
     WORK_RETURN, WORK_COMPLETE, WORK_ERROR,
-    WORK_MOVE_TO_BUCKET /* 夹球并抬臂后，移到第二个爆炸物位置 */
+    WORK_MOVE_TO_BUCKET, /* 夹球并抬臂后，移到第二个爆炸物位置 */
+    WORK_RETURN_YAW /* 返回扫描起点位置后恢复进入扫描时的航向 */
 } TaskWorkPhase_t;
 typedef enum {
     WORK_ERR_NONE, WORK_ERR_CONFIG, WORK_ERR_TX, WORK_ERR_TIMEOUT,

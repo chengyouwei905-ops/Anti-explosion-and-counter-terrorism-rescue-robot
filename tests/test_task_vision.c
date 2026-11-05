@@ -31,6 +31,7 @@ static float picked_x, picked_y, placed_x, placed_y;
 static float scene_height_error;
 static HAL_StatusTypeDef force_tx;
 static uint8_t tx_cmd,tx_seq,peer_seq;
+static uint8_t tx_slot;
 static uint32_t tx_time;
 static bool reply_pending;
 static unsigned send_count[256];
@@ -46,7 +47,13 @@ HAL_StatusTypeDef HAL_UART_Transmit_IT(UART_HandleTypeDef *u,const uint8_t *p,ui
 {
     if (force_tx!=HAL_OK) return force_tx;
     assert(u==&vision_uart && n>=6 && p[0]==0xaa && p[1]==0x55);
-    assert(p[2]==0 && n==6 && proto_vision_crc8(p+2,n-3)==p[n-1]);
+    assert(proto_vision_crc8(p+2,n-3)==p[n-1]);
+    if(proto_vision_is_scan(p[4])) {
+        assert(p[2]==4 && n==10 && p[5]==0 && p[6]>=1 && p[6]<=3);
+        assert((p[7]+256U*p[8])>=250U && (p[7]+256U*p[8])<=10000U);
+        tx_slot=p[6];
+        assert(app_chassis_motion_get_state()==MOTION_STATE_IDLE);
+    } else { assert(p[2]==0 && n==6);tx_slot=0; }
     u->test_tx_ptr=p;u->test_tx_len=n;u->gState=HAL_UART_STATE_BUSY_TX;
     tx_cmd=p[4];tx_seq=p[3];tx_time=elapsed;++send_count[tx_cmd];
     reply_pending=tx_cmd!=VISION_CMD_CANCEL;
@@ -124,7 +131,11 @@ static uint8_t make_scene_result(uint8_t *p)
 {
     const TaskWorkStatus_t *s=app_task_work_get_status();
     result_header(p,tx_cmd,tx_seq,0,0);
-    if(proto_vision_is_scan(tx_cmd)) {p[6]=scene_slot;return 15;}
+    if(proto_vision_is_scan(tx_cmd)) {
+        p[6]=tx_slot;
+        if(tx_slot!=scene_slot) {p[3]=VISION_FAILURE;p[14]=VISION_REASON_SCAN_NOT_TARGET;}
+        return 15;
+    }
     TaskWorkConfig_t cfg;assert(task_work_load_config(s->kind,&cfg));
     unsigned slot=s->kind==WORK_QR?0:scene_slot-1U;
     VisionAlignmentConfig_t *c=&cfg.slot[slot].alignment;
@@ -134,7 +145,7 @@ static uint8_t make_scene_result(uint8_t *p)
     if(nonconverging) { b[0]=40;b[1]=300; }
     float e[3]={0};
     for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)e[i]+=t.rotation[j][i]*(b[j]-t.translation[j]);
-    p[4]=3;p[6]=s->kind==WORK_QR?0:scene_slot;p[7]=5;
+    p[4]=3;p[6]=s->kind==WORK_QR?0:scene_slot;p[7]=3;
     unsigned off=15;for(unsigned i=0;i<3;++i){put_float(p+off,e[i]);off+=4;}
     float d=anchor[s->kind][2]-yaw;
     if(s->kind==WORK_QR) {
