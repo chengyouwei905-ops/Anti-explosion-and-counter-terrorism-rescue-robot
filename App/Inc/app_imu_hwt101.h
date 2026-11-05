@@ -14,7 +14,7 @@
 
 /* 当前实车倒装，统一取反后对外仍为逆时针正；正装时改为1.0。 */
 #ifndef APP_IMU_HWT101_YAW_SIGN
-#define APP_IMU_HWT101_YAW_SIGN (-1.0)
+#define APP_IMU_HWT101_YAW_SIGN (1.0)
 #endif
 
 int app_imu_hwt101_init(UART_HandleTypeDef *huart);
