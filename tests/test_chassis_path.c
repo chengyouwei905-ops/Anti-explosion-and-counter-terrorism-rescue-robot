@@ -18,9 +18,9 @@ static float imu_yaw,vx,vy,omega,world_x,world_y;
 bool app_chassis_get_distance_sample(Chassis_DistanceSample_t *out)
 { (void)out;assert(!"time-based paths must not read encoder mileage");return false; }
 
-bool app_imu_get_euler(double e[3])
+bool app_imu_hwt101_getangle(double *yaw_rad)
 {
-    e[0]=e[1]=0; e[2]=imu_yaw; return imu_valid;
+    *yaw_rad=imu_yaw; return imu_valid;
 }
 int app_chassis_move(float x,float y,float w)
 {

@@ -1,7 +1,7 @@
 #ifndef __TASK_H_
 #define __TASK_H_
 
-#include "app_imu.h"                //调用poll驱动角度数据刷新供closeloop使用
+#include "app_imu_hwt101.h"         //主循环调用poll，底盘与作业共用HWT101航向
 #include "app_chassis.h"            //需要调用poll以驱动getdisance供motion使用
 #include "app_chassis_closeloop.h"  //需要调用角度环poll供motion使用
 #include "app_chassis_motion.h"     //task主要使用调用函数来源之一，直接控制底盘的闭环移动

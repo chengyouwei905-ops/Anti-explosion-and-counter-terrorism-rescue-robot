@@ -74,7 +74,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE7：直行 455 mm */
         .type = ALG_PATH_LINE,
-        .distance = 455.0f + 25.0f + 15.0f - 10.0f - 30.0f - 15.0f - 10.0f - 10.0f - 5.0f + 15.0f, /* 25mm 直走实测修正 */
+        .distance = 455.0f + 25.0f + 15.0f - 10.0f - 30.0f - 15.0f - 10.0f - 10.0f - 5.0f + 15.0f + 20.0f, /* 25mm 直走实测修正 */
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
@@ -118,7 +118,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE13：直行 375 mm */
         .type = ALG_PATH_LINE,
-        .distance = 375.0f - 10.0f + 100.0f + 100.0f - 50.0f - 20.0f + 8.0f, /* 直走实测修正 */
+        .distance = 375.0f - 10.0f + 100.0f + 100.0f - 50.0f - 20.0f + 8.0f + 8.0f, /* 直走实测修正 */
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
@@ -131,9 +131,9 @@ static const AlgPathSegment_t task_route[] = {
         .accel = 250.0f,
         .decel = 250.0f
     },
-    {   /* MOVE15：前进距离保留实测修正，同时右移 5 mm */
+    {   /* MOVE15：前进距离保留实测修正，同时可以设置右移 */
         .type = ALG_PATH_LINE,
-        .distance = 780.0f + 100.0f - 200.0f - 50.0f + 80.0f, /* 直走实测修正 */
+        .distance = 780.0f + 100.0f - 200.0f - 50.0f + 80.0f - 50.0f, /* 直走实测修正 */
         .right_offset_mm = 0.0f,
         .max_speed = 300.0f,
         .accel = 250.0f,
@@ -167,7 +167,7 @@ static const AlgPathLimits_t task_path_limits = {
 /* 每组路线结束后停稳 1 秒，再进入对应作业流程。 */
 #define TASK_STOP_DWELL_MS 1000U
 #define TASK_TIMEOUT_MARGIN_MS 2000U
-#define TASK_MOVE12_RIGHT_MM 10.0f
+#define TASK_MOVE12_RIGHT_MM 0.0f
 /* 这些变量只负责一组连续运动，不涉及扫码、机械臂或视觉纠偏。 */
 static uint8_t task_first_segment;       /* 当前组在 task_route 中的起始下标 */
 static uint8_t task_segment_count;       /* 当前组包含几段移动 */

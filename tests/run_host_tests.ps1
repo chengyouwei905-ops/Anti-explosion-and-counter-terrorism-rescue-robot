@@ -15,6 +15,8 @@ try {
     $taskIncludes = @("-Itests/vision_stubs", "-Itests/uart_stubs", "-ICore/Inc", "-Itests/stubs",
                       "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IProtocol/Inc", "-IAlgorithm/Inc")
     $cases = @(
+        @{ Name="imu_hwt101"; Includes=@("-Itests/hwt101_stubs", "-Itests/uart_stubs", "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IProtocol/Inc", "-IAlgorithm/Inc");
+           Sources=@("App/Src/app_imu_hwt101.c", "Protocol/Src/proto_hwt101.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $motionSources },
         @{ Name="imu"; Includes=@("-Itests/imu_stubs", "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IAlgorithm/Inc");
            Sources=@("Algorithm/Src/alg_ahrs.c") },
         @{ Name="imu_uart_debug"; Includes=@("-Itests/vision_stubs", "-Itests/uart_stubs", "-IApp/Inc", "-IBsp/Inc", "-ICommon/Inc", "-IAlgorithm/Inc");

@@ -16,7 +16,7 @@ typedef struct {
 static const WorkReference_t work_reference[WORK_COUNT] = {
     /* 2026-11-01 用户确认；高度相对机械臂基座原点，不是离地高度。 */
     /* 晚上qr85，1400，150，白天40 */
-    [WORK_QR] = {true, {75.0f, 1380.0f, 150.0f}},
+    [WORK_QR] = {true, {55.0f, 1380.0f, 150.0f}},
     [WORK_BOMB] = {true, {-220.29f, 10.0f, -87.88f}},
     [WORK_TARGET] = {true, {-710.0f, 20.0f, 70.0f}},
     /* 2026-11-03 到位实测；目标坐标为 -arm_origin_relative_qr，而非原始 TCP XYZ。 */

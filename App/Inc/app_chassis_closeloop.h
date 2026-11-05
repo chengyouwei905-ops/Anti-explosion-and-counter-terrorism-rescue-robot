@@ -1,6 +1,8 @@
 #ifndef __APP_CHASSIS_CLOSELOOP_H
 #define __APP_CHASSIS_CLOSELOOP_H
 
+#include <stdbool.h>
+
 #define APP_CHASSIS_MAX_OMEGA_RADPS 1.2f
 
 typedef struct {
@@ -12,6 +14,8 @@ typedef struct {
 
 /* 初始化后默认目标为零平移速度、0 rad航向，可直接周期调用update。 */
 void app_chassis_closeloop_init(void);
+/* 底盘/运动规划/视觉作业共用的HWT101航向，连续弧度角，首帧为0。 */
+bool app_chassis_closeloop_get_yaw(double *yaw_rad);
 /* 保持航向：同时将角速度前馈清零。 */
 void app_chassis_closeloop_set_target(float vx, float vy, float yawangle);
 /* 跟踪运动中的航向，同时使用规划角速度前馈。 */

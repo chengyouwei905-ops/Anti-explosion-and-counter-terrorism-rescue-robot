@@ -88,6 +88,10 @@ void Error_Handler(void);
 #define Chassis_TX_GPIO_Port GPIOA
 #define Chassis_RX_Pin GPIO_PIN_10
 #define Chassis_RX_GPIO_Port GPIOA
+#define IMU_HWT101_RX_Pin GPIO_PIN_0
+#define IMU_HWT101_RX_GPIO_Port GPIOE
+#define IMU_HWT101_TX_Pin GPIO_PIN_1
+#define IMU_HWT101_TX_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 

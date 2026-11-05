@@ -54,7 +54,7 @@ HAL_StatusTypeDef HAL_UART_Transmit_IT(UART_HandleTypeDef *u,const uint8_t *p,ui
 }
 HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef *u,uint8_t *p,uint16_t n)
 { assert(u==&vision_uart && n==1);rx_byte=p;return HAL_OK; }
-bool app_imu_get_euler(double e[3]) { e[0]=e[1]=0;e[2]=yaw;return imu_ok; }
+bool app_imu_hwt101_getangle(double *yaw_rad) { *yaw_rad=yaw;return imu_ok; }
 int app_chassis_move(float x,float y,float w)
 { assert(isfinite(x)&&isfinite(y)&&isfinite(w));vx=x;vy=y;omega=w;return 0; }
 void task_work_laser_set(bool on) { if(on&&!laser) ++laser_starts;laser=on; }

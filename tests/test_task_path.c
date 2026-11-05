@@ -26,7 +26,7 @@ bool app_chassis_get_distance_sample(Chassis_DistanceSample_t *out)
 
 uint32_t HAL_GetTick(void) { return clock_base + elapsed_ms; }
 void app_vision_set_rx_cb(proto_vision_frame_cb_t cb) { proto_vision_set_cb(cb); }
-bool app_imu_get_euler(double e[3]) { e[0]=e[1]=0;e[2]=imu_yaw;return imu_valid; }
+bool app_imu_hwt101_getangle(double *yaw_rad) { *yaw_rad=imu_yaw;return imu_valid; }
 int app_chassis_move(float x,float y,float w)
 {
     assert(isfinite(x) && isfinite(y) && isfinite(w));

@@ -1,6 +1,5 @@
 #include "app_task_work.h"
 #include "app_vision.h"
-#include "app_imu.h"
 #include "app_chassis_motion.h"
 #include "app_chassis_closeloop.h"
 #include <math.h>
@@ -43,11 +42,11 @@ static void phase_enter(TaskWorkPhase_t phase, uint32_t now)
 
 static bool read_yaw(float *yaw)
 {
-    double euler[3];
-    if (!app_imu_get_euler(euler) || !isfinite(euler[2])) {
+    double current_yaw;
+    if (!app_chassis_closeloop_get_yaw(&current_yaw) || !isfinite(current_yaw)) {
         return false;
     }
-    *yaw = (float)euler[2]; /* 作业层的位姿/运动配置仍使用 float。 */
+    *yaw = (float)current_yaw; /* 作业层的位姿/运动配置仍使用 float。 */
     return true;
 }
 

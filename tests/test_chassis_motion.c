@@ -26,10 +26,9 @@ bool app_chassis_get_distance_sample(Chassis_DistanceSample_t *out)
     return true;
 }
 
-bool app_imu_get_euler(double euler[3])
+bool app_imu_hwt101_getangle(double *yaw_rad)
 {
-    euler[0] = euler[1] = 0.0f;
-    euler[2] = imu_yaw;
+    *yaw_rad = imu_yaw;
     return imu_valid;
 }
 

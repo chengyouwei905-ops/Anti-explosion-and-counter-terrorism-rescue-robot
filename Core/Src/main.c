@@ -27,6 +27,7 @@
 #include "app_chassis.h"
 #include "app_roboarm.h"
 #include "app_imu.h"
+#include "app_imu_hwt101.h"
 #include "app_imu_uart_debug.h"
 #include "alg_vision_align.h"
 #include "bsp_rgb.h"
@@ -53,12 +54,18 @@
 
 /* 1：独立QR坐标验证，使用USART10控制机械臂，暂停路线和IMU串口日志。 */
 #ifndef VISION_COORD_DEBUG_ENABLE
-#define VISION_COORD_DEBUG_ENABLE 1
+#define VISION_COORD_DEBUG_ENABLE 0
 #endif
 
 #ifndef CHASSIS_TCP_CONFIRM_DEBUG
-#define CHASSIS_TCP_CONFIRM_DEBUG 1
+#define CHASSIS_TCP_CONFIRM_DEBUG 0
 #endif
+
+/* BMI088保留供单独调试；默认不初始化、不标定、不轮询，底盘只用HWT101。 */
+#ifndef APP_IMU_BMI088_ENABLE
+#define APP_IMU_BMI088_ENABLE 0
+#endif
+#define BMI088_UART_DEBUG_ACTIVE (APP_IMU_BMI088_ENABLE && APP_IMU_UART_DEBUG_ENABLE)
 
 #define CORRECT_TCP_QR_X 205
 #define CORRECT_TCP_QR_Y -13
@@ -79,11 +86,13 @@ DMA_HandleTypeDef hdma_spi2_tx;
 TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart7;
+UART_HandleTypeDef huart8;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart10;
 
 /* USER CODE BEGIN PV */
-int s_imu_ret;
+int s_imu_ret = RET_NOTREADY;
+int s_imu_hwt101_ret;
 double testangle[3] = {0.0, 0.0, 0.0};
 double yawangle = 0.0;
 double temperature = 0.0;
@@ -118,6 +127,7 @@ static void MX_USART1_UART_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_USART10_UART_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_UART8_Init(void);
 /* USER CODE BEGIN PFP */
 
 void vision_confirm_function(const proto_vision_frame_t *frame);
@@ -212,6 +222,7 @@ int main(void)
   MX_SPI2_Init();
   MX_USART10_UART_Init();
   MX_TIM6_Init();
+  MX_UART8_Init();
   /* USER CODE BEGIN 2 */
   bsp_rgb_init();
   bsp_rgb_set(40, 0, 0);   //上电后先亮红灯，表示系统初始化中
@@ -234,31 +245,33 @@ int main(void)
   }
   app_chassis_move(0.0f, 0.0f, 0.0f);       //初始化底盘模块
   /* 机械臂链路初始化（USART10：PE3=TX / PE2=RX）*/
-#if VISION_COORD_DEBUG_ENABLE || !APP_IMU_UART_DEBUG_ENABLE
+#if VISION_COORD_DEBUG_ENABLE || !BMI088_UART_DEBUG_ACTIVE
   if (app_roboarm_init(&huart10) != RET_OK)
   {
     Error_Handler();
   }
 #endif
 
+#if APP_IMU_BMI088_ENABLE
   for (uint32_t i = 0U; i < 3U; i++)
   {
     s_imu_ret = app_imu_init(&hspi2);
-    //s_imu_ret = RET_OK;
     if (s_imu_ret == RET_OK)
     {
       break;
     }
     HAL_Delay(50);   /* 失败就等一会儿重来（整个初始化会重跑一遍） */
   }
-  if (s_imu_ret != RET_OK)
+  /* 可选BMI088调试初始化失败只保留错误码，不阻止HWT101和底盘启动。 */
+  if (s_imu_ret == RET_OK)
   {
-    Error_Handler();
+    (void)app_imu_poll();
   }
-  (void)app_imu_poll();
+#endif
   app_chassis_motion_init();
   task_init();   //任务初始化
   HAL_TIM_Base_Start_IT(&htim6);  //闭环开启区域
+
   bsp_rgb_set(0, 40, 0);
 
 #if VISION_COORD_DEBUG_ENABLE
@@ -269,7 +282,7 @@ int main(void)
   HAL_Delay(3000);
   bsp_uart_flush_rx(BSP_UART_VISION); /* 丢弃运动期间积压的数据。 */
   (void)app_vision_send(VISION_CMD_QR, NULL, 0U); /* 让脚本清空旧样本并重新开始采样。 */
-#elif APP_IMU_UART_DEBUG_ENABLE
+#elif BMI088_UART_DEBUG_ACTIVE
   /* 调试期间 USART10 只发 CSV，不下发舵机二进制指令。 */
   s_imu_uart_debug_ret = app_imu_uart_debug_init(&huart10, HAL_GetTick());
   if (s_imu_uart_debug_ret != RET_OK)
@@ -281,7 +294,12 @@ int main(void)
   app_roboarm_servo_move_to(0.0,250.0,100.0,-0.174533);
   HAL_Delay(3000);
 #endif
-
+  s_imu_hwt101_ret = app_imu_hwt101_init(&huart8);
+  if (s_imu_hwt101_ret != RET_OK)
+  {
+    Error_Handler();
+  }
+  //HAL_Delay(1000);
 
   /* USER CODE END 2 */
 
@@ -292,17 +310,25 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    (void)app_imu_poll();
+    int hwt101_ret = app_imu_hwt101_poll();
+    if (hwt101_ret != RET_IDLE) {
+      s_imu_hwt101_ret = hwt101_ret;
+    }
+#if APP_IMU_BMI088_ENABLE
+    if (s_imu_ret == RET_OK) {
+      (void)app_imu_poll();
+      temperature = app_imu_get_temp();
+      (void)app_imu_get_euler(testangle);
+    }
+#endif
     app_vision_poll();
     app_chassis_poll();
     distance = app_chassis_get_distance();
-    temperature = app_imu_get_temp();
-    app_imu_get_euler(testangle);
-    yawangle = testangle[2];
-    /* 一秒一次，由模块内部限频；主循环持续轮询 IMU，不插入发送延时。 */
+    (void)app_chassis_closeloop_get_yaw(&yawangle);
+    /* 可选BMI088日志由模块内部限频；主循环持续轮询HWT101，不插入发送延时。 */
 #if VISION_COORD_DEBUG_ENABLE
     /* app_vision_poll内的回调逐包完成坐标验证；此模式不运行路线或IMU串口日志。 */
-#elif APP_IMU_UART_DEBUG_ENABLE
+#elif BMI088_UART_DEBUG_ACTIVE
     int debug_ret = app_imu_uart_debug_poll(HAL_GetTick());
     if (debug_ret != RET_IDLE) {
       s_imu_uart_debug_ret = debug_ret;
@@ -538,6 +564,54 @@ static void MX_UART7_Init(void)
 }
 
 /**
+  * @brief UART8 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_UART8_Init(void)
+{
+
+  /* USER CODE BEGIN UART8_Init 0 */
+
+  /* USER CODE END UART8_Init 0 */
+
+  /* USER CODE BEGIN UART8_Init 1 */
+
+  /* USER CODE END UART8_Init 1 */
+  huart8.Instance = UART8;
+  huart8.Init.BaudRate = 115200;
+  huart8.Init.WordLength = UART_WORDLENGTH_8B;
+  huart8.Init.StopBits = UART_STOPBITS_1;
+  huart8.Init.Parity = UART_PARITY_NONE;
+  huart8.Init.Mode = UART_MODE_TX_RX;
+  huart8.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart8.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart8.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart8.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart8.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart8, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart8, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN UART8_Init 2 */
+
+  /* USER CODE END UART8_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -674,10 +748,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, Power_OUT2_EN_Pin|SPI2_CS0_Pin|SPI2_CS1_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(OUT5V_EN_GPIO_Port, OUT5V_EN_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(Power_OUT1_EN_GPIO_Port, Power_OUT1_EN_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, Power_OUT1_EN_Pin|OUT5V_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, LASER_Pin|RGB_Pin, GPIO_PIN_RESET);

@@ -1,6 +1,6 @@
 #include "app_chassis_closeloop.h"
 #include "app_chassis.h"
-#include "app_imu.h"
+#include "app_imu_hwt101.h"
 #include "alg_pid.h"
 #include <math.h>
 
@@ -38,15 +38,22 @@ void app_chassis_closeloop_set_target_ff(float vx, float vy, float yawangle, flo
     chassis_closeloop_state.omega_ff = omega_ff;
 }
 
+bool app_chassis_closeloop_get_yaw(double *yaw_rad)
+{
+    return app_imu_hwt101_getangle(yaw_rad);
+}
+
 void app_chassis_closeloop_update(void)
 {
-    double current_yaw[3];
-    if (!app_imu_get_euler(current_yaw) || !isfinite(current_yaw[2])) {
+    double current_yaw;
+    if (!app_chassis_closeloop_get_yaw(&current_yaw) || !isfinite(current_yaw)) {
+        PID_Init(&angle_pid_t, CHASSIS_YAW_KP_RAD, CHASSIS_YAW_KI, CHASSIS_YAW_KD,
+                 -CHASSIS_MAX_OMEGA_RADPS, CHASSIS_MAX_OMEGA_RADPS);
         (void)app_chassis_move(0.0f, 0.0f, 0.0f);
         return;
     }
     /* IMU和目标均为连续弧度角；不取最短角，允许执行指定方向的多圈转动。 */
-    angle_pid_t.Actual = (float)current_yaw[2];
+    angle_pid_t.Actual = (float)current_yaw;
     angle_pid_t.Target = chassis_closeloop_state.yaw;
     PID_Update(&angle_pid_t);
 

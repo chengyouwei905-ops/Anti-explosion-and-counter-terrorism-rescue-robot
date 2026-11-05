@@ -26,6 +26,7 @@ typedef enum {
     BSP_UART_VISION = 0,    /**< UART7：PE8=TX / PE7=RX，视觉链路 */
     BSP_UART_CHASSIS,       /**< UART1：PA9=TX / PA10=RX，底盘链路 */          
     BSP_UART_ROBOARM,       /**< USART10：PE3=TX / PE2=RX，机械臂总线舵机控制板（固定 9600） */
+    BSP_UART_HWT101,        /**< UART8：PE1=TX / PE0=RX，HWT101航向传感器 */
     BSP_UART_ID_MAX
 } bsp_uart_id_t;
 

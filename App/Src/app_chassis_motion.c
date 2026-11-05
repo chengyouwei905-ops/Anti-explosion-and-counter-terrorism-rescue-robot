@@ -1,7 +1,6 @@
 #include "app_chassis_motion.h"
 #include "app_chassis_closeloop.h"
 #include "app_chassis.h"
-#include "app_imu.h"
 #include "alg_motion_profile.h"
 #include <math.h>
 #include <stddef.h>
@@ -26,11 +25,11 @@ static DistanceMotion_t g_distance_move;
 
 static int motion_get_yaw(float *yaw)
 {
-    double euler[3];
-    if (!app_imu_get_euler(euler) || !isfinite(euler[2])) {
+    double current_yaw;
+    if (!app_chassis_closeloop_get_yaw(&current_yaw) || !isfinite(current_yaw)) {
         return 0;
     }
-    *yaw = (float)euler[2]; /* motion 层现有指令接口仍使用 float。 */
+    *yaw = (float)current_yaw; /* motion 层现有指令接口仍使用 float。 */
     return 1;
 }
 
