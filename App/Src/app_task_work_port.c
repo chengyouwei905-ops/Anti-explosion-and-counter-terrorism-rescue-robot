@@ -16,9 +16,10 @@ typedef struct {
 static const WorkReference_t work_reference[WORK_COUNT] = {
     /* 2026-11-01 用户确认；高度相对机械臂基座原点，不是离地高度。 */
     /* 晚上qr85，1400，150，白天40 */
-    [WORK_QR] = {true, {75.0f, 1380.0f, 150.0f}},
-    [WORK_BOMB] = {true, {-220.29f, 10.0f, -87.88f}},
-    [WORK_TARGET] = {true, {-710.0f, 20.0f, 70.0f}},
+    /* 11月6日75好 */
+    [WORK_QR] = {true, {65.0f, 1380.0f, 150.0f}},
+    [WORK_BOMB] = {true, {-230.0f, 10.0f, -87.88f}},
+    [WORK_TARGET] = {true, {-710.0f, 40.0f, 75.0f}},
     /* 2026-11-03 到位实测；目标坐标为 -arm_origin_relative_qr，而非原始 TCP XYZ。 */
     [WORK_RESCUE] = {true, {-247.784439f, 19.8726902f, 33.2348137f}}
 };
@@ -38,7 +39,7 @@ static const struct {
     End_Effector_Pos_t pose;
 } task_arm_poses[ROBOARM_POSE_COUNT] = {
     [ROBOARM_POSE_QR_OBSERVE]     = {true, {0.0, 260.0, 60.0, 0.0}},
-    [ROBOARM_POSE_BOMB_OBSERVE]   = {true, {154.0, 0.0,   26.0, -1.0}},
+    [ROBOARM_POSE_BOMB_OBSERVE]   = {true, {154.0, 0.0,   26.0, -1.0 + 0.2}},
     [ROBOARM_POSE_BOMB_PICK]      = {true, {200.0, 0.0, -23.0, -1.25}},
     [ROBOARM_POSE_BOMB_PLACE]     = {true, {-174.0, 0.0, 20.0, -1.2}},
     [ROBOARM_POSE_TARGET_OBSERVE] = {true, {170.0, 0.0,  25.0,  0.0}},
@@ -136,9 +137,9 @@ bool task_work_load_config(TaskWorkKind_t kind, TaskWorkConfig_t *out)
         .correction_accel = 200.0f,
         .accel = 200.0f,
         .max_correction_mm = 200.0f,
-        .max_correction_yaw = 0.174532925f, /* 单次最大 10 度，超出时报错 */
+        .max_correction_yaw = 0.017453293f * 20.0f, /* 20度；VISION_YAW_NONE时不使用。 */
         .position_tolerance_mm = 13.0f,
-        .yaw_tolerance_rad = 0.017453293f * 5.0f,  /* 5.0 度，第一版实际只做平移 */
+        .yaw_tolerance_rad = 0.017453293f * 5.0f,  /* 5度；VISION_YAW_NONE时不使用。 */
         .height_tolerance_mm =30.0f, /* 仅诊断，不阻止底盘 X/Y 微调或作业。 */
         .max_corrections = 4U
     };
@@ -242,10 +243,8 @@ TaskArmResult_t task_work_arm_poll(TaskWorkKind_t kind, TaskArmStep_t step,
         break;
     case ARM_PICK:
         if (kind != WORK_BOMB && kind != WORK_RESCUE) return ARM_FAILED;
-        /* 爆炸物：张爪 -> 夹取位 -> 闭爪 -> 保持夹取yaw抬臂 -> 单独yaw到QR。
-         * 人质沿用原来的四步，不在本次改动范围内。
-         */
-        if (arm_work.action >= (kind == WORK_BOMB ? 5U : 4U)) return ARM_DONE;
+        /* 爆炸物/人质：张爪 -> 夹取位 -> 闭爪 -> 保持夹取yaw收臂 -> 单独yaw到QR。 */
+        if (arm_work.action >= 5U) return ARM_DONE;
         if (arm_work.action == 0U) {
             clamp_action = true;
         } else if (arm_work.action == 1U) {
@@ -253,7 +252,7 @@ TaskArmResult_t task_work_arm_poll(TaskWorkKind_t kind, TaskArmStep_t step,
         } else if (arm_work.action == 2U) {
             clamp_action = true;
             clamp_position = CLAMP_CLOSE_POSITION;
-        } else if (kind == WORK_BOMB) {
+        } else {
             pose_part = arm_work.action == 3U ? ARM_POSE_WITHOUT_YAW : ARM_POSE_YAW_ONLY;
         }
         break;
@@ -270,9 +269,9 @@ TaskArmResult_t task_work_arm_poll(TaskWorkKind_t kind, TaskArmStep_t step,
         }
         break;
     case ARM_TRAVEL:
-        if (arm_work.action >= (kind == WORK_BOMB ? 2U : 1U)) return ARM_DONE;
-        /* QR姿态收臂；只发ID1..4，不修改ID5夹爪状态。 */
-        if (kind == WORK_BOMB) {
+        if (arm_work.action >= (kind == WORK_QR ? 1U : 2U)) return ARM_DONE;
+        /* QR姿态收臂；排爆/打靶/救援先保持yaw收臂，再单独转yaw，不修改ID5夹爪状态。 */
+        if (kind != WORK_QR) {
             pose_part = arm_work.action == 0U ? ARM_POSE_WITHOUT_YAW : ARM_POSE_YAW_ONLY;
         }
         break;

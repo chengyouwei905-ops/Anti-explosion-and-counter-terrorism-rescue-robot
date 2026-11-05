@@ -53,11 +53,11 @@
 
 /* 1：独立QR坐标验证，使用USART10控制机械臂，暂停路线和IMU串口日志。 */
 #ifndef VISION_COORD_DEBUG_ENABLE
-#define VISION_COORD_DEBUG_ENABLE 1
+#define VISION_COORD_DEBUG_ENABLE 0
 #endif
 
 #ifndef CHASSIS_TCP_CONFIRM_DEBUG
-#define CHASSIS_TCP_CONFIRM_DEBUG 1
+#define CHASSIS_TCP_CONFIRM_DEBUG 0
 #endif
 
 #define CORRECT_TCP_QR_X 205
@@ -93,9 +93,9 @@ volatile uint8_t chassis_motion_count = 0U;
 int s_imu_uart_debug_ret;  /* 调试器可查看 RET_OK / RET_BUSY / 错误码 */
 
 /* 每次测试只修改这组XYZ/pitch，控制机械臂与坐标换算共用同一份姿态。 */
-End_Effector_Pos_t vision_arm_pose = {137.0, 0.0, 84.0, -0.338 - 0.05};//11月4日测试用观察人质
+//End_Effector_Pos_t vision_arm_pose = {170.0, 0.0,  25.0,  0.0};//11月4日测试用观察人质
 //End_Effector_Pos_t vision_arm_pose = {0.0, 260.0, 60.0, 0.0};//观察二维码
-//End_Effector_Pos_t vision_arm_pose = {154.0, 0.0,   26.0, -1.0};//观察爆炸物
+End_Effector_Pos_t vision_arm_pose = {154.0, 0.0,   26.0, -1.0};//观察爆炸物
 //End_Effector_Pos_t vision_arm_pose = {180.0, 0.0, 25.0, -0.0};//观察恐怖分子
 //End_Effector_Pos_t vision_arm_pose = {133.537333615, 1.525593299, 82.971289222, -0.338};//观察人质
 int vision_arm_move_ret = RET_NOTREADY;

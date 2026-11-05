@@ -32,6 +32,7 @@ typedef struct {
     uint32_t laser_ms;
     float scan_speed, correction_speed, accel; /* accel用于扫描/换位/返回 */
     float correction_accel; /* 视觉平移纠偏独立加减速度，mm/s^2 */
+    /* yaw限幅/容差仅对启用视觉yaw纠偏的slot生效；VISION_YAW_NONE时忽略。 */
     float max_correction_mm, max_correction_yaw;
     float position_tolerance_mm, yaw_tolerance_rad;
     float height_tolerance_mm; /* 高度诊断阈值，不参与底盘到位判定。 */

@@ -82,12 +82,12 @@ static void sequence(uint32_t base)
     run(WORK_BOMB,ARM_TRAVEL,3);assert_joint_ids(8,2,3);assert_joint_ids(9,1,1);
 
     reset(base);run(WORK_RESCUE,ARM_PICK,1);
-    assert_clamp(0,437);assert_pose(1,ROBOARM_POSE_RESCUE_PICK);
-    assert_clamp(2,747);assert_pose(3,ROBOARM_POSE_QR_OBSERVE);
+    assert_clamp(0,CLAMP_OPEN_POSITION);assert_pose(1,ROBOARM_POSE_RESCUE_PICK);
+    assert_clamp(2,CLAMP_CLOSE_POSITION);assert_joint_ids(3,2,3);assert_joint_ids(4,1,1);
     run(WORK_RESCUE,ARM_TRAVEL,1);
-    assert(sent==5);assert_pose(4,ROBOARM_POSE_QR_OBSERVE);
+    assert(sent==7);assert_joint_ids(5,2,3);assert_joint_ids(6,1,1);
     assert(task_work_arm_poll(WORK_RESCUE,ARM_PLACE,1,true)==ARM_FAILED);
-    assert(sent==5);
+    assert(sent==7);
 }
 int main(void)
 {

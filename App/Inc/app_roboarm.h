@@ -60,7 +60,7 @@ typedef enum{
 
 typedef enum{
   CLAMP_OPEN_POSITION = 437,
-  CLAMP_CLOSE_POSITION = 747
+  CLAMP_CLOSE_POSITION = 747+ 60
 } Roboarm_Clamp_State_t;
 
 typedef struct{

@@ -122,6 +122,9 @@ XYZ 使用机械臂指令坐标（X左/Y前/Z上，mm），pitch 为 rad。
 
 QR 仅使用 slot[0]。非 QR 使用 slot[0..2]。
 `body_from_tcp` 自动由 `observe_pose` 生成，不需要手填矩阵。
+`VISION_YAW_NONE` 只做平移，不校验或使用 `max_correction_yaw` 和 `yaw_tolerance_rad`。
+启用QR轴或靶法向yaw纠偏的slot才使用这两个弧度参数：最大修正角须大于0且不超过30度，
+容差须大于0且小于最大修正角。20度应写成 `0.017453293f * 20.0f`；`0.174532925f * 20` 实为200度。
 有直接关节角时，可用 `alg_vision_transform_from_arm_joints()`：它先调用现有 `alg_roboarm_forward()`，再生成同一变换。
 注意这仍是指令/正解姿态，不是舵机反馈；观测期间机械臂必须已经到位并保持不动。
 

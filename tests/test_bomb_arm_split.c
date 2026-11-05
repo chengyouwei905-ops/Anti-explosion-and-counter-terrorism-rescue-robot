@@ -37,7 +37,7 @@ static void bomb_sequence(uint32_t base)
     run(WORK_BOMB,ARM_PICK,1);
     assert(sent==5);
     apply_frame(0,5,1);assert(current_positions[4]==CLAMP_OPEN_POSITION);
-    apply_frame(1,1,4);expect_tcp(190,0,-35,-1.25);
+    apply_frame(1,1,4);expect_tcp(200,0,-23,-1.25);
     uint16_t pick_yaw=current_positions[0];
     apply_frame(2,5,1);assert(current_positions[4]==CLAMP_CLOSE_POSITION);
     /* Lift to the QR radial/vertical/pitch geometry without changing the pick yaw. */
@@ -54,11 +54,11 @@ static void bomb_sequence(uint32_t base)
     uint16_t travel_yaw=current_positions[0];
     apply_frame(5,2,3);
     assert(current_positions[0]==travel_yaw && current_positions[4]==CLAMP_CLOSE_POSITION);
-    expect_tcp(0,180,50,-1.2);
+    expect_tcp(0,174,20,-1.2);
     memcpy(lift_joints,&current_positions[1],sizeof(lift_joints));
     apply_frame(6,1,1);
     assert(memcmp(lift_joints,&current_positions[1],sizeof(lift_joints))==0);
-    expect_tcp(-180,0,50,-1.2);
+    expect_tcp(-174,0,20,-1.2);
     apply_frame(7,5,1);assert(current_positions[4]==CLAMP_OPEN_POSITION);
 
     run(WORK_BOMB,ARM_TRAVEL,1);
@@ -73,50 +73,101 @@ static void bomb_sequence(uint32_t base)
     expect_tcp(0,260,60,0);
 }
 
-static void split_wait_retry_cancel(void)
+static void target_sequence(uint32_t base,uint8_t slot)
 {
-    reset(0);
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,true)==ARM_WAITING && sent==1);
-    assert(frames[0][4]==3 && frames[0][7]==2);
-    tick=3599;
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,false)==ARM_WAITING && sent==1);
-    tick=3600;uart_result=RET_BUSY;
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,false)==ARM_WAITING && sent==1);
-    tick=3610;uart_result=RET_OK;
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,false)==ARM_WAITING && sent==1);
-    tick=3620;
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,false)==ARM_WAITING && sent==2);
-    assert(frames[1][4]==1 && frames[1][7]==1);
-    tick=7219;
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,false)==ARM_WAITING && sent==2);
-    tick=7220;
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,false)==ARM_DONE && sent==2);
+    reset(base);memset(current_positions,0,sizeof(current_positions));
+    current_positions[4]=CLAMP_CLOSE_POSITION;
+    run(WORK_TARGET,ARM_OBSERVE,slot);
+    assert(sent==1);
+    apply_frame(0,1,4);expect_tcp(170,0,25,0);
+    uint16_t target_yaw=current_positions[0];
+    run(WORK_TARGET,ARM_TRAVEL,slot);
+    assert(sent==3);
+    apply_frame(1,2,3);
+    assert(current_positions[0]==target_yaw && current_positions[4]==CLAMP_CLOSE_POSITION);
+    expect_tcp(260,0,60,0);
+    uint16_t lift_joints[3];memcpy(lift_joints,&current_positions[1],sizeof(lift_joints));
+    apply_frame(2,1,1);
+    assert(memcmp(lift_joints,&current_positions[1],sizeof(lift_joints))==0);
+    assert(current_positions[4]==CLAMP_CLOSE_POSITION);
+    expect_tcp(0,260,60,0);
+}
 
-    reset(0);
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,true)==ARM_WAITING && sent==1);
-    assert(task_work_arm_poll(WORK_BOMB,ARM_CANCEL,1,true)==ARM_DONE);
-    tick=10000;
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,false)==ARM_FAILED && sent==1);
-    reset(0);
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,true)==ARM_WAITING && sent==1);
-    tick=3600;uart_result=RET_ERROR;
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,false)==ARM_FAILED && sent==1);
-    reset(0);
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,true)==ARM_WAITING && sent==1);
-    tick=3600;uart_result=RET_BUSY;
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,false)==ARM_WAITING);
-    tick=4600;
-    assert(task_work_arm_poll(WORK_BOMB,ARM_TRAVEL,1,false)==ARM_FAILED && sent==1);
+static void rescue_sequence(uint32_t base,uint8_t slot)
+{
+    reset(base);memset(current_positions,0,sizeof(current_positions));
+    run(WORK_RESCUE,ARM_PICK,slot);
+    assert(sent==5 && (uint32_t)(tick-base)==14000U);
+    apply_frame(0,5,1);assert(current_positions[4]==CLAMP_OPEN_POSITION);
+    apply_frame(1,1,4);expect_tcp(195,0,78,-.5);
+    uint16_t pick_yaw=current_positions[0];
+    apply_frame(2,5,1);assert(current_positions[4]==CLAMP_CLOSE_POSITION);
+    apply_frame(3,2,3);
+    assert(current_positions[0]==pick_yaw && current_positions[4]==CLAMP_CLOSE_POSITION);
+    expect_tcp(260,0,60,0);
+    uint16_t retract_joints[3];memcpy(retract_joints,&current_positions[1],sizeof(retract_joints));
+    apply_frame(4,1,1);
+    assert(memcmp(retract_joints,&current_positions[1],sizeof(retract_joints))==0);
+    assert(current_positions[4]==CLAMP_CLOSE_POSITION);
+    expect_tcp(0,260,60,0);
+
+    uint32_t travel_start=tick;
+    run(WORK_RESCUE,ARM_TRAVEL,slot);
+    assert(sent==7 && (uint32_t)(tick-travel_start)==7200U);
+    apply_frame(5,2,3);expect_tcp(0,260,60,0);
+    apply_frame(6,1,1);expect_tcp(0,260,60,0);
+    assert(current_positions[4]==CLAMP_CLOSE_POSITION);
+    assert(task_work_arm_poll(WORK_RESCUE,ARM_PLACE,slot,true)==ARM_FAILED && sent==7);
+}
+
+static void split_wait_retry_cancel(TaskWorkKind_t kind,uint32_t base)
+{
+    reset(base);
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,true)==ARM_WAITING && sent==1);
+    assert(frames[0][4]==3 && frames[0][7]==2);
+    tick=base+3599U;
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,false)==ARM_WAITING && sent==1);
+    tick=base+3600U;uart_result=RET_BUSY;
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,false)==ARM_WAITING && sent==1);
+    tick=base+3610U;uart_result=RET_OK;
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,false)==ARM_WAITING && sent==1);
+    tick=base+3620U;
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,false)==ARM_WAITING && sent==2);
+    assert(frames[1][4]==1 && frames[1][7]==1);
+    tick=base+7219U;
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,false)==ARM_WAITING && sent==2);
+    tick=base+7220U;
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,false)==ARM_DONE && sent==2);
+
+    reset(base);
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,true)==ARM_WAITING && sent==1);
+    assert(task_work_arm_poll(kind,ARM_CANCEL,1,true)==ARM_DONE);
+    tick=base+10000U;
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,false)==ARM_FAILED && sent==1);
+    reset(base);
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,true)==ARM_WAITING && sent==1);
+    tick=base+3600U;uart_result=RET_ERROR;
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,false)==ARM_FAILED && sent==1);
+    reset(base);
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,true)==ARM_WAITING && sent==1);
+    tick=base+3600U;uart_result=RET_BUSY;
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,false)==ARM_WAITING);
+    tick=base+4600U;
+    assert(task_work_arm_poll(kind,ARM_TRAVEL,1,false)==ARM_FAILED && sent==1);
 }
 
 int main(void)
 {
     bomb_sequence(0);bomb_sequence(UINT32_MAX-1500U);
-    split_wait_retry_cancel();
-    reset(0);
-    run(WORK_RESCUE,ARM_PICK,1);run(WORK_RESCUE,ARM_TRAVEL,1);
-    assert(sent==5 && frames[1][4]==4 && frames[3][4]==4 && frames[4][4]==4);
-    assert_clamp(0,CLAMP_OPEN_POSITION);assert_clamp(2,CLAMP_CLOSE_POSITION);
+    for(uint8_t slot=1;slot<=3;++slot) {
+        target_sequence(0,slot);target_sequence(UINT32_MAX-1500U,slot);
+        rescue_sequence(0,slot);rescue_sequence(UINT32_MAX-1500U,slot);
+    }
+    split_wait_retry_cancel(WORK_BOMB,0);
+    split_wait_retry_cancel(WORK_TARGET,0);
+    split_wait_retry_cancel(WORK_TARGET,UINT32_MAX-1500U);
+    split_wait_retry_cancel(WORK_RESCUE,0);
+    split_wait_retry_cancel(WORK_RESCUE,UINT32_MAX-1500U);
     for(unsigned kind=0;kind<WORK_COUNT;++kind) {
         reset(0);run((TaskWorkKind_t)kind,ARM_OBSERVE,kind==WORK_QR?0:1);
         assert(sent==1 && frames[0][4]==4); /* Observations still synchronize all four joints. */
@@ -133,6 +184,6 @@ int main(void)
     assert(app_roboarm_servo_move_direct_it(&bad,1,3000)==RET_PARAM && sent==before);
     uart_result=RET_BUSY;
     assert(app_roboarm_servo_move_direct_it(&yaw,1,3000)==RET_BUSY && sent==before);
-    puts("PASS: bomb pick/place/retract split ID2..4 then ID1, FK endpoints, clamp order, timing/retry/cancel/rollover; rescue/observe unchanged");
+    puts("PASS: bomb/target/rescue retract split ID2..4 then ID1, rescue pick/clamp retention, FK endpoints, timing/retry/cancel/rollover; observe unchanged");
     return 0;
 }

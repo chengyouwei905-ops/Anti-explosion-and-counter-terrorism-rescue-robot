@@ -200,10 +200,8 @@ static bool validate_config(void)
         !positive(config.accel) || config.accel > 500.0f ||
         !positive(config.correction_accel) || config.correction_accel > 500.0f ||
         !positive(config.max_correction_mm) || config.max_correction_mm > 300.0f ||
-        !positive(config.max_correction_yaw) || config.max_correction_yaw > 0.523599f ||
         !positive(config.position_tolerance_mm) ||
         config.position_tolerance_mm >= config.max_correction_mm ||
-        !positive(config.yaw_tolerance_rad) || config.yaw_tolerance_rad >= config.max_correction_yaw ||
         !positive(config.height_tolerance_mm) || config.max_corrections == 0U || config.max_corrections > 10U) {
         return false;
     }
@@ -214,6 +212,12 @@ static bool validate_config(void)
             !alg_vision_transform_from_arm_pose(&config.slot[i].observe_pose,
                                                 &config.slot[i].alignment.body_from_tcp) ||
             !alg_vision_alignment_config_valid(&config.slot[i].alignment)) {
+            return false;
+        }
+        /* 只平移的slot不使用yaw限幅/容差，不能被未启用的参数拦住。 */
+        if (config.slot[i].alignment.yaw_mode != VISION_YAW_NONE &&
+            (!positive(config.max_correction_yaw) || config.max_correction_yaw > 0.523599f ||
+             !positive(config.yaw_tolerance_rad) || config.yaw_tolerance_rad >= config.max_correction_yaw)) {
             return false;
         }
         if ((s.kind == WORK_BOMB || s.kind == WORK_RESCUE) &&
@@ -362,15 +366,18 @@ static void start_alignment(uint32_t now)
     float dy = s.alignment.delta_body[1];
     float distance = hypotf(dx, dy);
     float angle = s.alignment.delta_yaw;
+    bool correct_yaw = config.slot[target_slot].alignment.yaw_mode != VISION_YAW_NONE;
     s.height_error_mm = s.alignment.reference_body[2] -
                         config.slot[target_slot].alignment.desired_reference_body[2];
     s.height_out_of_tolerance = fabsf(s.height_error_mm) > config.height_tolerance_mm;
     /* 底盘不能修正 Z；高度只作诊断。三维换算/观测范围检查仍在算法层执行。 */
-    if (distance > config.max_correction_mm || fabsf(angle) > config.max_correction_yaw) {
+    if (distance > config.max_correction_mm ||
+        (correct_yaw && fabsf(angle) > config.max_correction_yaw)) {
         work_fail(WORK_ERR_ALIGNMENT, now);
         return; /* 不截断过大的平面位移或转角后继续。 */
     }
-    if (distance <= config.position_tolerance_mm && fabsf(angle) <= config.yaw_tolerance_rad) {
+    if (distance <= config.position_tolerance_mm &&
+        (!correct_yaw || fabsf(angle) <= config.yaw_tolerance_rad)) {
         if (!read_yaw(&anchor_yaw)) {
             work_fail(WORK_ERR_IMU, now);
             return;
@@ -392,7 +399,7 @@ static void start_alignment(uint32_t now)
     }
     ++s.corrections;
     motion_changes_slot = false;
-    if (fabsf(angle) > config.yaw_tolerance_rad) {
+    if (correct_yaw && fabsf(angle) > config.yaw_tolerance_rad) {
         app_chassis_motion_circular_move(0.0f, angle, true, WORK_ROTATE_SPEED,
                                          WORK_ROTATE_ACCEL, WORK_ROTATE_ACCEL);
         motion_started(fabsf(angle), WORK_ROTATE_SPEED, WORK_ROTATE_ACCEL, WORK_PREPARE_ARM, now);
