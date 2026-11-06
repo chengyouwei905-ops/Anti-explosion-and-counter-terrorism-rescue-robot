@@ -28,8 +28,6 @@ static float pending_offset[2];
 static float anchor_yaw, request_yaw;
 static TaskWorkPhase_t motion_next, settle_next;
 static bool motion_changes_slot;
-static bool motion_is_correction;
-static float correction_offset[2], pending_correction[2]; /* 累计视觉平移，排爆回位使用；X右/Y前。 */
 static bool cancel_arm, cancel_hook;
 static bool cancel_hook_entered;
 static uint32_t cancel_ms, cancel_try_ms;
@@ -58,6 +56,7 @@ static void cancel_begin(uint32_t now)
     s.request_pending = false;
     result_pending = false;
     s.alignment_valid = false;
+    s.next_move_ready = false;
     task_work_laser_set(false);
     if (!s.cancel_pending) {
         cancel_ms = now;
@@ -105,7 +104,7 @@ static bool retry_vision(TaskWorkError_t error, uint32_t now)
     s.last_retry_error = error;
     if (s.vision_retries < UINT32_MAX) ++s.vision_retries;
     task_work_laser_set(false);
-    /* 每批纠偏达到上限后重新采样，再开始下一批，保留累计纠偏记录。 */
+    /* 每批纠偏达到上限后重新采样，再开始下一批，保留实际已完成的修正。 */
     if (error == WORK_ERR_ALIGNMENT && s.corrections >= config.max_corrections) {
         s.corrections = 0U;
     }
@@ -156,6 +155,19 @@ bool app_task_work_cancel_pending(void)
 const TaskWorkStatus_t *app_task_work_get_status(void)
 {
     return &s;
+}
+
+bool app_task_work_take_move_deduction(TaskWorkKind_t kind, float *deduction_mm)
+{
+    if (deduction_mm == NULL || kind == WORK_QR || s.kind != kind ||
+        s.phase != WORK_COMPLETE || !s.next_move_ready || s.request_pending || s.alignment_valid ||
+        result_pending || s.cancel_pending || s.cancel_failed || s.error != WORK_ERR_NONE ||
+        app_chassis_motion_get_state() != MOTION_STATE_IDLE) {
+        return false;
+    }
+    *deduction_mm = s.next_move_deduction_mm;
+    s.next_move_ready = false;
+    return true;
 }
 
 void app_task_work_on_frame(const proto_vision_frame_t *frame)
@@ -278,6 +290,11 @@ static bool validate_config(void)
         if (s.kind == WORK_TARGET && config.slot[i].alignment.yaw_mode == VISION_YAW_QR_AXIS) {
             return false;
         }
+        if (s.kind != WORK_QR &&
+            (fabsf(config.slot[i].offset_mm[0]) > 0.01f ||
+             config.slot[i].offset_mm[1] < -0.01f)) {
+            return false; /* 已走的扫描位移须在下一MOVE的首段前进轴上扣除。 */
+        }
     }
     return true;
 }
@@ -384,7 +401,6 @@ static void move_offset(float x, float y, TaskWorkPhase_t next, uint32_t now)
     pending_offset[0] = x;
     pending_offset[1] = y;
     motion_changes_slot = true;
-    motion_is_correction = false;
     app_chassis_motion_linear_move(distance, direction, config.scan_speed, config.accel, config.accel);
     motion_started(distance, config.scan_speed, config.accel, next, now);
 }
@@ -426,7 +442,7 @@ static void start_alignment(uint32_t now)
     s.height_error_mm = s.alignment.reference_body[2] -
                         config.slot[target_slot].alignment.desired_reference_body[2];
     s.height_out_of_tolerance = fabsf(s.height_error_mm) > config.height_tolerance_mm;
-    /* 底盘不能修正 Z；高度只作诊断。三维换算/观测范围检查仍在算法层执行。 */
+    /* 底盘不能修正Z；打靶高度只作诊断，算法层仍检查有限值及X/Y范围。 */
     if (distance > config.max_correction_mm ||
         (correct_yaw && fabsf(angle) > config.max_correction_yaw)) {
         work_fail(WORK_ERR_ALIGNMENT, now);
@@ -458,16 +474,11 @@ static void start_alignment(uint32_t now)
     }
     ++s.corrections;
     motion_changes_slot = false;
-    motion_is_correction = false;
     if (correct_yaw && fabsf(angle) > config.yaw_tolerance_rad) {
         app_chassis_motion_circular_move(0.0f, angle, true, WORK_ROTATE_SPEED,
                                          WORK_ROTATE_ACCEL, WORK_ROTATE_ACCEL);
         motion_started(fabsf(angle), WORK_ROTATE_SPEED, WORK_ROTATE_ACCEL, WORK_PREPARE_ARM, now);
     } else {
-        float rotation = request_yaw - anchor_yaw;
-        pending_correction[0] = cosf(rotation) * dx - sinf(rotation) * dy;
-        pending_correction[1] = sinf(rotation) * dx + cosf(rotation) * dy;
-        motion_is_correction = s.kind != WORK_QR;
         /* 时间规划纠偏：距离/方向取本次视觉误差，速度和加减速度在port配置。 */
         app_chassis_motion_linear_move(
             distance, atan2f(-dx, dy), config.correction_speed,
@@ -520,8 +531,6 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
         s = (TaskWorkStatus_t){.kind = kind};
         result_pending = false;
         scan_complete = false;
-        motion_is_correction = false;
-        correction_offset[0] = correction_offset[1] = 0.0f;
         target_slot = 0U;
         current_offset[0] = current_offset[1] = 0.0f;
         task_work_laser_set(false);
@@ -585,11 +594,6 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
             if (motion_changes_slot) {
                 current_offset[0] = pending_offset[0];
                 current_offset[1] = pending_offset[1];
-            }
-            if (motion_is_correction) {
-                correction_offset[0] += pending_correction[0];
-                correction_offset[1] += pending_correction[1];
-                motion_is_correction = false;
             }
             /* 下一步观察姿态也会执行停稳等待；返回路线时单独停稳。 */
             if (motion_next == WORK_COMPLETE) {
@@ -691,9 +695,9 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
                 if (!proto_vision_result_qr_ready(&received)) {
                     work_fail(WORK_ERR_DATA, now);
                 } else {
-                    /* 任务码已在K230缓存；QR不定位/纠偏，也不重复下发同一收臂姿态。 */
+                    /* 任务码已缓存；先提交张爪，再边走MOVE2边张开，不等待机械动作。 */
                     s.alignment_valid = false;
-                    phase_enter(WORK_COMPLETE, now);
+                    phase_enter(WORK_QR_OPEN_CLAMP, now);
                 }
             } else {
                 phase_enter(WORK_ALIGN, now);
@@ -701,6 +705,23 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
         }
         break;
     }
+
+    case WORK_QR_OPEN_CLAMP:
+        if ((uint32_t)(now - phase_ms) >= WORK_TX_TIMEOUT_MS) {
+            work_fail(WORK_ERR_ARM, now);
+            break;
+        }
+        if (!tx_tried || (uint32_t)(now - last_tx_ms) >= WORK_TX_RETRY_MS) {
+            tx_tried = true;
+            last_tx_ms = now;
+            int result = task_work_clamp_open_it();
+            if (result == RET_OK) {
+                phase_enter(WORK_COMPLETE, now);
+                return WORK_DONE; /* 已下发一次，立即让task.c启动MOVE2。 */
+            }
+            if (result != RET_BUSY) work_fail(WORK_ERR_ARM, now);
+        }
+        break;
 
     case WORK_ALIGN:
         start_alignment(now);
@@ -720,7 +741,7 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
 
     case WORK_MOVE_TO_BUCKET:
         /* 第二个爆炸物位置对应桶的放置停车点。
-         * 更新 current_offset，之后 WORK_RETURN 从此处撤回路线基点。
+         * 更新 current_offset，之后从下一MOVE扣除实际放桶位的名义前进量。
          * 保留视觉纠偏量，不把真实纠偏当作扫描名义位移撤销。
          */
         settle_next = WORK_PLACE;
@@ -742,6 +763,7 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
         break;
 
     case WORK_TRAVEL_ARM:
+        s.alignment_valid = false; /* 收臂后旧观察坐标失效，不能带入下一段MOVE。 */
         if (arm_done(ARM_TRAVEL, now)) {
             phase_enter(WORK_RETURN, now);
         }
@@ -749,13 +771,18 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
 
     case WORK_RETURN:
         if (s.kind == WORK_QR) {
-            move_offset(0.0f, 0.0f, WORK_COMPLETE, now);
-        } else if (s.kind == WORK_TARGET || s.kind == WORK_RESCUE) {
-            /* 只撤回配置的扫描位移，保留二次定位的平移修正。 */
-            move_offset(0.0f, 0.0f, WORK_RETURN_YAW, now);
+            phase_enter(WORK_COMPLETE, now);
         } else {
-            /* 排爆沿用原返回方式，撤销扫描位移及本区累计视觉平移。 */
-            move_offset(-correction_offset[0], -correction_offset[1], WORK_RETURN_YAW, now);
+            float deduction = current_offset[1];
+            /* 下个MOVE仍以原扫描起点为基准；只扣除已走的名义位移，保留视觉纠偏。 */
+            if (fabsf(current_offset[0]) > 0.01f ||
+                !isfinite(deduction) || deduction < -0.01f) {
+                work_fail(WORK_ERR_CONFIG, now);
+                break;
+            }
+            s.next_move_deduction_mm = fmaxf(deduction, 0.0f);
+            s.next_move_ready = true;
+            phase_enter(WORK_RETURN_YAW, now);
         }
         break;
 
@@ -767,10 +794,10 @@ TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now)
         }
         float angle = anchor_yaw - yaw;
         if (fabsf(angle) <= WORK_OBSERVE_YAW_TOLERANCE) {
-            settle_next = WORK_COMPLETE;
-            phase_enter(WORK_SETTLE, now);
+            /* ARM_TRAVEL已经包含停稳等待；无需再等待一个settle_ms。 */
+            phase_enter(WORK_COMPLETE, now);
         } else {
-            motion_changes_slot = motion_is_correction = false;
+            motion_changes_slot = false;
             app_chassis_motion_circular_move(0.0f, angle, true, WORK_ROTATE_SPEED,
                                              WORK_ROTATE_ACCEL, WORK_ROTATE_ACCEL);
             motion_started(fabsf(angle), WORK_ROTATE_SPEED, WORK_ROTATE_ACCEL, WORK_COMPLETE, now);

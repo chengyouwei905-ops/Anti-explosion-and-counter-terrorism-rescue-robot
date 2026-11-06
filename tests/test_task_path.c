@@ -16,6 +16,8 @@ void app_task_work_service(uint32_t now) { (void)now; }
 void app_task_work_on_frame(const proto_vision_frame_t *frame) { (void)frame; }
 bool app_task_work_cancel_pending(void) { return false; }
 const TaskWorkStatus_t *app_task_work_get_status(void) { return &work_status; }
+bool app_task_work_take_move_deduction(TaskWorkKind_t kind,float *deduction_mm)
+{ (void)kind;*deduction_mm=0;return true; } /* Route-only fixture; no work/scan displacement. */
 
 #define PI 3.14159265358979323846f
 static uint32_t clock_base, elapsed_ms;

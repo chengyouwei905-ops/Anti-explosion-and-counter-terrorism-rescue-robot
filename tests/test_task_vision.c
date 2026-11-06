@@ -26,6 +26,8 @@ bool app_chassis_get_distance_sample(Chassis_DistanceSample_t *out)
 static bool imu_ok, config_ready, automatic_reply, laser;
 static bool nonconverging, arm_wait;
 static unsigned laser_starts, arm_stops, pick_calls, place_calls;
+static unsigned clamp_open_calls, clamp_open_attempts;
+static int clamp_open_result;
 static uint8_t scene_slot = 2U;
 static uint8_t scene_samples = 3U;
 static float picked_x, picked_y, placed_x, placed_y;
@@ -70,6 +72,12 @@ int app_chassis_move(float x,float y,float w)
 { assert(isfinite(x)&&isfinite(y)&&isfinite(w));vx=x;vy=y;omega=w;return 0; }
 void task_work_laser_set(bool on) { if(on&&!laser) ++laser_starts;laser=on; }
 int task_work_arm_stop_it(void) { ++arm_stops;return RET_OK; }
+int task_work_clamp_open_it(void)
+{
+    ++clamp_open_attempts;
+    if(clamp_open_result==RET_OK)++clamp_open_calls;
+    return clamp_open_result;
+}
 TaskArmResult_t task_work_arm_poll(TaskWorkKind_t k,TaskArmStep_t step,uint8_t slot,bool entering)
 {
     (void)k;(void)slot;
@@ -89,16 +97,16 @@ bool task_work_load_config(TaskWorkKind_t kind,TaskWorkConfig_t *c)
         .max_correction_yaw=.174532925f,.position_tolerance_mm=20,.yaw_tolerance_rad=.008726646f,
         .height_tolerance_mm=10,.max_corrections=4};
     for(unsigned i=0;i<3;++i) {
-        float x=kind==WORK_QR?0:80.0f*i;
-        c->slot[i].offset_mm[0]=x;
+        float forward=kind==WORK_QR?0:150.0f*i;
+        c->slot[i].offset_mm[1]=forward;
         c->slot[i].observe_pose=(End_Effector_Pos_t){50,100,100,-.15};
         VisionAlignmentConfig_t *a=&c->slot[i].alignment;
         a->desired_reference_body[1]=300;a->desired_reference_body[2]=100;
         for(unsigned j=0;j<3;++j) {a->min_reference_body[j]=-1000;a->max_reference_body[j]=1000;}
         a->map_reference_valid=true;
         float cs=cosf(anchor[kind][2]),sn=sinf(anchor[kind][2]);
-        a->reference_map[0]=anchor[kind][0]+cs*x-sn*300;
-        a->reference_map[1]=anchor[kind][1]+sn*x+cs*300;
+        a->reference_map[0]=anchor[kind][0]-sn*(forward+300);
+        a->reference_map[1]=anchor[kind][1]+cs*(forward+300);
         a->reference_map[2]=100;
         a->desired_map_yaw=anchor[kind][2];
         a->desired_direction_body[1]=1;a->qr_axis[1]=1;
@@ -175,6 +183,7 @@ static void reset(uint32_t base)
 {
     elapsed=0;clock_base=base;px=3350;py=1750;yaw=PI/2;vx=vy=omega=0;
     imu_ok=config_ready=automatic_reply=true;laser=false;laser_starts=arm_stops=pick_calls=place_calls=0;
+    clamp_open_calls=clamp_open_attempts=0;clamp_open_result=RET_OK;
     nonconverging=arm_wait=false;
     scene_height_error=0;
     encoder_distance=1000;translation_scale=1;encoder_ready=true;encoder_age=0;
@@ -361,12 +370,12 @@ static void test_bucket_transport(void)
         enter_work(WORK_BOMB,false);
         until_phase(WORK_COMPLETE,60000);
         assert(pick_calls==1U && place_calls==1U);
-        /* Fixture slots use +X 80mm spacing: bucket always at slot2. */
-        assert(fabsf(placed_x-(anchor[WORK_BOMB][0]+80))<3);
-        assert(fabsf(placed_y-anchor[WORK_BOMB][1])<3);
-        assert(fabsf((placed_x-picked_x)-(2-(int)selected)*80)<3);
-        assert(fabsf(placed_y-picked_y)<3);
-        assert(hypotf(px-anchor[WORK_BOMB][0],py-anchor[WORK_BOMB][1])<3);
+        /* Forward scan spacing matches production; bucket always at slot2. */
+        assert(fabsf(placed_x-anchor[WORK_BOMB][0])<3);
+        assert(fabsf(placed_y-(anchor[WORK_BOMB][1]+150))<3);
+        assert(fabsf((placed_y-picked_y)-(2-(int)selected)*150)<3);
+        assert(fabsf(placed_x-picked_x)<3);
+        assert(hypotf(px-placed_x,py-placed_y)<.1f);
     }
     reset(0);enter_work(WORK_RESCUE,false);
     until_phase(WORK_COMPLETE,60000);

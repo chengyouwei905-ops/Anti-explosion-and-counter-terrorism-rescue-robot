@@ -1,0 +1,46 @@
+﻿{
+    "build":  "PASS",
+    "hardware_execution":  false,
+    "motion_ms":  1000,
+    "per_step_wait_ms":  1600,
+    "power_on_exception_ms":  5000,
+    "power_on_positions":  [
+                               300,
+                               595,
+                               907,
+                               630,
+                               855
+                           ],
+    "power_on_interface":  "app_roboarm_positions_it",
+    "k230_update_required":  false,
+    "suites_passed":  [
+                          "bomb_arm_split",
+                          "roboarm",
+                          "task_exit_move",
+                          "task_config"
+                      ],
+    "work_to_move_cases":  36,
+    "firmware_sha256":  "0170E1F64C8143BFDCFD088D107FDE80AFFE02B78C52C63E5E4B3D270C5E23B8",
+    "sources":  [
+                    {
+                        "file":  "App/Src/app_roboarm.c",
+                        "sha256":  "EE1CBF641D166E59C72CAD088ADC42BACD88A4BE2E07532198BD6B918FC3BF4C"
+                    },
+                    {
+                        "file":  "App/Src/app_task_work_port.c",
+                        "sha256":  "78505BBE4E9EE020A88EAA550BE9DE4B447F4B57AE503749E733EFCEE768DD9F"
+                    },
+                    {
+                        "file":  "App/Src/app_task_work.c",
+                        "sha256":  "77C81FB33302EAC1F691ABCECF373F4F9314AA6D1E19E5FAF8E9CDDDBA0C5E13"
+                    },
+                    {
+                        "file":  "Core/Src/main.c",
+                        "sha256":  "FBDF27F82F61FF56FAE81555B9C9DA2CE234EE586FF6FFFDB4415104DC27DA50"
+                    },
+                    {
+                        "file":  "Core/Src/task.c",
+                        "sha256":  "25C68426D75EF34C572B40DA41A254B9F7C8D1CD63000003A82B0F93B9E93543"
+                    }
+                ]
+}

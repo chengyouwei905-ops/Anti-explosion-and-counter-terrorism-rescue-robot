@@ -26,6 +26,7 @@ static void camera_course(uint32_t base)
         if(status->selected_slot) assert(status->selected_slot==1U);
     }
     assert(task_state==TASK_END && pick_calls==2 && place_calls==1 && laser_starts==1 && !laser);
+    assert(clamp_open_calls==1); /* Only after QR, never reopen while carrying the hostage. */
     const uint8_t commands[]={0x10,0x20,0x21,0x30,0x31,0x40,0x41};
     for(unsigned i=0;i<sizeof(commands);++i)assert(send_count[commands[i]]==1);
 }

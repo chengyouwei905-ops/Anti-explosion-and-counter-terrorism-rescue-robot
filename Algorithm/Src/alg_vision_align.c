@@ -163,8 +163,11 @@ bool alg_vision_alignment_compute(const VisionResult_t *r,
     rotate(&c->body_from_tcp, r->xyz_mm, a.reference_body);
     for (unsigned i = 0; i < 3; ++i) {
         a.reference_body[i] += c->body_from_tcp.translation[i];
-        if (!isfinite(a.reference_body[i]) || a.reference_body[i] < c->min_reference_body[i] ||
-            a.reference_body[i] > c->max_reference_body[i]) {
+        /* 打靶底盘只修正X/Y；Z保留给作业层诊断，不用高度范围阻止作业。 */
+        bool check_range = i != 2U || r->task_cmd != VISION_CMD_TARGET_LOCATE;
+        if (!isfinite(a.reference_body[i]) ||
+            (check_range && (a.reference_body[i] < c->min_reference_body[i] ||
+                             a.reference_body[i] > c->max_reference_body[i]))) {
             return false;
         }
         a.chassis_from_reference_body[i] = -a.reference_body[i];

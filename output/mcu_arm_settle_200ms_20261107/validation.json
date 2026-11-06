@@ -1,0 +1,35 @@
+﻿{
+    "build":  "PASS",
+    "hardware_execution":  false,
+    "k230_update_required":  false,
+    "motion_ms":  1000,
+    "tx_margin_ms":  100,
+    "settle_ms":  200,
+    "per_step_wait_ms":  1300,
+    "qr_async_open_unchanged":  true,
+    "suites_passed":  [
+                          "bomb_arm_split",
+                          "task_qr_decode",
+                          "task_exit_move"
+                      ],
+    "work_to_move_cases":  36,
+    "firmware_sha256":  "1B828270DDE42C7E5A5E5C58078E916D117DF40315658DF5612E51EDE39A7D07",
+    "sources":  [
+                    {
+                        "file":  "App/Src/app_task_work_port.c",
+                        "sha256":  "837328AE1E3D637408F6CDD3191B7D45385E05A03BDB0B4B2B97D445E7D488A8"
+                    },
+                    {
+                        "file":  "App/Src/app_task_work.c",
+                        "sha256":  "B5F0C9BDB6D4B86D69A552EE5E656AFFF4BEE2722EBCC9E75AC88FD68042C57D"
+                    },
+                    {
+                        "file":  "Core/Src/task.c",
+                        "sha256":  "D43CF2D87F09B314F3CA73886F95AB7BB375C4F649FCC7CDB37F2B04D6C109DE"
+                    },
+                    {
+                        "file":  "Core/Src/main.c",
+                        "sha256":  "BECC70867B8BD3FD84D1FF792FF6CD359A9A626979B9A20A5341E1CE3D11586E"
+                    }
+                ]
+}

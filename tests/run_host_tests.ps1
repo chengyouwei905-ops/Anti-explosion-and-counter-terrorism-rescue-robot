@@ -38,6 +38,8 @@ try {
            Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
         @{ Name="task_stop_scan"; Includes=$taskIncludes;
            Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
+        @{ Name="task_exit_move"; Includes=$taskIncludes;
+           Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
         @{ Name="task_vision_retry"; Includes=$taskIncludes;
            Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
         @{ Name="task_qr_decode"; Includes=$taskIncludes;

@@ -1,0 +1,39 @@
+﻿{
+    "build":  "PASS",
+    "hardware_execution":  false,
+    "k230_update_required":  false,
+    "suites_passed":  [
+                          "task_exit_move",
+                          "task_move12",
+                          "task_stop_scan",
+                          "task_vision_retry",
+                          "task_qr_decode",
+                          "task_config",
+                          "task_camera_test",
+                          "bomb_arm_split"
+                      ],
+    "work_to_move_cases":  36,
+    "firmware_sha256":  "FF1A4412DE9B2EBF087EB19AF44D73C7630581B3C258A22BE77EFAB7AFCC349A",
+    "sources":  [
+                    {
+                        "file":  "App/Inc/app_task_work.h",
+                        "sha256":  "14CC8B7A7AF68F2037A7722555409658F83ABA874F3BE8A9A7874C9A36E1A22E"
+                    },
+                    {
+                        "file":  "App/Src/app_task_work.c",
+                        "sha256":  "77C81FB33302EAC1F691ABCECF373F4F9314AA6D1E19E5FAF8E9CDDDBA0C5E13"
+                    },
+                    {
+                        "file":  "App/Src/app_task_work_port.c",
+                        "sha256":  "7E818C42C29983E5EFABF289F368F34808EB31D8E7B9C9FDBC1F59C195DB8649"
+                    },
+                    {
+                        "file":  "Core/Src/task.c",
+                        "sha256":  "25C68426D75EF34C572B40DA41A254B9F7C8D1CD63000003A82B0F93B9E93543"
+                    },
+                    {
+                        "file":  "Core/Src/main.c",
+                        "sha256":  "B13517FA77A2BD9557FED6445135D53A3C1695F71B39F71E90F308D72B0EE0EA"
+                    }
+                ]
+}

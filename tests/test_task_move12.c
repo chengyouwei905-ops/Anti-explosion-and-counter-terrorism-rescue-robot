@@ -59,8 +59,8 @@ static void test_final_offsets(uint32_t base, float yaw, bool grouped)
     }
     assert(app_chassis_motion_get_result() == MOTION_RESULT_DONE);
     assert(seams == (grouped ? 2U : 0U));
-    float expected_right = grouped ? 200.0f + task_route[14].distance : 5.0f;
-    float expected_forward = grouped ? task_route[12].distance + 200.0f - 5.0f :
+    float expected_right = grouped ? 200.0f + task_route[14].distance : task_route[15].right_offset_mm;
+    float expected_forward = grouped ? task_route[12].distance + 200.0f - task_route[14].right_offset_mm :
                                        task_route[15].distance;
     /* Independent endpoint geometry: right of the final heading is backwards
      * relative to the group start after MOVE14's right-angle turn. */
@@ -102,6 +102,6 @@ int main(void)
     start_move12(UINT32_MAX - 1000U, 0.0f);
     while (task_state != TASK_FAULT && elapsed_ms < 10000U) tick(false);
     assert(task_state == TASK_FAULT); /* Missing control updates must time out. */
-    puts("PASS: configured MOVE12 offset; MOVE15/16 right 5 mm, preserved forward distances/headings, moving seams, 1 s dwell, rollover, stop, IMU and timeout");
+    puts("PASS: configured MOVE12/15/16 offsets, preserved forward distances/headings, moving seams, 1 s dwell, rollover, stop, IMU and timeout");
     return 0;
 }

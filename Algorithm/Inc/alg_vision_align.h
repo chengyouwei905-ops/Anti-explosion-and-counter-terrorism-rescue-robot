@@ -29,7 +29,7 @@ typedef enum {
 typedef struct {
     VisionTransform_t body_from_tcp; /* 采集期间机械臂必须保持此姿态 */
     float desired_reference_body[3]; /* 对准后参考点在 B 系的期望位置 */
-    float min_reference_body[3];     /* 允许的实际观测工作空间，mm */
+    float min_reference_body[3];     /* 观测范围mm；打靶只检查X/Y，Z仅诊断。 */
     float max_reference_body[3];
     VisionYawMode_t yaw_mode;
     float qr_axis[3];                /* 例如 QR 的 +Z 轴，需核实标定定义 */

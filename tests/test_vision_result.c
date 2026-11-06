@@ -174,4 +174,33 @@ static void test_transforms(void)
     cfg.min_reference_body[0]=50;assert(!alg_vision_alignment_compute(&r,&cfg,0,&a));
     puts("PASS: K230 examples, strict payload validation, stream framing, arm axes/FK, planar correction and observable yaw");
 }
-int main(void) { test_examples_and_validation(); test_measurement_sample_limits(); test_transforms(); return 0; }
+static void test_target_height_diagnostic(void)
+{
+    VisionAlignmentConfig_t cfg=config();
+    cfg.min_reference_body[2]=50;cfg.max_reference_body[2]=150;
+    VisionResult_t r={.task_cmd=VISION_CMD_TARGET_LOCATE,.status=VISION_SUCCESS,
+        .flags=VISION_POSITION|VISION_CONTROL_READY,.sample_count=5,.scatter_mm=1,
+        .xyz_mm={40,270,160}};
+    VisionAlignment_t a;
+    const float heights[]={40,160,-500,1000};
+    for(unsigned i=0;i<sizeof(heights)/sizeof(heights[0]);++i) {
+        r.xyz_mm[2]=heights[i];
+        assert(alg_vision_alignment_compute(&r,&cfg,0,&a));
+        near(a.reference_body[2],heights[i]);
+        near(a.delta_body[0],20);near(a.delta_body[1],-30);
+    }
+    r.xyz_mm[2]=NAN;
+    assert(!alg_vision_alignment_compute(&r,&cfg,0,&a));
+    r.xyz_mm[2]=160;r.xyz_mm[0]=2001;
+    assert(!alg_vision_alignment_compute(&r,&cfg,0,&a));
+    r.xyz_mm[0]=40;r.xyz_mm[1]=2001;
+    assert(!alg_vision_alignment_compute(&r,&cfg,0,&a));
+    r.xyz_mm[1]=270;
+    const uint8_t others[]={VISION_CMD_QR,VISION_CMD_BOMB_LOCATE,VISION_CMD_RESCUE_LOCATE};
+    for(unsigned i=0;i<sizeof(others)/sizeof(others[0]);++i) {
+        r.task_cmd=others[i];
+        assert(!alg_vision_alignment_compute(&r,&cfg,0,&a));
+    }
+    puts("PASS: target Z is diagnostic only, finite/XY checks retained, other work Z checks unchanged");
+}
+int main(void) { test_examples_and_validation(); test_measurement_sample_limits(); test_transforms(); test_target_height_diagnostic(); return 0; }

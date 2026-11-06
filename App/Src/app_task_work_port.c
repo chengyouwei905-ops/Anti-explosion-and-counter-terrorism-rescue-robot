@@ -19,7 +19,7 @@ static const WorkReference_t work_reference[WORK_COUNT] = {
     /* 11月6日75好 */
     [WORK_QR] = {true, {85.0f, 1385.0f, 150.0f}},
     [WORK_BOMB] = {true, {-230.0f, 10.0f, -87.88f}},
-    [WORK_TARGET] = {true, {-710.0f, 30.0f, 95.0f}},
+    [WORK_TARGET] = {true, {-710.0f, 30.0f, 15.0f}},
     /* 2026-11-03 到位实测；目标坐标为 -arm_origin_relative_qr，而非原始 TCP XYZ。 */
     [WORK_RESCUE] = {true, {-237, 19.8726902f, 33.2348137f}}
 };
@@ -39,16 +39,16 @@ static const struct {
     End_Effector_Pos_t pose;
 } task_arm_poses[ROBOARM_POSE_COUNT] = {
     [ROBOARM_POSE_QR_OBSERVE]     = {true, {0.0, 260.0, 60.0, 0.0}},
-    [ROBOARM_POSE_BOMB_OBSERVE]   = {true, {154.0, 0.0,   26.0, -1.0 + 0.2}},
+    [ROBOARM_POSE_BOMB_OBSERVE]   = {true, {154.0, 0.0, 26.0, -1.0 + 0.2}},
     [ROBOARM_POSE_BOMB_PICK]      = {true, {200.0, 0.0, -23.0, -1.25}},
-    [ROBOARM_POSE_BOMB_PLACE]     = {true, {-174.0, 0.0, 20.0, -1.2}},
-    [ROBOARM_POSE_TARGET_OBSERVE] = {true, {170.0, 0.0,  25.0,  0.0}},
+    [ROBOARM_POSE_BOMB_PLACE]     = {true, {-174.0, 0.0, 25.0, -1.2}},
+    [ROBOARM_POSE_TARGET_OBSERVE] = {true, {170.0, 0.0,  39.0,  0.0}},
     [ROBOARM_POSE_RESCUE_OBSERVE] = {true, {133.537333615+2.0, 0.0, 84.0 + 5.0, -0.338 - 0.05}},
     [ROBOARM_POSE_RESCUE_PICK]    = {true, {205.0, 0.0,  78.0, -0.5}}
 };
 
 /* 排爆/打靶/救援共用的搬运、收臂中间位姿；单位mm，pitch为rad。 */
-static const End_Effector_Pos_t task_arm_travel_pose = {0.0, 250.0, 100.0, -0.05};
+static const End_Effector_Pos_t task_arm_travel_pose = {0.0, 200.0, 140.0, 0.0};
 
 typedef enum {
     ARM_POSE_ALL,          /* 原四关节同步姿态 */
@@ -182,9 +182,9 @@ bool task_work_load_config(TaskWorkKind_t kind, TaskWorkConfig_t *out)
            isfinite(work_reference[kind].reference_body[2]);
 }
 
-#define ARM_POSE_TIME_MS 3000U
+#define ARM_POSE_TIME_MS 1000U
 #define ARM_CLAMP_TIME_MS 1000U
-#define ARM_SETTLE_TIME_MS 500U
+#define ARM_SETTLE_TIME_MS 200U
 #define ARM_TX_MARGIN_MS 100U /* 9600bps最长本模块帧小于30ms，预留传输时间 */
 #define ARM_SEND_TIMEOUT_MS 1000U
 #define ARM_SEND_RETRY_MS 20U
@@ -196,6 +196,12 @@ static struct {
     uint8_t slot, action;
     uint32_t wait_ms, send_ms, retry_ms, action_ms;
 } arm_work;
+
+int task_work_clamp_open_it(void)
+{
+    const proto_roboarm_servo_t servo = {JOINT_CLAMP, CLAMP_OPEN_POSITION};
+    return app_roboarm_positions_it(&servo, 1U, ARM_CLAMP_TIME_MS);
+}
 
 TaskArmResult_t task_work_arm_poll(TaskWorkKind_t kind, TaskArmStep_t step,
                                   uint8_t slot, bool entering)
@@ -275,11 +281,11 @@ TaskArmResult_t task_work_arm_poll(TaskWorkKind_t kind, TaskArmStep_t step,
     case ARM_PLACE:
         /* 只有爆炸物进入此步骤，且底盘已到第二个爆炸物位置并停稳。 */
         if (kind != WORK_BOMB) return ARM_FAILED;
-        /* 原放置姿态拆成：ID2/3/4到位 -> ID1单独转向 -> 张爪。 */
+        /* 放置前先ID1转向桶，再ID2/3/4到放置位，最后张爪。 */
         if (arm_work.action >= 3U) return ARM_DONE;
         if (arm_work.action < 2U) {
             pose = ROBOARM_POSE_BOMB_PLACE;
-            pose_part = arm_work.action == 0U ? ARM_POSE_WITHOUT_YAW : ARM_POSE_YAW_ONLY;
+            pose_part = arm_work.action == 0U ? ARM_POSE_YAW_ONLY : ARM_POSE_WITHOUT_YAW;
         } else {
             clamp_action = true;
         }

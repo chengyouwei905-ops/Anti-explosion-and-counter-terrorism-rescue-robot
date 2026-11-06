@@ -10,11 +10,13 @@
 #define task_work_arm_poll production_arm_poll
 #define task_work_arm_stop_it production_arm_stop_it
 #define task_work_laser_set production_laser_set
+#define task_work_clamp_open_it production_clamp_open_it
 #include "../App/Src/app_task_work_port.c"
 #undef task_work_load_config
 #undef task_work_arm_poll
 #undef task_work_arm_stop_it
 #undef task_work_laser_set
+#undef task_work_clamp_open_it
 
 void HAL_GPIO_WritePin(void *port,uint16_t pin,GPIO_PinState state)
 { (void)port;(void)pin;(void)state; }
@@ -178,6 +180,47 @@ static void variable_measurement_samples(void)
     }
 }
 
+static void send_target_height_result(float height_error,float x_error)
+{
+    TaskWorkConfig_t cfg;assert(task_work_load_config(WORK_TARGET,&cfg));
+    const VisionAlignmentConfig_t *a=&cfg.slot[0].alignment;
+    uint8_t payload[64];result_header(payload,tx_cmd,tx_seq,VISION_SUCCESS,0);
+    payload[4]=VISION_POSITION|VISION_CONTROL_READY;payload[6]=1;payload[7]=5;
+    for(unsigned i=0;i<3;++i) {
+        float value=0;
+        for(unsigned j=0;j<3;++j)
+            value+=a->body_from_tcp.rotation[j][i]*(a->desired_reference_body[j]+
+                (j==0?x_error:j==2?height_error:0)-a->body_from_tcp.translation[j]);
+        put_float(payload+15+4*i,value);
+    }
+    put_float(payload+27,.5f);
+    deliver(VISION_CMD_RESULT,payload,31);
+}
+
+static void production_target_height(float height_error,bool correct_xy,uint32_t base)
+{
+    use_production_config=true;override_yaw=false;
+    reset(base);scene_slot=1;automatic_reply=false;enter_work(WORK_TARGET,false);
+    until_config_phase(WORK_WAIT_SCAN,5000);
+    uint8_t scan[64];result_header(scan,tx_cmd,tx_seq,VISION_SUCCESS,0);scan[6]=1;
+    deliver(VISION_CMD_RESULT,scan,15);
+    until_config_phase(WORK_WAIT_LOCATE,2000);
+    send_target_height_result(height_error,correct_xy?40.0f:0.0f);
+    if(correct_xy) {
+        until_config_phase(WORK_WAIT_MOTION,30);
+        until_config_phase(WORK_WAIT_LOCATE,8000);
+        send_target_height_result(height_error,0);
+    }
+    until_config_phase(WORK_LASER,30);
+    const TaskWorkStatus_t *status=app_task_work_get_status();
+    assert(laser && status->error==WORK_ERR_NONE && status->vision_retries==0);
+    assert(status->height_out_of_tolerance && fabsf(status->height_error_mm-height_error)<.01f);
+    assert(status->corrections==(correct_xy?1U:0U));
+    until_config_phase(WORK_COMPLETE,5000);
+    step(true);assert(task_state==TASK_MOVE13);
+    use_production_config=false;
+}
+
 int main(void)
 {
     setvbuf(stdout,NULL,_IONBF,0);
@@ -195,6 +238,13 @@ int main(void)
     }
     enabled_yaw_correction();
     variable_measurement_samples();
+    const float height_errors[]={-200,-60,60,200};
+    for(unsigned i=0;i<sizeof(height_errors)/sizeof(height_errors[0]);++i)
+        for(unsigned correct=0;correct<2;++correct) {
+            production_target_height(height_errors[i],correct!=0,0);
+            production_target_height(height_errors[i],correct!=0,UINT32_MAX-1000U);
+        }
+    puts("PASS: 16 production target-height cases reach XY correction/laser/next MOVE beyond the old Z range; height diagnostics retained");
     puts("PASS: production configuration reaches QR/scan commands, unused yaw ignored during translation/retest, enabled yaw validation/correction retained, tick rollover");
     return 0;
 }

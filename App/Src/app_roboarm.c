@@ -119,7 +119,7 @@ int app_roboarm_init(UART_HandleTypeDef *huart)
         {JOINT2, 90/57.2958},  
         {JOINT3, 0.0}
     };
-    if(app_roboarm_servo_move_direct(roboarm_servo, ROBOARM_DOF, 2000) != RET_OK) {
+    if(app_roboarm_servo_move_direct(roboarm_servo, ROBOARM_DOF, 1000U) != RET_OK) {
         return RET_ERROR;
     }   /* 机械臂舵机初始化到初始位置 */
 
@@ -252,7 +252,7 @@ int app_roboarm_servo_move_to(double x, double y, double z, double pitch)
             {JOINT3, roboarm_state.joint3_angle}
         };
         /* 暂定一个通用position */
-        uint16_t time_ms = 1500;
+        uint16_t time_ms = 1000U;
         if(app_roboarm_servo_move_direct(roboarm_servo, ROBOARM_DOF, time_ms) != RET_OK) {
             return RET_ERROR;
         }

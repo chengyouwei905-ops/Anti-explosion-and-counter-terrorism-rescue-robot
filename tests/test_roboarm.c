@@ -27,14 +27,25 @@ static void close_to(double a, double b)
 
 int main(void)
 {
+    UART_HandleTypeDef arm_uart={0};
+    assert(app_roboarm_init(&arm_uart)==RET_OK);
+    assert(frame[4]==4 && frame[5]+256U*frame[6]==1000U);
+    /* The explicit power-on exception uses raw positions and a 5000ms packet. */
+    const proto_roboarm_servo_t startup[]={{YAW_SERVO,300},{JOINT1,595},
+        {JOINT2,907},{JOINT3,630},{JOINT_CLAMP,855}};
+    assert(app_roboarm_positions_it(startup,5U,5000U)==RET_OK);
+    assert(frame[4]==5 && frame[5]+256U*frame[6]==5000U);
+    for(unsigned i=0;i<5;++i)
+        assert(frame[7+3*i]==startup[i].id && position(i)==startup[i].position);
     /* Subsets and reordering use servo ID, not array index. */
     Roboarm_Servo_t servo = {JOINT3, 0};
     assert(app_roboarm_servo_move_direct(&servo, 1, 1000) == RET_OK);
-    assert(frame[7] == 4 && position(0) == 443);
+    assert(frame[7] == 4 && position(0) == JOINT3_OFFSET);
     const Roboarm_Servo_t reordered[] = {{JOINT3,0}, {YAW_SERVO,0},
         {JOINT2,1.5707963267948966}, {JOINT1,0}};
     assert(app_roboarm_servo_move_direct(reordered, 4, 1000) == RET_OK);
-    assert(position(0)==443 && position(1)==480 && position(2)==960 && position(3)==766);
+    assert(position(0)==JOINT3_OFFSET && position(1)==YAW_SERVO_OFFSET &&
+           position(2)==JOINT2_OFFSET-375U && position(3)==JOINT1_OFFSET);
 
     unsigned before = sends;
     assert(app_roboarm_servo_move_direct(NULL,1,0)==RET_PARAM);
@@ -54,8 +65,8 @@ int main(void)
     assert(app_roboarm_servo_move_to(1e300,1e300,1e300,0)!=RET_OK);
     assert(sends==before);
 
-    app_roboarm_clamp_open(); assert(frame[7]==5 && position(0)==437);
-    app_roboarm_clamp_close(); assert(frame[7]==5 && position(0)==747);
+    app_roboarm_clamp_open(); assert(frame[7]==5 && position(0)==CLAMP_OPEN_POSITION);
+    app_roboarm_clamp_close(); assert(frame[7]==5 && position(0)==CLAMP_CLOSE_POSITION);
 
     /* FK/IK agree on output yaw and keep move_to's XYZ/radian signature. */
     const double output_yaws[] = {-.3, 0, .5, 1.4};
@@ -71,6 +82,7 @@ int main(void)
         close_to(j.joint2_angle,recovered.joint2_angle);
         close_to(j.joint3_angle,recovered.joint3_angle);
         assert(app_roboarm_servo_move_to(p.x,p.y,p.z,p.pitch)==RET_OK);
+        assert(frame[5]+256U*frame[6]==1000U);
     }
     assert(alg_roboarm_forward(NULL,NULL)==ROBOARM_KINEMATICS_ERR);
     assert(alg_roboarm_invert(NULL,NULL)==ROBOARM_KINEMATICS_ERR);
@@ -138,8 +150,9 @@ int main(void)
         }
     }
 
-    /* Published rounded XYZ/pitch values must survive the full command path,
-     * including poses whose yaw position is exactly zero.
+    /* Published rounded XYZ/pitch values must survive the full command path.
+     * Historical packet fixtures used zero offsets {480,766,1335,443}; apply
+     * current calibration without changing those recorded geometric poses.
      */
     const End_Effector_Pos_t rounded_poses[] = {
         {0.000000,204.662676,99.824932,-0.217817091},
@@ -149,24 +162,28 @@ int main(void)
         {154.215426,-4.405580,-4.916010,-0.950855376},
         {250.683197,-7.161443,14.658957,-0.234572251},
         {186.472176,-5.327081,29.339224,-0.900589894},
-        {154.215426,-4.405580176,-4.916010291,-0.950855376}
+        {154.215426,-4.405580176,-4.916010291,-0.950855376},
+        {0.0,200.0,140.0,0.0}
     };
     const unsigned expected_positions[][4] = {
         {480,755,900,435}, {960,920,780,310}, {0,985,800,535},
         {0,800,800,425}, {0,735,800,510}, {0,1000,800,339},
-        {0,770,865,563}, {0,735,800,510}
+        {0,770,865,563}, {0,735,800,510}, {480,737,943,426}
     };
+    const int calibration_delta[]={YAW_SERVO_OFFSET-480,JOINT1_OFFSET-766,
+        JOINT2_OFFSET-1335,JOINT3_OFFSET-443};
     for(unsigned i=0;i<sizeof(rounded_poses)/sizeof(rounded_poses[0]);++i) {
         const End_Effector_Pos_t *p=&rounded_poses[i];
         assert(app_roboarm_servo_move_to(p->x,p->y,p->z,p->pitch)==RET_OK);
         for(unsigned j=0;j<4;++j) {
-            assert(frame[7+3*j]==j+1 && position(j)==expected_positions[i][j]);
+            assert(frame[7+3*j]==j+1 &&
+                   (int)position(j)==(int)expected_positions[i][j]+calibration_delta[j]);
         }
     }
 
     /* Numerical tolerance at both endpoints must not admit real overtravel. */
-    const double accepted_positions[] = {0,1000,-0.00005,1000.00005,734.6};
-    const unsigned quantized_positions[] = {0,1000,0,1000,735};
+    const double accepted_positions[] = {0,1000,-0.00005,1000.00005,734.6,-0.0999,1000.0999};
+    const unsigned quantized_positions[] = {0,1000,0,1000,735,0,1000};
     servo.servoname=JOINT3;
     for(unsigned i=0;i<sizeof(accepted_positions)/sizeof(accepted_positions[0]);++i) {
         servo.angle=(accepted_positions[i]-JOINT3_OFFSET)*.24*radians;
@@ -174,7 +191,7 @@ int main(void)
         assert(position(0)==quantized_positions[i]);
     }
     before=sends;
-    const double rejected_positions[] = {-0.001,1000.001,-0.49,1000.49};
+    const double rejected_positions[] = {-0.1001,1000.1001,-0.49,1000.49};
     for(unsigned i=0;i<sizeof(rejected_positions)/sizeof(rejected_positions[0]);++i) {
         servo.angle=(rejected_positions[i]-JOINT3_OFFSET)*.24*radians;
         assert(app_roboarm_servo_move_direct(&servo,1,3000)==RET_PARAM);

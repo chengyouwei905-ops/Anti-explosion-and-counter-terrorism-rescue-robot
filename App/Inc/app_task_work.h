@@ -30,7 +30,7 @@ typedef struct {
     uint32_t scan_dwell_ms; /* 停车识别窗口250..60000ms；QR不使用，不参与其校验。 */
     uint32_t arm_timeout_ms;
     uint32_t laser_ms;
-    float scan_speed, correction_speed, accel; /* accel用于扫描/换位/返回 */
+    float scan_speed, correction_speed, accel; /* accel用于扫描/换位/放桶 */
     float correction_accel; /* 视觉平移纠偏独立加减速度，mm/s^2 */
     /* yaw限幅/容差仅对启用视觉yaw纠偏的slot生效；VISION_YAW_NONE时忽略。 */
     float max_correction_mm, max_correction_yaw;
@@ -44,10 +44,11 @@ typedef enum {
     WORK_PREPARE_ARM, WORK_SETTLE, WORK_SEND_SCAN, WORK_SCAN_DWELL,
     WORK_WAIT_SCAN, WORK_SELECT_SLOT, WORK_SEND_LOCATE, WORK_WAIT_LOCATE,
     WORK_ALIGN, WORK_PICK, WORK_PLACE, WORK_LASER, WORK_TRAVEL_ARM,
-    WORK_RETURN, WORK_COMPLETE, WORK_ERROR,
+    WORK_RETURN, WORK_COMPLETE, WORK_ERROR, /* WORK_RETURN现准备下一MOVE补偿，不回退平移。 */
     WORK_MOVE_TO_BUCKET, /* 夹球并抬臂后，移到第二个爆炸物位置 */
-    WORK_RETURN_YAW, /* 撤回扫描位移后恢复进入扫描时的航向 */
-    WORK_RETRY_VISION /* 视觉异常后停稳，保留本轮任务并重新请求 */
+    WORK_RETURN_YAW, /* 作业后恢复进入扫描时的航向，不撤回平移 */
+    WORK_RETRY_VISION, /* 视觉异常后停稳，保留本轮任务并重新请求 */
+    WORK_QR_OPEN_CLAMP /* QR成功后仅提交张爪指令，不等待动作完成。 */
 } TaskWorkPhase_t;
 typedef enum {
     WORK_ERR_NONE, WORK_ERR_CONFIG, WORK_ERR_TX, WORK_ERR_TIMEOUT,
@@ -64,6 +65,8 @@ typedef struct {
     uint8_t vision_reason; /* 原样保留 K230 reason，9=MODEL_NOT_READY */
     uint8_t selected_slot;
     uint8_t corrections;
+    float next_move_deduction_mm; /* 已执行的名义前进量，下个MOVE扣除；不含视觉纠偏。 */
+    bool next_move_ready;       /* 作业完成后仅供下一段MOVE取用一次。 */
     bool request_pending;
     uint8_t request_cmd, request_seq;
     bool alignment_valid;
@@ -85,6 +88,8 @@ void app_task_work_cancel(uint32_t now);
 void app_task_work_service(uint32_t now);
 bool app_task_work_cancel_pending(void);
 const TaskWorkStatus_t *app_task_work_get_status(void);
+/* 仅非QR作业完成、底盘停稳且没有视觉等待时成功；取用后不能重复叠加。 */
+bool app_task_work_take_move_deduction(TaskWorkKind_t kind, float *deduction_mm);
 
 /* 用户调试入口，实现在 app_task_work_port.c。没有机构参数时返回 false 并等待。
  * 机械臂 hook 每次 poll 调用；entering 只在该步骤的第一次为 true。
@@ -95,4 +100,6 @@ TaskArmResult_t task_work_arm_poll(TaskWorkKind_t kind, TaskArmStep_t step,
                                   uint8_t slot, bool entering);
 void task_work_laser_set(bool on);
 int task_work_arm_stop_it(void);
+/* QR结束后的空爪释放；RET_OK仅表示已提交串口，可与后续底盘运动并行。 */
+int task_work_clamp_open_it(void);
 #endif

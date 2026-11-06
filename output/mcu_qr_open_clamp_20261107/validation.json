@@ -1,0 +1,49 @@
+﻿{
+    "build":  "PASS",
+    "hardware_execution":  false,
+    "k230_update_required":  false,
+    "qr_open_servo_id":  5,
+    "qr_open_position":  437,
+    "qr_open_motion_ms":  1000,
+    "waits_for_motion_completion":  false,
+    "submit_once":  true,
+    "bus_retry_ms":  20,
+    "bus_submission_timeout_ms":  1000,
+    "suites_passed":  [
+                          "task_qr_decode",
+                          "bomb_arm_split",
+                          "task_exit_move",
+                          "task_vision_retry",
+                          "task_config",
+                          "task_camera_test"
+                      ],
+    "target_height_cases":  16,
+    "work_to_move_cases":  36,
+    "firmware_sha256":  "17D583A16FD9804237F844390B13649DB4036D3C6BFB39E97EFFDC4ABEF23293",
+    "sources":  [
+                    {
+                        "file":  "App/Inc/app_task_work.h",
+                        "sha256":  "E331D7FFF49DA685F1A74E524B81A27585FACCA610D0658C8A1BFB8474CF9AF8"
+                    },
+                    {
+                        "file":  "App/Src/app_task_work.c",
+                        "sha256":  "B5F0C9BDB6D4B86D69A552EE5E656AFFF4BEE2722EBCC9E75AC88FD68042C57D"
+                    },
+                    {
+                        "file":  "App/Src/app_task_work_port.c",
+                        "sha256":  "231FE81A9CBD8BCB343ABBD8B2A2C59FED7BDB71A9EFF6125C6C01DF0620F661"
+                    },
+                    {
+                        "file":  "Core/Src/task.c",
+                        "sha256":  "D43CF2D87F09B314F3CA73886F95AB7BB375C4F649FCC7CDB37F2B04D6C109DE"
+                    },
+                    {
+                        "file":  "Core/Src/main.c",
+                        "sha256":  "BECC70867B8BD3FD84D1FF792FF6CD359A9A626979B9A20A5341E1CE3D11586E"
+                    },
+                    {
+                        "file":  "Algorithm/Src/alg_vision_align.c",
+                        "sha256":  "EF2BB56BAE183CEC00C8000D5E3F23399F67CB518759CC9992210B80AE734EA1"
+                    }
+                ]
+}

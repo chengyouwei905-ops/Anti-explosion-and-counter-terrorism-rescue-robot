@@ -95,9 +95,10 @@ int s_imu_uart_debug_ret;  /* 调试器可查看 RET_OK / RET_BUSY / 错误码 *
 /* 每次测试只修改这组XYZ/pitch，控制机械臂与坐标换算共用同一份姿态。 */
 //End_Effector_Pos_t vision_arm_pose = {170.0, 0.0,  25.0,  0.0};//11月4日测试用观察人质
 //End_Effector_Pos_t vision_arm_pose = {0.0, 260.0, 60.0, 0.0};//观察二维码
-End_Effector_Pos_t vision_arm_pose = {154.0, 0.0,   26.0, -1.0};//观察爆炸物
+//End_Effector_Pos_t vision_arm_pose = {154.0, 0.0,   26.0, -1.0};//观察爆炸物
 //End_Effector_Pos_t vision_arm_pose = {180.0, 0.0, 25.0, -0.0};//观察恐怖分子
 //End_Effector_Pos_t vision_arm_pose = {133.537333615, 1.525593299, 82.971289222, -0.338};//观察人质
+End_Effector_Pos_t vision_arm_pose = {133.537333615+2.0, 0.0, 84.0 + 5.0, -0.338 - 0.05};
 int vision_arm_move_ret = RET_NOTREADY;
 volatile VisionResult_t vision_result;       /* K230原始结果，xyz_mm为TCP系坐标 */
 volatile float qr_position_body[3];          /* QR中心相对基座，X右/Y前/Z上，mm */
@@ -278,8 +279,13 @@ int main(void)
   }
 #else
   HAL_Delay(3000);
-  app_roboarm_servo_move_to(0.0,250.0,100.0,-0.05);
-  HAL_Delay(3000);
+  //app_roboarm_servo_move_to(0.0,200.0,140.0,0.0);
+  /* 上电使用原始舵机位置0..1000，不能传给接收弧度的move_direct接口。 */
+  const proto_roboarm_servo_t servos[ROBOARM_DOF + 1] = {
+    {YAW_SERVO, 289U}, {JOINT1, 657U}, {JOINT2, 880U}, {JOINT3, 627U}, {JOINT_CLAMP, 853U}
+  };
+  app_roboarm_positions_it(servos, 5U, 5000U);
+  HAL_Delay(5000);
 #endif
 
 

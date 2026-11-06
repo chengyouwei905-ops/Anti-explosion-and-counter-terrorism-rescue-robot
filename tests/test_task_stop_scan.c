@@ -46,19 +46,14 @@ static void target_at_slot(TaskWorkKind_t kind,uint8_t slot,uint32_t base,bool e
     assert(app_task_work_get_status()->phase==WORK_COMPLETE && located);
     assert(scan_count==slot && send_count[scan_cmd(kind)]==slot);
     assert(returning && fabsf(yaw-start_yaw)<.018f);
-    if(kind==WORK_TARGET || kind==WORK_RESCUE) {
-        const float *offset=cfg.slot[slot-1U].offset_mm;
-        float dx=cosf(start_yaw)*offset[0]-sinf(start_yaw)*offset[1];
-        float dy=sinf(start_yaw)*offset[0]+cosf(start_yaw)*offset[1];
-        /* Return only the configured scan displacement, retaining visual correction. */
-        assert(hypotf(px-(return_x-dx),py-(return_y-dy))<3);
-        if(errors) {
-            assert(app_task_work_get_status()->corrections>0);
-            assert(hypotf(px-start_x,py-start_y)>5);
-        }
-    } else {
-        assert(hypotf(px-start_x,py-start_y)<3);
-    }
+    /* No return translation: the next MOVE deducts completed nominal scan travel. */
+    assert(hypotf(px-return_x,py-return_y)<.1f);
+    const TaskWorkStatus_t *completed=app_task_work_get_status();
+    unsigned departure_slot=kind==WORK_BOMB ? 1U : slot-1U;
+    assert(completed->next_move_ready && !completed->request_pending);
+    assert(fabsf(completed->next_move_deduction_mm-
+        cfg.slot[departure_slot].offset_mm[1])<.001f);
+    if(errors)assert(completed->corrections>0);
     if(kind==WORK_TARGET)assert(laser_starts==1 && pick_calls==0 && place_calls==0 && !laser);
     else if(kind==WORK_RESCUE)assert(pick_calls==1 && place_calls==0);
     else {
@@ -73,7 +68,6 @@ static void target_at_slot(TaskWorkKind_t kind,uint8_t slot,uint32_t base,bool e
 static void retain_multiple_corrections(TaskWorkKind_t kind,uint32_t base)
 {
     reset(base);scene_slot=3;enter_work(kind,false);
-    float start_x=px,start_y=py,start_yaw=yaw;
     until_phase(WORK_WAIT_LOCATE,10000);
     px+=60;py-=45;
     translation_scale=.3f; /* Force repeated visual remeasurement/correction. */
@@ -82,9 +76,9 @@ static void retain_multiple_corrections(TaskWorkKind_t kind,uint32_t base)
     float return_x=px,return_y=py;
     translation_scale=1;
     until_phase(WORK_COMPLETE,10000);
-    /* Fixture stop 3 is X+160mm; do not undo any of the completed corrections. */
-    assert(hypotf(px-(return_x-160*cosf(start_yaw)),py-(return_y-160*sinf(start_yaw)))<3);
-    assert(hypotf(px-start_x,py-start_y)>5);
+    /* Stop 3 has already advanced 300mm; none of the visual correction is undone. */
+    assert(hypotf(px-return_x,py-return_y)<.1f);
+    assert(app_task_work_get_status()->next_move_deduction_mm==300);
     assert(send_count[scan_cmd(kind)]==3);
     step(true);
     assert(task_state==(kind==WORK_TARGET ? TASK_MOVE13 : TASK_MOVE16));
@@ -154,6 +148,6 @@ int main(void)
     retain_multiple_corrections(WORK_RESCUE,0);
     retain_multiple_corrections(WORK_RESCUE,UINT32_MAX-1000U);
     scan_failures();
-    puts("PASS: stopped scan slots 1/2/3, fixed target/rescue return retaining single/multiple corrections, bomb origin return, bucket/rescue/laser, stale/mismatched replies, failures, STOP and rollover");
+    puts("PASS: stopped scan slots 1/2/3, no return translation, retained corrections and one-shot next-MOVE deduction, bucket/rescue/laser, stale/mismatched replies, failures, STOP and rollover");
     return 0;
 }

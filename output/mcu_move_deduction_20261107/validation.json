@@ -1,0 +1,54 @@
+﻿{
+    "build":  "PASS",
+    "hardware_execution":  false,
+    "formula":  "next_move_distance = configured_distance - completed_nominal_scan_offset",
+    "bomb_deduction_mm":  150,
+    "target_rescue_deductions_mm":  [
+                                        0,
+                                        150,
+                                        300
+                                    ],
+    "visual_correction_deducted":  false,
+    "motion_ms":  1000,
+    "power_on_ms":  5000,
+    "k230_update_required":  false,
+    "suites_passed":  [
+                          "task_exit_move",
+                          "task_stop_scan",
+                          "task_move12",
+                          "task_config",
+                          "task_qr_decode",
+                          "task_vision_retry",
+                          "task_camera_test"
+                      ],
+    "work_to_move_cases":  36,
+    "original_endpoint_invariance":  true,
+    "excess_deduction_cases":  6,
+    "firmware_sha256":  "DED578AB6580C2A446BA280C03CC67E8B2F534289F7146E25B903808CE6146B3",
+    "sources":  [
+                    {
+                        "file":  "App/Inc/app_task_work.h",
+                        "sha256":  "DE90730D2B32D1C0DAF4C6D8ACDCF8BAAEFEB2B92059C8A53000D8566E0B2CBB"
+                    },
+                    {
+                        "file":  "App/Src/app_task_work.c",
+                        "sha256":  "A1F2CA56455DB1283E1F5554A0F92009832A65A198F040180A64AC4588D9ECEB"
+                    },
+                    {
+                        "file":  "Core/Src/task.c",
+                        "sha256":  "34FE3418E8EE6D7E7CBB271C2E3FEA1D3611934A2FC3792D7A6744511AAC6DD0"
+                    },
+                    {
+                        "file":  "App/Src/app_task_work_port.c",
+                        "sha256":  "78505BBE4E9EE020A88EAA550BE9DE4B447F4B57AE503749E733EFCEE768DD9F"
+                    },
+                    {
+                        "file":  "App/Src/app_roboarm.c",
+                        "sha256":  "EE1CBF641D166E59C72CAD088ADC42BACD88A4BE2E07532198BD6B918FC3BF4C"
+                    },
+                    {
+                        "file":  "Core/Src/main.c",
+                        "sha256":  "BECC70867B8BD3FD84D1FF792FF6CD359A9A626979B9A20A5341E1CE3D11586E"
+                    }
+                ]
+}

@@ -30,122 +30,122 @@ static const AlgPathSegment_t task_route[] = {
     {   /* MOVE1：直行 450 mm */
         .type = ALG_PATH_LINE,
         .distance = 450.0f + 40.0f - 40.0f, /* 50mm 直走实测修正 */
-        .max_speed = 250.0f,
-        .accel = 300.0f,
-        .decel = 300.0f
+        .max_speed = 400.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE2：左转 90 度 */
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = 1.57079632679f,
         .max_speed = 250.0f,
-        .accel = 300.0f,
-        .decel = 300.0f
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE3：直行 305 mm */
         .type = ALG_PATH_LINE,
         .distance = 305.0f + 20.0f - 20.0f - 15.0f + 10.0f + 7.0f, /* 20mm 直走实测修正 */
-        .max_speed = 250.0f,
-        .accel = 300.0f,
-        .decel = 300.0f
+        .max_speed = 400.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE4：右转 90 度 */
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = -1.57079632679f,
         .max_speed = 250.0f,
-        .accel = 300.0f,
-        .decel = 300.0f
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE5：直行 550 mm */
         .type = ALG_PATH_LINE,
         .distance = 550.0f - 20.0f + 30.0f - 15.0f + 10.0f, /* 20mm 直走实测修正 */
-        .max_speed = 250.0f,
-        .accel = 300.0f,
-        .decel = 300.0f
+        .max_speed = 400.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE6：左转 90 度 */
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = 1.57079632679f,
-        .max_speed = 300.0f,
-        .accel = 250.0f,
-        .decel = 250.0f
+        .max_speed = 250.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE7：直行 455 mm */
         .type = ALG_PATH_LINE,
-        .distance = 455.0f + 25.0f + 15.0f - 10.0f - 30.0f - 15.0f - 10.0f - 10.0f - 5.0f + 15.0f + 20.0f + 15.0f - 7.0f - 7.0f - 4.0f - 10.0f - 13.0f, /* 25mm 直走实测修正 */
-        .max_speed = 300.0f,
-        .accel = 250.0f,
-        .decel = 250.0f
+        .distance = 455.0f + 25.0f + 15.0f - 10.0f - 30.0f - 15.0f - 10.0f - 10.0f - 5.0f + 15.0f + 20.0f + 15.0f - 7.0f - 7.0f - 4.0f - 10.0f - 13.0f - 10.0f + 8.0f, /* 25mm 直走实测修正 */
+        .max_speed = 400.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE8：右转 90 度 */
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = -1.57079632679f,
-        .max_speed = 300.0f,
-        .accel = 250.0f,
-        .decel = 250.0f
+        .max_speed = 250.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE9：直行 580 mm */
         .type = ALG_PATH_LINE,
-        .distance = 580.0f + 25.0f - 10.0f + 5.0f - 30.0f + 20.0f - 10.0f - 20.0f, /* 直走实测修正 */
-        .max_speed = 300.0f,
-        .accel = 250.0f,
-        .decel = 250.0f
+        .distance = 580.0f + 25.0f - 10.0f + 5.0f - 30.0f + 20.0f - 10.0f - 20.0f - 8.0f, /* 直走实测修正 */
+        .max_speed = 400.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE10：右转 90 度 */
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = -1.57079632679f,
-        .max_speed = 300.0f,
-        .accel = 250.0f,
-        .decel = 250.0f
+        .max_speed = 250.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE11：直行 400 mm（实测修正） */
         .type = ALG_PATH_LINE,
         .distance = 400.0f - 50.0f - 20.0f + 10.0f + 30.0f - 10.0f, /* 直走实测修正 */
-        .max_speed = 300.0f,
-        .accel = 250.0f,
-        .decel = 250.0f
+        .max_speed = 400.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE12：前进距离保留实测修正，启动时合成横向补偿 */
         .type = ALG_PATH_LINE,
         .distance = 1730.0f - 100.0f + 25.0f + 15.0f + 30.0f - 5.0f - 8.0f - 20.0f - 15.0f, /* 直走实测修正 */
-        .max_speed = 300.0f,
-        .accel = 250.0f,
-        .decel = 250.0f
+        .max_speed = 400.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE13：直行 375 mm */
         .type = ALG_PATH_LINE,
-        .distance = 375.0f - 10.0f + 100.0f + 100.0f - 50.0f - 20.0f + 8.0f + 10.0f - 20.0f - 20.0f + 15.0f, /* 直走实测修正 */
-        .max_speed = 300.0f,
-        .accel = 250.0f,
-        .decel = 250.0f
+        .distance = 375.0f - 10.0f + 100.0f + 100.0f - 50.0f - 20.0f + 8.0f + 10.0f - 20.0f - 20.0f + 15.0f + 15.0f, /* 直走实测修正 */
+        .max_speed = 400.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE14：右转 90 度 */
         .type = ALG_PATH_ARC,
         .radius = 200.0f,
         .angle = -1.57079632679f,
-        .max_speed = 300.0f,
-        .accel = 250.0f,
-        .decel = 250.0f
+        .max_speed = 250.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE15：前进距离保留实测修正，同时右移 5 mm */
         .type = ALG_PATH_LINE,
         .distance = 780.0f + 100.0f - 200.0f - 50.0f + 80.0f - 20.0f - 30.0f + 15.0f, /* 直走实测修正 */
-        .right_offset_mm = 0.0f,
-        .max_speed = 300.0f,
-        .accel = 250.0f,
-        .decel = 250.0f
+        .right_offset_mm = 7.0f,
+        .max_speed = 400.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     },
     {   /* MOVE16：前进距离保留实测修正，同时右移 5 mm */
         .type = ALG_PATH_LINE,
         .distance = 1600.0f - 70.0f + 30.0f + 50.0f - 20.0f + 75.0f,    /* 直走实测修正 */
-        .right_offset_mm = 8.0f,
-        .max_speed = 300.0f,
-        .accel = 250.0f,
-        .decel = 250.0f
+        .right_offset_mm = 30.0f,
+        .max_speed = 400.0f,
+        .accel = 500.0f,
+        .decel = 500.0f
     }
 };
 
@@ -167,7 +167,7 @@ static const AlgPathLimits_t task_path_limits = {
 /* 每组路线结束后停稳 1 秒，再进入对应作业流程。 */
 #define TASK_STOP_DWELL_MS 1000U
 #define TASK_TIMEOUT_MARGIN_MS 2000U
-#define TASK_MOVE12_RIGHT_MM 10.0f
+#define TASK_MOVE12_RIGHT_MM 20.0f
 /* 这些变量只负责一组连续运动，不涉及扫码、机械臂或视觉纠偏。 */
 static uint8_t task_first_segment;       /* 当前组在 task_route 中的起始下标 */
 static uint8_t task_segment_count;       /* 当前组包含几段移动 */
@@ -236,23 +236,38 @@ static void task_fault(void)
 
 /* 启动一组连续移动，只在这组的入口调用一次。
  * first_move 使用 MOVE 编号（从 1 开始），count 是这组包含的移动段数。
- * 例如 task_start_path(2U, 10U, now) 会连续执行 MOVE2 ~ MOVE11。
+ * deduction_mm仅用于作业后的MOVE首段；例如(2U,10U,now,0)执行MOVE2~MOVE11。
  */
-static void task_start_path(uint8_t first_move, uint8_t count, uint32_t now)
+static void task_start_path(uint8_t first_move, uint8_t count, uint32_t now, float deduction_mm)
 {
+    static AlgPathSegment_t segments[ALG_PATH_MAX_SEGMENTS];
     AlgPathSample_t sample;
     Chassis_Motion_Start_t result;
     unsigned route_count = sizeof(task_route) / sizeof(task_route[0]);
 
-    if (first_move == 0U || count == 0U ||
+    if (first_move == 0U || count == 0U || count > ALG_PATH_MAX_SEGMENTS ||
+        !isfinite(deduction_mm) || deduction_mm < 0.0f ||
         (unsigned)first_move - 1U + count > route_count) {
         task_fault();
         return;
     }
 
     uint8_t first_segment = first_move - 1U;
+    memcpy(segments, &task_route[first_segment], count * sizeof(segments[0]));
+    if (deduction_mm > 0.0f) {
+        if (segments[0].type != ALG_PATH_LINE) {
+            task_fault();
+            return;
+        }
+        /* 原MOVE以扫描起点为基准，扣除已经走过的名义扫描位移。 */
+        segments[0].distance -= deduction_mm;
+        if (!isfinite(segments[0].distance) || segments[0].distance <= 0.0f) {
+            task_fault();
+            return;
+        }
+    }
     if (first_move == 12U && count == 1U) {
-        const AlgPathSegment_t *move = &task_route[first_segment];
+        const AlgPathSegment_t *move = &segments[0];
         float distance = hypotf(move->distance, TASK_MOVE12_RIGHT_MM);
         float direction = atan2f(-TASK_MOVE12_RIGHT_MM, move->distance);
         MotionProfilePlan_t profile;
@@ -271,7 +286,7 @@ static void task_start_path(uint8_t first_move, uint8_t count, uint32_t now)
         }
         sample.duration = profile.duration;
     } else {
-        result = app_chassis_motion_path_start(&task_route[first_segment],
+        result = app_chassis_motion_path_start(segments,
                                               count, &task_path_limits);
         if (result != MOTION_START_OK) {
             task_fault();
@@ -291,6 +306,17 @@ static void task_start_path(uint8_t first_move, uint8_t count, uint32_t now)
     task_path_timeout_ms = (uint32_t)ceilf(sample.duration * 1000.0f)
                           + TASK_TIMEOUT_MARGIN_MS;
     task_state = task_move_state[first_segment];
+}
+
+static void task_start_after_work(TaskWorkKind_t kind, uint8_t first_move,
+                                  uint8_t count, uint32_t now)
+{
+    float deduction;
+    if (!app_task_work_take_move_deduction(kind, &deduction)) {
+        task_fault();
+        return;
+    }
+    task_start_path(first_move, count, now, deduction);
 }
 
 /* 判断某个 MOVE 是否可以进入下一个状态，不等待、不重新下发运动。
@@ -406,7 +432,7 @@ void task_poll(void)
             task_running = true;
             app_task_work_init();
             /* 第一组：从出发区直行到扫码位置。 */
-            task_start_path(1U, 1U, now);
+            task_start_path(1U, 1U, now, 0.0f);
         }
         break;
 
@@ -422,7 +448,7 @@ void task_poll(void)
         TaskWorkResult_t result = app_task_work_poll(WORK_QR, now);
         //result = WORK_DONE;     //测试时暂时屏蔽
         if (result == WORK_DONE) {
-            task_start_path(2U, 10U, now);
+            task_start_path(2U, 10U, now, 0.0f);
         } else if (result == WORK_FAILED) {
             task_fault();
         }
@@ -500,10 +526,10 @@ void task_poll(void)
         break;
 
     case TASK_EXPLOSIVE: {
-        /* 逐位停稳发0x20，命中即0x21/纠偏/夹取放桶；回扫描起点后进入MOVE12。 */
+        /* 放桶/收臂完成后，MOVE12扣除已到第二位的名义前进量。 */
         TaskWorkResult_t result = app_task_work_poll(WORK_BOMB, now);
         if (result == WORK_DONE) {
-            task_start_path(12U, 1U, now);
+            task_start_after_work(WORK_BOMB, 12U, 1U, now);
         } else if (result == WORK_FAILED) {
             task_fault();
         }
@@ -518,10 +544,10 @@ void task_poll(void)
         break;
 
     case TASK_CS: {
-        /* 逐位停稳发0x30，命中即0x31/纠偏/照射关光；回扫描起点再进入MOVE13。 */
+        /* 定位/照射关光/收臂完成后，MOVE13扣除本区已走的名义前进量。 */
         TaskWorkResult_t result = app_task_work_poll(WORK_TARGET, now);
         if (result == WORK_DONE) {
-            task_start_path(13U, 3U, now);
+            task_start_after_work(WORK_TARGET, 13U, 3U, now);
         } else if (result == WORK_FAILED) {
             task_fault();
         }
@@ -550,10 +576,10 @@ void task_poll(void)
         break;
 
     case TASK_RESCUE: {
-        /* 逐位停稳发0x40，命中即0x41/纠偏/夹取；夹紧回扫描起点再进入MOVE16。 */
+        /* 定位/夹紧/收臂完成后，MOVE16扣除本区已走的名义前进量。 */
         TaskWorkResult_t result = app_task_work_poll(WORK_RESCUE, now);
         if (result == WORK_DONE) {
-            task_start_path(16U, 1U, now);
+            task_start_after_work(WORK_RESCUE, 16U, 1U, now);
         } else if (result == WORK_FAILED) {
             task_fault();
         }

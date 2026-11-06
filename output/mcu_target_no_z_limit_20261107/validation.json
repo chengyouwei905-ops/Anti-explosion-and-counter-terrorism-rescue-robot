@@ -1,0 +1,45 @@
+﻿{
+    "build":  "PASS",
+    "hardware_execution":  false,
+    "target_z_range_enforced":  false,
+    "target_height_diagnostics":  true,
+    "finite_coordinates_required":  true,
+    "xy_range_checks_retained":  true,
+    "other_work_z_checks_retained":  true,
+    "k230_update_required":  false,
+    "suites_passed":  [
+                          "vision_result",
+                          "task_config",
+                          "task_vision_retry",
+                          "task_exit_move"
+                      ],
+    "production_height_cases":  16,
+    "work_to_move_cases":  36,
+    "firmware_sha256":  "827E5A245EC17A3C9A3C6C9289C34D4CAE3D55E5717087A9BF314861A4298BEB",
+    "sources":  [
+                    {
+                        "file":  "Algorithm/Src/alg_vision_align.c",
+                        "sha256":  "EF2BB56BAE183CEC00C8000D5E3F23399F67CB518759CC9992210B80AE734EA1"
+                    },
+                    {
+                        "file":  "Algorithm/Inc/alg_vision_align.h",
+                        "sha256":  "997F6A7CFE48678EC5960EC8FFF6009661EC96C49ADE93934F39B3B590EA8CB0"
+                    },
+                    {
+                        "file":  "App/Src/app_task_work.c",
+                        "sha256":  "EF9880030781D11E3EBF85C4E9AB6F788F0952F8E29684B6D8023C11E09A6051"
+                    },
+                    {
+                        "file":  "App/Src/app_task_work_port.c",
+                        "sha256":  "CC67D36E6A021E499EA49D7E73CE2702AD42983950E9B8E3227281F03C5AF657"
+                    },
+                    {
+                        "file":  "Core/Src/task.c",
+                        "sha256":  "859EE35D2ED002ABB34DFE56F5DCB3BDD623470202C428397BE1FD67E6EDF211"
+                    },
+                    {
+                        "file":  "Core/Src/main.c",
+                        "sha256":  "BECC70867B8BD3FD84D1FF792FF6CD359A9A626979B9A20A5341E1CE3D11586E"
+                    }
+                ]
+}

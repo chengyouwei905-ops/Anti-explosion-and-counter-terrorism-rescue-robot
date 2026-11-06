@@ -78,7 +78,7 @@ static void sequence(uint32_t base)
     assert_clamp(0,437);assert_pose(1,ROBOARM_POSE_BOMB_PICK);
     assert_clamp(2,747);assert_joint_ids(3,2,3);assert_joint_ids(4,1,1);
     run(WORK_BOMB,ARM_PLACE,3);
-    assert_joint_ids(5,2,3);assert_joint_ids(6,1,1);assert_clamp(7,437);
+    assert_joint_ids(5,1,1);assert_joint_ids(6,2,3);assert_clamp(7,437);
     run(WORK_BOMB,ARM_TRAVEL,3);assert_joint_ids(8,2,3);assert_joint_ids(9,1,1);
 
     reset(base);run(WORK_RESCUE,ARM_PICK,1);
@@ -113,7 +113,7 @@ int main(void)
     allow_blocking=true;
     assert(app_roboarm_servo_move_to(154,0,6,-1.25)==RET_OK && sent==1);
     allow_blocking=false;
-    assert(app_roboarm_servo_move_to_it(154,0,6,-1.25,3000)==RET_OK && sent==2);
+    assert(app_roboarm_servo_move_to_it(154,0,6,-1.25,1000)==RET_OK && sent==2);
     assert(frame_sizes[0]==frame_sizes[1]);
     assert(memcmp(frames[0],frames[1],frame_sizes[0])==0);
 
