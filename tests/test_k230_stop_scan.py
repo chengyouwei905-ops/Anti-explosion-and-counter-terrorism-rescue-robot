@@ -2,6 +2,7 @@
 import ast
 import contextlib
 import io
+import os
 from pathlib import Path
 import sys
 sys.dont_write_bytecode=True
@@ -9,7 +10,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-ROOT=Path(__file__).resolve().parents[1]/"output/k230_stop_target_20261106/guanggongsai"
+ROOT=Path(os.environ.get("K230_TEST_ROOT",str(Path(__file__).resolve().parents[1]/"output/k230_stop_target_20261106/guanggongsai")))
 sys.path.insert(0,str(ROOT))
 import protocol as p
 import runtime_config as cfg
@@ -58,7 +59,7 @@ class StopScanTests(unittest.TestCase):
         self.factory.completed({"cmd":p.QR_START},{"task":parse_task("231")})
         self.link=Link();self.now=0;self.frame_id=0
         self.manager=TaskManager(self.link,self.factory,clock=lambda:self.now,diff=lambda a,b:a-b)
-        self.aim_patch=patch.object(task_runner,"ColorTargetDetector",lambda:self.detector)
+        self.aim_patch=patch.object(task_runner,"ColorTargetDetector",lambda *args,**kwargs:self.detector)
         self.aim_patch.start();self.addCleanup(self.aim_patch.stop)
 
     def command(self,cmd=p.BOMB_SCAN,slot=1,seq=1,window=1000,target=0):
@@ -90,7 +91,8 @@ class StopScanTests(unittest.TestCase):
                     self.command(cmd,slot,seq=slot+cmd)
                     self.assertEqual(self.manager.request["target_id"],target)
                     self.assertEqual(self.manager.state,SETTLING)
-                    self.frame();self.assertEqual(self.detector.calls,3*len(self.link.reports))
+                    calls=self.detector.calls
+                    self.frame();self.assertEqual(self.detector.calls,calls)
                     self.settle();self.hit(target,key)
                     self.assertEqual(self.manager.state,REPORT)
                     self.manager.flush_report()

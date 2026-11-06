@@ -1,0 +1,20 @@
+{
+  "mcu_host_tests": [
+    "task_config",
+    "task_vision_retry",
+    "task_stop_scan",
+    "task_camera_test"
+  ],
+  "mcu_result": "PASS",
+  "k230_host_command": "python -B tests/test_k230_scan_window.py",
+  "k230_tests": 13,
+  "k230_result": "PASS",
+  "mcu_build": "build/target_arm_split/STM32H723VGT6test.elf",
+  "mcu_build_result": "PASS",
+  "hardware_flashing_or_execution": false,
+  "scan_window_ms": [
+    250,
+    60000
+  ],
+  "current_mcu_scan_dwell_ms": 12000
+}

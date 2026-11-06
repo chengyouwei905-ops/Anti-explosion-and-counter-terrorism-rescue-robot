@@ -79,14 +79,15 @@ class VisionJob:
             if self.cmd==p.QR_START:
                 gray=frame.get("qr_image")
                 if gray is None:gray=frame["image"].to_grayscale()
-                codes=gray.find_qrcodes()
+                roi=self.task.detection_roi((gray.width(),gray.height()))
+                codes=gray.find_qrcodes(roi=roi) if roi is not None else gray.find_qrcodes()
                 if codes:self.debug_misses=0
                 else:self.debug_misses+=1
                 if (not codes and getattr(self.task,"contrast_retry",False) and
                         self.debug_misses>=self.task.contrast_retry_every):
                     self.debug_misses=0
                     enhanced=gray.copy();enhanced.histeq(adaptive=False)
-                    codes=enhanced.find_qrcodes()
+                    codes=enhanced.find_qrcodes(roi=roi) if roi is not None else enhanced.find_qrcodes()
                 self.debug_trace.qr_result([{"corners_px":code.corners(),"payload":code.payload()} for code in codes])
             else:
                 self.task.detector.detect(frame["image"])
@@ -195,7 +196,8 @@ class VisionTaskFactory:
             self.maps={"bomb":None,"aim":None,"rescue":None}
             task=QRTask(self.calibration,high_resolution_size=cfg.QR_CAPTURE_SIZE if cfg.QR_HIGH_RES_ENABLED else None,
                         contrast_retry=cfg.QR_CONTRAST_RETRY_ENABLED,
-                        contrast_retry_every=cfg.QR_CONTRAST_RETRY_EVERY_N_FRAMES)
+                        contrast_retry_every=cfg.QR_CONTRAST_RETRY_EVERY_N_FRAMES,
+                        roi_size=cfg.QR_ROI_SIZE,roi_reference_size=cfg.QR_ROI_REFERENCE_SIZE)
             return VisionJob(self,request,task)
         kind=self._kind(cmd)
         if request.get("target_id") is None:

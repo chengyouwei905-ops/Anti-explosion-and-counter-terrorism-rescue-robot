@@ -1,0 +1,20 @@
+{
+  "k230_command": "python -B tests/test_k230_qr_decode_only.py",
+  "k230_tests": 27,
+  "k230_result": "PASS",
+  "mcu_tests": [
+    "task_qr_decode",
+    "task_config",
+    "task_vision_retry",
+    "task_stop_scan",
+    "task_camera_test",
+    "vision_result",
+    "bomb_arm_split"
+  ],
+  "mcu_test_result": "PASS",
+  "mcu_build": "PASS",
+  "hardware_execution": false,
+  "both_sides_must_update": true,
+  "qr_ack_bytes": 15,
+  "qr_ack_has_coordinates": false
+}

@@ -64,7 +64,7 @@
     "calibration/results/camera_params.json": "1c24dced011c651c550bf8aff8bbf8039cab4436acbcdb7f16ed9f521bb36ba6",
     "calibration_params.py": "66dae6a234250d77a65efab8bb5812b93193bc788efa39fc6aa31f3997414824",
     "camera_service.py": "0fa4daa03be301830155eb4fe7d829fd5ea28345a08942d3df6222394187847a",
-    "competition_main.py": "7ffb5f89be17edb9b4f2d22fcb1eaa1fa1c5b0289ee883a597d4ef6c6cbf5031",
+    "competition_main.py": "f18367045f15b157feef49652290e85b69916c4c1f26aaf0de29315c023b66ae",
     "config.py": "99b85570c28d1e2253f83f7a29b1827f96c7f26fb53b7e0d699ba1e37380aa02",
     "field_aim_tcp_test.py": "cd5465e7b02776d5f3cd7f11bdb3aea0568b806feab2b4d6358de657f816440b",
     "field_bomb_tcp_test.py": "3afb0da9b1be8362de800fbfbdfe1b3e78282c67ec82671fd1015f3e8a572c83",
@@ -93,16 +93,16 @@
     "rescue_preview.py": "9d084e209acb5ca028118d453665fe5709de9f42f120b3ef3bc3fc37f9973884",
     "rescue_reference.py": "4926261840df0320a05cc4b39cf3f3abefa41c4d929e6f7cfece68d4b0b9107d",
     "run_control.py": "0ae24a8d0e9a5402f3f53ccd91b88a537d30c24305f673a548f15d386fee303a",
-    "runtime_config.py": "0b5c1ad53a7d76c4b15e86d5ab03ca532c637fab3fd759a096c50407c9bbece8",
+    "runtime_config.py": "936d6fb119326b1338e164ff232667d2ba947b48ada3d8e80dbb0a843c03b191",
     "search_region.py": "f45f9685f4d6b57fcba90c3bff5e512c538c6b8340bd2266e7f2ee784cfdc371",
     "target_color.py": "2a108bb6d25281590537e6883cbed552bfdd2b491aaaba38c73a3b5e3e64bd77",
     "target_pose.py": "f7be368e9040fadc059c9877c0c27cbae65e42390bcddbbc36bf9d7e7586fb3b",
     "task_manager.py": "aa920fa51d3f5ac62d54fc513eec97227a3de2f802568c4ed6c08ed0be23be72",
-    "task_runner.py": "922ebf9640ee8dbec8629570399e08a89fe42d7887a6badbef92cbf4fd6fbcdc",
+    "task_runner.py": "d6bcdf0e5a1b4c2b2ba53fb4f8bfdd2219c7b0d7df262a33b922a9ba29b085ed",
     "tasks/__init__.py": "980d6f740f468ade76e7fa6e614a6653d031536a975bc2951fe1c6e2afe8a66e",
     "tasks/task_aim.py": "331a32a8fe0a0e4dc20c87ed1a718d62fb6332201e0f0a43b0da94e5b1b1ce94",
     "tasks/task_bomb.py": "134c1c1f99b68b0b807dd3675fcbebdc2b68a817f01c18cd5a2a3a2058aa43b2",
-    "tasks/task_qr.py": "2dea25df15acfb17652098689a715a104c242290f65c58f6e8ec22e1f5d3862d",
+    "tasks/task_qr.py": "a2d419299126bf196ca82ab5ccdeae87e8f0e299ec3249a650ac30bd58412e6c",
     "tasks/task_rescue.py": "04c54b6f08d8413aabc8e402b69056cc4935995b47efa3e153bd2698186e6171",
     "tasks/task_rescue_object.py": "0191acc0b1dbdf635370e9867d689cb35efe560718b9ef0e8164015875d43273",
     "tasks/task_stop_scan.py": "b77073d040cd0ee49aad5a916e95b506a379c855b579a9b480d7afa285cedd0f",
@@ -114,13 +114,38 @@
     "yolo_video_capture.py": "55d5dc7d19e5653580207b2e6eb2fe9e8923889f2c6cf1970936d1bd06816dc9"
   },
   "changed_files": [
+    "competition_main.py",
     "protocol.py",
     "runtime_config.py",
     "task_manager.py",
-    "task_runner.py"
+    "task_runner.py",
+    "tasks/task_qr.py"
   ],
   "new_files": [
     "tasks/task_stop_scan.py"
   ],
-  "unchanged_model_and_calibration_files": true
+  "unchanged_model_and_calibration_files": true,
+  "qr_roi_update": {
+    "reference_size": [
+      640,
+      480
+    ],
+    "preview_roi": [
+      220,
+      140,
+      200,
+      200
+    ],
+    "qr_image_size": [
+      1920,
+      1080
+    ],
+    "qr_image_roi": [
+      660,
+      315,
+      600,
+      450
+    ],
+    "settings_preserved_from": "C:\\Users\\26617\\OneDrive\\Desktop\\广工赛\\K230_停稳识别目标即作业_20261106\\guanggongsai"
+  }
 }

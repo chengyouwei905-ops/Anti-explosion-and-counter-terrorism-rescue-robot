@@ -84,7 +84,15 @@ def debug_preview(camera,manager,control,image=None):
     diagnostic=getattr(manager,"last_scan_error",None)
     if diagnostic and diagnostic!=reason:lines.extend(["扫描诊断:",diagnostic])
     gate=None
-    if cmd in (protocol.BOMB_SCAN,protocol.BOMB_MEASURE):
+    if cmd==protocol.QR_START and manager.job is not None:
+        size=cfg.QR_CAPTURE_SIZE if cfg.QR_HIGH_RES_ENABLED else manager.job.task.estimator.image_size
+        roi=manager.job.task.detection_roi(size)
+        if roi is not None:
+            x,y,w,h=roi
+            gate=(int(round(x*640.0/size[0])),int(round(y*480.0/size[1])),
+                  max(1,int(round(w*640.0/size[0]))),max(1,int(round(h*480.0/size[1]))))
+            lines.insert(5,"预览ROI:%dx%d" % (gate[2],gate[3]))
+    elif cmd in (protocol.BOMB_SCAN,protocol.BOMB_MEASURE):
         from config import SCAN_GATE_RAW_PX
         gate=SCAN_GATE_RAW_PX
     elif cmd in (protocol.AIM_SCAN,protocol.AIM_MEASURE):

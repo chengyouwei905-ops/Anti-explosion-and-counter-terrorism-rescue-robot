@@ -1,0 +1,12 @@
+{
+  "table_width_mm": 400.0,
+  "table_depth_mm": 150.0,
+  "dimensions_confirmed": false,
+  "slot_centers_table_mm": null,
+  "slot_layout_confirmed": false,
+  "slot_axis_matches_scan_order_confirmed": false,
+  "table_top_roi_raw_px": null,
+  "top_view_image_corner_order_confirmed": false,
+  "grasp_height_above_table_mm": null,
+  "grasp_height_confirmed": false
+}

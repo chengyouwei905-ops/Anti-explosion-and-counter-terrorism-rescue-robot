@@ -1,0 +1,17 @@
+{
+  "mcu_tests": [
+    "bomb_arm_split",
+    "task_config",
+    "task_vision_retry",
+    "task_stop_scan",
+    "task_camera_test"
+  ],
+  "mcu_test_result": "PASS",
+  "mcu_build_result": "PASS",
+  "elf": "build/target_arm_split/STM32H723VGT6test.elf",
+  "k230_command": "python -B tests/test_k230_fast_aim_scan.py",
+  "k230_tests": 26,
+  "k230_result": "PASS",
+  "field_config_compatibility": "tested without new aim settings",
+  "hardware_execution": false
+}

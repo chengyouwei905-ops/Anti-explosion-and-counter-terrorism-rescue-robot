@@ -1,0 +1,50 @@
+{
+  "model_path": "models/rescue_best.kmodel",
+  "labels": [
+    "cylinder",
+    "frustum",
+    "drum"
+  ],
+  "raw_size": [
+    640,
+    480
+  ],
+  "annotation_target": "whole_visible_rescue_object_excluding_table",
+  "family": "YOLOv8",
+  "input_size": [
+    640,
+    640
+  ],
+  "input_dtype": "uint8",
+  "tensor_layout": "NCHW",
+  "color_order": "RGB",
+  "normalization": "inside kmodel uint8 / 255; no host division",
+  "preprocess": {
+    "kind": "letterbox",
+    "center": true,
+    "fill": 114,
+    "interpolation": "tf_bilinear_half_pixel"
+  },
+  "output_contract": {
+    "kind": "yolov8_xywh_class_probabilities",
+    "boxes": 8400,
+    "output_bytes": [
+      235200
+    ]
+  },
+  "nncase_version": "2.11.0",
+  "contract_verified": true,
+  "confidence_threshold": 0.55,
+  "nms_iou": 0.45,
+  "max_candidates": 96,
+  "max_detections": 12,
+  "model_sha256": "d54f68d59c636b63c3c91d6b898e16f59aa680667fc393f16a010752775eb4e6",
+  "contract_evidence": [
+    "locally exported user YOLOv8n checkpoint with exact cylinder/frustum/drum class order",
+    "nncase 2.11.0 compiler and PC K230 simulator descriptors",
+    "uint8 NCHW input [1,3,640,640] and float32 output [1,7,8400]"
+  ],
+  "validation_scope": "PC compiler/simulator and offline code checks; board not connected, uploaded or run in this delivery",
+  "board_tested": false,
+  "source_pt_sha256": "dfa81ec471537ac4ae682e233a437b72e6ad943a1e200c1f62ee340cd5d80ce9"
+}

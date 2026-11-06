@@ -6,6 +6,7 @@
   */
 
 #include "app_vision.h"
+#include "proto_vision_result.h"
 #include "bsp_uart.h"
 #include <stddef.h>
 
@@ -70,7 +71,8 @@ int app_vision_send_with_seq(uint8_t cmd, const uint8_t *payload, uint8_t len,
     if (!s_inited) {
         return RET_NOTREADY;
     }
-    if (sent_seq == NULL) {
+    /* 本工程禁止MCU向K230发送CANCEL，所有应用发送接口共用此入口。 */
+    if (sent_seq == NULL || cmd == VISION_CMD_CANCEL) {
         return RET_PARAM;
     }
 

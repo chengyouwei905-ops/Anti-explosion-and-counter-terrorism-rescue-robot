@@ -1,0 +1,8 @@
+{
+  "command": "python -B tests/test_k230_11am_aim_scan_only.py",
+  "tests": 17,
+  "result": "PASS",
+  "hardware_execution": false,
+  "mcu_modified": false,
+  "known_preserved_issue": "MAX_POINTS_PER_RING=16; original localization requires outer>=24 and inner>=20"
+}

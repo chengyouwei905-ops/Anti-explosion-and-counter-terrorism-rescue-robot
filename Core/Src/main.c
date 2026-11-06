@@ -179,7 +179,7 @@ void vision_confirm_function(const proto_vision_frame_t *frame)
   * @retval int
   */
 int main(void)
-{
+{ 
 
   /* USER CODE BEGIN 1 */
 
@@ -278,7 +278,7 @@ int main(void)
   }
 #else
   HAL_Delay(3000);
-  app_roboarm_servo_move_to(0.0,250.0,100.0,-0.174533);
+  app_roboarm_servo_move_to(0.0,250.0,100.0,-0.05);
   HAL_Delay(3000);
 #endif
 

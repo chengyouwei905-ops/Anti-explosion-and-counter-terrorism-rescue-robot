@@ -30,12 +30,16 @@ RAW_GEOMETRY_CONFIRMED = True
 QR_HIGH_RES_ENABLED = True
 QR_CAPTURE_SIZE = (1920, 1080)
 QR_CAPTURE_CHANNEL = 1
-# 正式二维码：连续有效帧采样；一次无效观测会清空未完成的采样。
-# 使用MEASUREMENT_SAMPLES=3；窗口为0，不跨越短暂漏检累计样本。
-QR_SAMPLE_WINDOW_MS = 0
-# 原灰度全图先检测；连续3次未读出任何二维码后，在同尺寸副本上增强对比度重试。
+# QR检测门按640x480屏幕预览像素定义：中心200x200=(220,140,200,200)。
+# 映射到1920x1080原图为(660,315,600,450)。SIZE=None恢复全图。
+# REFERENCE_SIZE=None时改为按当前二维码原图像素定义SIZE。
+QR_ROI_SIZE = (200, 200)
+QR_ROI_REFERENCE_SIZE = (640, 480)
+# 同一码有效定位在3秒窗口内累计3帧，容忍短暂漏检。
+QR_SAMPLE_WINDOW_MS = 3000
+# 原灰度ROI先检测；未读到码时在同尺寸副本上增强对比度，仍只检测相同ROI。
 QR_CONTRAST_RETRY_ENABLED = True
-QR_CONTRAST_RETRY_EVERY_N_FRAMES = 3
+QR_CONTRAST_RETRY_EVERY_N_FRAMES = 1
 # Set true after validating a full monotonic pass from before slot 1.
 SCAN_ORDER_CONFIRMED = True
 SCAN_START_BOUNDARY_CONFIRMED = True

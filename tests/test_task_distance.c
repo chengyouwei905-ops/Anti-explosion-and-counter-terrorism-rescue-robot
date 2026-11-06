@@ -29,9 +29,11 @@ int main(void)
     until_phase(WORK_WAIT_LOCATE,4000);
     assert(app_chassis_motion_get_result()==MOTION_RESULT_DONE);
     assert(hypotf(px-anchor[WORK_QR][0],py-anchor[WORK_QR][1])>20);
-    until_fault(20000);
-    assert(app_task_work_get_status()->corrections==4);
-    assert(app_task_work_get_status()->error==WORK_ERR_ALIGNMENT);
+    until_retry(WORK_ERR_ALIGNMENT,20000);
+    assert(app_task_work_get_status()->corrections==0);
+    translation_scale=1;
+    until_phase(WORK_COMPLETE,10000);
+    assert(hypotf(px-anchor[WORK_QR][0],py-anchor[WORK_QR][1])<=20);
     /* Restored planned-time watchdog, rather than the old 31-second mileage wait. */
     reset(0);begin_translation_correction();
     uint32_t started=elapsed;
@@ -44,6 +46,6 @@ int main(void)
     until_phase(WORK_COMPLETE,60000);
     assert(pick_calls==1 && place_calls==1 && app_task_work_get_status()->corrections==0);
     test_height_diagnostics();test_stop_and_errors();test_bucket_transport();
-    puts("PASS: timed correction without odometry, visual remeasurement, four-attempt limit, planned-time watchdog, rollover and STOP");
+    puts("PASS: timed correction without odometry, visual remeasurement, correction-batch retry, planned-time watchdog, rollover and STOP");
     return 0;
 }

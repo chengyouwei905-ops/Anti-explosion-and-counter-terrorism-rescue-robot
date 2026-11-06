@@ -156,7 +156,7 @@ bool alg_vision_alignment_compute(const VisionResult_t *r,
 {
     if (r == NULL || out == NULL || !isfinite(observation_imu_yaw) ||
         !alg_vision_alignment_config_valid(c) ||
-        !proto_vision_result_control_ready(r, 3U, 16.0f)) {
+        !proto_vision_result_control_ready(r, 3U, VISION_MEASUREMENT_MAX_SCATTER_MM)) {
         return false;
     }
     VisionAlignment_t a = {0};

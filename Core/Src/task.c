@@ -44,7 +44,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE3：直行 305 mm */
         .type = ALG_PATH_LINE,
-        .distance = 305.0f + 20.0f - 20.0f, /* 20mm 直走实测修正 */
+        .distance = 305.0f + 20.0f - 20.0f - 15.0f + 10.0f + 7.0f, /* 20mm 直走实测修正 */
         .max_speed = 250.0f,
         .accel = 300.0f,
         .decel = 300.0f
@@ -59,10 +59,10 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE5：直行 550 mm */
         .type = ALG_PATH_LINE,
-        .distance = 550.0f - 20.0f + 30.0f - 15.0f, /* 20mm 直走实测修正 */
-        .max_speed = 180.0f,
-        .accel = 200.0f,
-        .decel = 200.0f
+        .distance = 550.0f - 20.0f + 30.0f - 15.0f + 10.0f, /* 20mm 直走实测修正 */
+        .max_speed = 250.0f,
+        .accel = 300.0f,
+        .decel = 300.0f
     },
     {   /* MOVE6：左转 90 度 */
         .type = ALG_PATH_ARC,
@@ -74,7 +74,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE7：直行 455 mm */
         .type = ALG_PATH_LINE,
-        .distance = 455.0f + 25.0f + 15.0f - 10.0f - 30.0f - 15.0f - 10.0f - 10.0f - 5.0f + 15.0f + 20.0f, /* 25mm 直走实测修正 */
+        .distance = 455.0f + 25.0f + 15.0f - 10.0f - 30.0f - 15.0f - 10.0f - 10.0f - 5.0f + 15.0f + 20.0f + 15.0f - 7.0f - 7.0f - 4.0f - 10.0f - 13.0f, /* 25mm 直走实测修正 */
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
@@ -104,21 +104,21 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE11：直行 400 mm（实测修正） */
         .type = ALG_PATH_LINE,
-        .distance = 400.0f - 50.0f - 20.0f + 10.0f + 30.0f, /* 直走实测修正 */
+        .distance = 400.0f - 50.0f - 20.0f + 10.0f + 30.0f - 10.0f, /* 直走实测修正 */
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
     },
     {   /* MOVE12：前进距离保留实测修正，启动时合成横向补偿 */
         .type = ALG_PATH_LINE,
-        .distance = 1730.0f - 100.0f + 25.0f + 15.0f + 30.0f - 5.0f, /* 直走实测修正 */
+        .distance = 1730.0f - 100.0f + 25.0f + 15.0f + 30.0f - 5.0f - 8.0f - 20.0f - 15.0f, /* 直走实测修正 */
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
     },
     {   /* MOVE13：直行 375 mm */
         .type = ALG_PATH_LINE,
-        .distance = 375.0f - 10.0f + 100.0f + 100.0f - 50.0f - 20.0f + 8.0f + 10.0f, /* 直走实测修正 */
+        .distance = 375.0f - 10.0f + 100.0f + 100.0f - 50.0f - 20.0f + 8.0f + 10.0f - 20.0f - 20.0f + 15.0f, /* 直走实测修正 */
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
@@ -133,7 +133,7 @@ static const AlgPathSegment_t task_route[] = {
     },
     {   /* MOVE15：前进距离保留实测修正，同时右移 5 mm */
         .type = ALG_PATH_LINE,
-        .distance = 780.0f + 100.0f - 200.0f - 50.0f + 80.0f - 20.0f - 30.0f, /* 直走实测修正 */
+        .distance = 780.0f + 100.0f - 200.0f - 50.0f + 80.0f - 20.0f - 30.0f + 15.0f, /* 直走实测修正 */
         .right_offset_mm = 0.0f,
         .max_speed = 300.0f,
         .accel = 250.0f,
@@ -142,7 +142,7 @@ static const AlgPathSegment_t task_route[] = {
     {   /* MOVE16：前进距离保留实测修正，同时右移 5 mm */
         .type = ALG_PATH_LINE,
         .distance = 1600.0f - 70.0f + 30.0f + 50.0f - 20.0f + 75.0f,    /* 直走实测修正 */
-        .right_offset_mm = 5.0f,
+        .right_offset_mm = 8.0f,
         .max_speed = 300.0f,
         .accel = 250.0f,
         .decel = 250.0f
@@ -396,7 +396,7 @@ void task_poll(void)
         task_settling = false;
         if (task_total_start_requested) {
             if (app_task_work_cancel_pending()) {
-                break; /* 上一次的取消发送未完成，不能让它取消新一轮视觉任务 */
+                break; /* 等待上一次本地机械臂停止完成，再启动新一轮任务。 */
             }
             if (app_task_work_get_status()->cancel_failed) {
                 task_fault();
@@ -418,7 +418,7 @@ void task_poll(void)
         break;
 
     case TASK_SCAN: {
-        /* 观察姿态 -> 发 0x10 -> 等位姿 -> 底盘微调并复测 -> 收臂。 */
+        /* 观察姿态 -> 发0x10 -> 等K230读到有效任务码 -> 直接继续MOVE2，不做QR定位/纠偏。 */
         TaskWorkResult_t result = app_task_work_poll(WORK_QR, now);
         //result = WORK_DONE;     //测试时暂时屏蔽
         if (result == WORK_DONE) {

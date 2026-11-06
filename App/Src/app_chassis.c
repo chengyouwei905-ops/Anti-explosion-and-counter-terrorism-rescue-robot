@@ -129,7 +129,7 @@ int app_chassis_init(UART_HandleTypeDef *huart)
         return RET_ERROR;
     }
     HAL_Delay(200);
-    frame_len = proto_chassis_pack(PROTO_CHASSIS_CMD_DEADZONE, "1750", frame, sizeof(frame));    
+    frame_len = proto_chassis_pack(PROTO_CHASSIS_CMD_DEADZONE, "1850", frame, sizeof(frame));    
     if(bsp_uart_send(BSP_UART_CHASSIS, (uint8_t *)frame, frame_len, 100U) != RET_OK) {
         return RET_ERROR;
     }

@@ -1,0 +1,9 @@
+{
+  "command": "python -B tests/test_k230_qr_black_screen.py",
+  "tests": 30,
+  "result": "PASS",
+  "regression_before_fix": "AttributeError: NoneType object has no attribute samples",
+  "actual_main_loop_tested": true,
+  "hardware_execution": false,
+  "mcu_reflash_required": false
+}

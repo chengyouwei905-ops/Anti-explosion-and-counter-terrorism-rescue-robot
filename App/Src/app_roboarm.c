@@ -252,7 +252,7 @@ int app_roboarm_servo_move_to(double x, double y, double z, double pitch)
             {JOINT3, roboarm_state.joint3_angle}
         };
         /* 暂定一个通用position */
-        uint16_t time_ms = 3000;
+        uint16_t time_ms = 1500;
         if(app_roboarm_servo_move_direct(roboarm_servo, ROBOARM_DOF, time_ms) != RET_OK) {
             return RET_ERROR;
         }

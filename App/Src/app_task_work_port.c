@@ -17,11 +17,11 @@ static const WorkReference_t work_reference[WORK_COUNT] = {
     /* 2026-11-01 用户确认；高度相对机械臂基座原点，不是离地高度。 */
     /* 晚上qr85，1400，150，白天40 */
     /* 11月6日75好 */
-    [WORK_QR] = {true, {65.0f, 1380.0f, 150.0f}},
+    [WORK_QR] = {true, {85.0f, 1385.0f, 150.0f}},
     [WORK_BOMB] = {true, {-230.0f, 10.0f, -87.88f}},
-    [WORK_TARGET] = {true, {-710.0f, 40.0f, 75.0f}},
+    [WORK_TARGET] = {true, {-710.0f, 30.0f, 95.0f}},
     /* 2026-11-03 到位实测；目标坐标为 -arm_origin_relative_qr，而非原始 TCP XYZ。 */
-    [WORK_RESCUE] = {true, {-247.784439f, 19.8726902f, 33.2348137f}}
+    [WORK_RESCUE] = {true, {-237, 19.8726902f, 33.2348137f}}
 };
 
 static const Roboarm_Pose_t observe_pose_id[WORK_COUNT] = {
@@ -32,7 +32,7 @@ static const Roboarm_Pose_t observe_pose_id[WORK_COUNT] = {
 /* 广工赛合适参数.xlsx，Sheet1!A2:E7，2026-11-03 赛道实测。
  * 人质观察位姿按用户后续复测参数覆盖表中原值。
  * 机械臂坐标 X左/Y前/Z上，mm；pitch 为 rad。
- * 表中未提供的二维码/收臂姿态继续使用原始舵机位置，不改其他作业默认值。
+ * 二维码观察与统一搬运姿态在下方独立设置。
  */
 static const struct {
     bool provided;
@@ -44,14 +44,37 @@ static const struct {
     [ROBOARM_POSE_BOMB_PLACE]     = {true, {-174.0, 0.0, 20.0, -1.2}},
     [ROBOARM_POSE_TARGET_OBSERVE] = {true, {170.0, 0.0,  25.0,  0.0}},
     [ROBOARM_POSE_RESCUE_OBSERVE] = {true, {133.537333615+2.0, 0.0, 84.0 + 5.0, -0.338 - 0.05}},
-    [ROBOARM_POSE_RESCUE_PICK]    = {true, {195.0, 0.0,  78.0, -0.5}}
+    [ROBOARM_POSE_RESCUE_PICK]    = {true, {205.0, 0.0,  78.0, -0.5}}
 };
+
+/* 排爆/打靶/救援共用的搬运、收臂中间位姿；单位mm，pitch为rad。 */
+static const End_Effector_Pos_t task_arm_travel_pose = {0.0, 250.0, 100.0, -0.05};
 
 typedef enum {
     ARM_POSE_ALL,          /* 原四关节同步姿态 */
-    ARM_POSE_WITHOUT_YAW,  /* 第一段：只动ID2/3/4，保持当前yaw */
-    ARM_POSE_YAW_ONLY      /* 第二段：只动ID1，保持升降/伸缩/俯仰 */
+    ARM_POSE_WITHOUT_YAW,  /* 只动ID2/3/4，保持当前yaw */
+    ARM_POSE_YAW_ONLY      /* 只动ID1，保持升降/伸缩/俯仰 */
 } ArmPosePart_t;
+
+static int task_arm_cartesian_send_it(const End_Effector_Pos_t *p,
+                                     uint16_t duration, ArmPosePart_t part)
+{
+    if (part == ARM_POSE_ALL) {
+        return app_roboarm_servo_move_to_it(p->x, p->y, p->z, p->pitch, duration);
+    }
+    /* 用目标XYZ/pitch反解，仅下发指定关节；进入观察位与收臂使用相反顺序。 */
+    Roboarm_State_t joints;
+    if (alg_roboarm_invert(p, &joints) != ROBOARM_KINEMATICS_OK) {
+        return RET_ERROR;
+    }
+    const Roboarm_Servo_t servos[ROBOARM_DOF] = {
+        {YAW_SERVO, joints.yaw_angle}, {JOINT1, joints.joint1_angle},
+        {JOINT2, joints.joint2_angle}, {JOINT3, joints.joint3_angle}
+    };
+    return part == ARM_POSE_YAW_ONLY ?
+        app_roboarm_servo_move_direct_it(&servos[0], 1U, duration) :
+        app_roboarm_servo_move_direct_it(&servos[1], 3U, duration);
+}
 
 static int task_arm_pose_send_it(Roboarm_Pose_t pose, uint16_t duration, ArmPosePart_t part)
 {
@@ -59,22 +82,7 @@ static int task_arm_pose_send_it(Roboarm_Pose_t pose, uint16_t duration, ArmPose
         return RET_PARAM;
     }
     if (task_arm_poses[pose].provided) {
-        const End_Effector_Pos_t *p = &task_arm_poses[pose].pose;
-        if (part == ARM_POSE_ALL) {
-            return app_roboarm_servo_move_to_it(p->x, p->y, p->z, p->pitch, duration);
-        }
-        /* 用原目标XYZ/pitch反解；中间姿态沿用进入时的yaw，不另编高度或零偏。 */
-        Roboarm_State_t joints;
-        if (alg_roboarm_invert(p, &joints) != ROBOARM_KINEMATICS_OK) {
-            return RET_ERROR;
-        }
-        const Roboarm_Servo_t servos[ROBOARM_DOF] = {
-            {YAW_SERVO, joints.yaw_angle}, {JOINT1, joints.joint1_angle},
-            {JOINT2, joints.joint2_angle}, {JOINT3, joints.joint3_angle}
-        };
-        return part == ARM_POSE_YAW_ONLY ?
-            app_roboarm_servo_move_direct_it(&servos[0], 1U, duration) :
-            app_roboarm_servo_move_direct_it(&servos[1], 3U, duration);
+        return task_arm_cartesian_send_it(&task_arm_poses[pose].pose, duration, part);
     }
     if (part == ARM_POSE_ALL) {
         return app_roboarm_pose_it(pose, duration);
@@ -128,7 +136,7 @@ bool task_work_load_config(TaskWorkKind_t kind, TaskWorkConfig_t *out)
     }
     *out = (TaskWorkConfig_t){
         .settle_ms = 1000U,
-        .scan_dwell_ms = 5000U,
+        .scan_dwell_ms = 6000U,
         .arm_timeout_ms = 30000U,
         .laser_ms = 3000U,          /* 激光照射时间，后续按实物判定调试 */
         .scan_speed = 100.0f,
@@ -138,10 +146,10 @@ bool task_work_load_config(TaskWorkKind_t kind, TaskWorkConfig_t *out)
         .accel = 200.0f,
         .max_correction_mm = 200.0f,
         .max_correction_yaw = 0.017453293f * 20.0f, /* 20度；VISION_YAW_NONE时不使用。 */
-        .position_tolerance_mm = 13.0f,
+        .position_tolerance_mm = 10.0f,
         .yaw_tolerance_rad = 0.017453293f * 5.0f,  /* 5度；VISION_YAW_NONE时不使用。 */
         .height_tolerance_mm =30.0f, /* 仅诊断，不阻止底盘 X/Y 微调或作业。 */
-        .max_corrections = 4U
+        .max_corrections = 5U
     };
 
     End_Effector_Pos_t pose;
@@ -233,17 +241,24 @@ TaskArmResult_t task_work_arm_poll(TaskWorkKind_t kind, TaskArmStep_t step,
     }
 
     bool clamp_action = false;
+    bool travel_pose = false;
     ArmPosePart_t pose_part = ARM_POSE_ALL;
     uint16_t clamp_position = CLAMP_OPEN_POSITION;
     Roboarm_Pose_t pose = ROBOARM_POSE_QR_OBSERVE;
     switch (step) {
-    case ARM_OBSERVE:
-        if (arm_work.action >= 1U) return ARM_DONE;
+    case ARM_OBSERVE: {
+        const bool split_observe = kind == WORK_BOMB || kind == WORK_TARGET;
+        if (arm_work.action >= (split_observe ? 2U : 1U)) return ARM_DONE;
         pose = observe_pose_id[kind];
+        if (split_observe) {
+            /* 排爆/打靶观察先yaw后关节；人质和QR观察同步发送ID1/2/3/4。 */
+            pose_part = arm_work.action == 0U ? ARM_POSE_YAW_ONLY : ARM_POSE_WITHOUT_YAW;
+        }
         break;
+    }
     case ARM_PICK:
         if (kind != WORK_BOMB && kind != WORK_RESCUE) return ARM_FAILED;
-        /* 爆炸物/人质：张爪 -> 夹取位 -> 闭爪 -> 保持夹取yaw收臂 -> 单独yaw到QR。 */
+        /* 爆炸物/人质：张爪 -> 夹取位 -> 闭爪 -> 保持夹取yaw抬臂 -> 单独yaw到搬运姿态。 */
         if (arm_work.action >= 5U) return ARM_DONE;
         if (arm_work.action == 0U) {
             clamp_action = true;
@@ -253,6 +268,7 @@ TaskArmResult_t task_work_arm_poll(TaskWorkKind_t kind, TaskArmStep_t step,
             clamp_action = true;
             clamp_position = CLAMP_CLOSE_POSITION;
         } else {
+            travel_pose = true;
             pose_part = arm_work.action == 3U ? ARM_POSE_WITHOUT_YAW : ARM_POSE_YAW_ONLY;
         }
         break;
@@ -270,8 +286,9 @@ TaskArmResult_t task_work_arm_poll(TaskWorkKind_t kind, TaskArmStep_t step,
         break;
     case ARM_TRAVEL:
         if (arm_work.action >= (kind == WORK_QR ? 1U : 2U)) return ARM_DONE;
-        /* QR姿态收臂；排爆/打靶/救援先保持yaw收臂，再单独转yaw，不修改ID5夹爪状态。 */
+        /* 排爆/打靶/救援回搬运姿态：先抬臂，再单独yaw，不修改ID5夹爪状态。 */
         if (kind != WORK_QR) {
+            travel_pose = true;
             pose_part = arm_work.action == 0U ? ARM_POSE_WITHOUT_YAW : ARM_POSE_YAW_ONLY;
         }
         break;
@@ -292,6 +309,8 @@ TaskArmResult_t task_work_arm_poll(TaskWorkKind_t kind, TaskArmStep_t step,
     if (clamp_action) {
         const proto_roboarm_servo_t servo = {JOINT_CLAMP, clamp_position};
         result = app_roboarm_positions_it(&servo, 1U, duration);
+    } else if (travel_pose) {
+        result = task_arm_cartesian_send_it(&task_arm_travel_pose, duration, pose_part);
     } else {
         result = task_arm_pose_send_it(pose, duration, pose_part);
     }

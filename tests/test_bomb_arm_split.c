@@ -31,6 +31,52 @@ static void expect_tcp(double x,double y,double z,double pitch)
     assert(fabs(p.x-x)<3 && fabs(p.y-y)<3 && fabs(p.z-z)<3 && fabs(p.pitch-pitch)<.02);
 }
 
+static void start_from_travel(uint32_t base)
+{
+    reset(base);memset(current_positions,0,sizeof(current_positions));
+    assert(app_roboarm_servo_move_to_it(0,250,100,-.05,3000)==RET_OK);
+    apply_frame(0,1,4);expect_tcp(0,250,100,-.05);
+    current_positions[4]=CLAMP_CLOSE_POSITION;
+    sent=0;
+}
+
+static void observe_sequence(TaskWorkKind_t kind,uint32_t base,uint8_t slot)
+{
+    start_from_travel(base);
+    uint16_t original_joints[3];memcpy(original_joints,&current_positions[1],sizeof(original_joints));
+    TaskWorkConfig_t config;assert(task_work_load_config(kind,&config));
+    End_Effector_Pos_t target=config.slot[slot-1U].observe_pose;
+    assert(task_work_arm_poll(kind,ARM_OBSERVE,slot,true)==ARM_WAITING && sent==1);
+    if(kind==WORK_RESCUE) {
+        /* A single packet starts all four observation joints together. */
+        apply_frame(0,1,4);
+        assert(current_positions[4]==CLAMP_CLOSE_POSITION);
+        expect_tcp(target.x,target.y,target.z,target.pitch);
+        tick=base+3599U;
+        assert(task_work_arm_poll(kind,ARM_OBSERVE,slot,false)==ARM_WAITING && sent==1);
+        tick=base+3600U;
+        assert(task_work_arm_poll(kind,ARM_OBSERVE,slot,false)==ARM_DONE && sent==1);
+        tick=base+7200U;
+        assert(task_work_arm_poll(kind,ARM_OBSERVE,slot,false)==ARM_DONE && sent==1);
+        return;
+    }
+    apply_frame(0,1,1);
+    assert(memcmp(original_joints,&current_positions[1],sizeof(original_joints))==0);
+    expect_tcp(250,0,100,-.05);
+    tick=base+3599U;
+    assert(task_work_arm_poll(kind,ARM_OBSERVE,slot,false)==ARM_WAITING && sent==1);
+    tick=base+3600U;
+    assert(task_work_arm_poll(kind,ARM_OBSERVE,slot,false)==ARM_WAITING && sent==2);
+    uint16_t yaw=current_positions[0];
+    apply_frame(1,2,3);
+    assert(current_positions[0]==yaw && current_positions[4]==CLAMP_CLOSE_POSITION);
+    expect_tcp(target.x,target.y,target.z,target.pitch);
+    tick=base+7199U;
+    assert(task_work_arm_poll(kind,ARM_OBSERVE,slot,false)==ARM_WAITING && sent==2);
+    tick=base+7200U;
+    assert(task_work_arm_poll(kind,ARM_OBSERVE,slot,false)==ARM_DONE && sent==2);
+}
+
 static void bomb_sequence(uint32_t base)
 {
     reset(base);memset(current_positions,0,sizeof(current_positions));
@@ -40,14 +86,14 @@ static void bomb_sequence(uint32_t base)
     apply_frame(1,1,4);expect_tcp(200,0,-23,-1.25);
     uint16_t pick_yaw=current_positions[0];
     apply_frame(2,5,1);assert(current_positions[4]==CLAMP_CLOSE_POSITION);
-    /* Lift to the QR radial/vertical/pitch geometry without changing the pick yaw. */
+    /* Lift to the travel geometry without changing the pick yaw. */
     apply_frame(3,2,3);
     assert(current_positions[0]==pick_yaw && current_positions[4]==CLAMP_CLOSE_POSITION);
-    expect_tcp(260,0,60,0);
+    expect_tcp(250,0,100,-.05);
     uint16_t lift_joints[3];memcpy(lift_joints,&current_positions[1],sizeof(lift_joints));
     apply_frame(4,1,1);
     assert(memcmp(lift_joints,&current_positions[1],sizeof(lift_joints))==0);
-    expect_tcp(0,260,60,0);
+    expect_tcp(0,250,100,-.05);
 
     run(WORK_BOMB,ARM_PLACE,1);
     assert(sent==8);
@@ -66,31 +112,31 @@ static void bomb_sequence(uint32_t base)
     uint16_t place_yaw=current_positions[0];
     apply_frame(8,2,3);
     assert(current_positions[0]==place_yaw && current_positions[4]==CLAMP_OPEN_POSITION);
-    expect_tcp(-260,0,60,0);
+    expect_tcp(-250,0,100,-.05);
     memcpy(lift_joints,&current_positions[1],sizeof(lift_joints));
     apply_frame(9,1,1);
     assert(memcmp(lift_joints,&current_positions[1],sizeof(lift_joints))==0);
-    expect_tcp(0,260,60,0);
+    expect_tcp(0,250,100,-.05);
 }
 
 static void target_sequence(uint32_t base,uint8_t slot)
 {
-    reset(base);memset(current_positions,0,sizeof(current_positions));
-    current_positions[4]=CLAMP_CLOSE_POSITION;
+    start_from_travel(base);
     run(WORK_TARGET,ARM_OBSERVE,slot);
-    assert(sent==1);
-    apply_frame(0,1,4);expect_tcp(170,0,25,0);
+    assert(sent==2);
+    apply_frame(0,1,1);expect_tcp(250,0,100,-.05);
+    apply_frame(1,2,3);expect_tcp(170,0,25,0);
     uint16_t target_yaw=current_positions[0];
     run(WORK_TARGET,ARM_TRAVEL,slot);
-    assert(sent==3);
-    apply_frame(1,2,3);
+    assert(sent==4);
+    apply_frame(2,2,3);
     assert(current_positions[0]==target_yaw && current_positions[4]==CLAMP_CLOSE_POSITION);
-    expect_tcp(260,0,60,0);
+    expect_tcp(250,0,100,-.05);
     uint16_t lift_joints[3];memcpy(lift_joints,&current_positions[1],sizeof(lift_joints));
-    apply_frame(2,1,1);
+    apply_frame(3,1,1);
     assert(memcmp(lift_joints,&current_positions[1],sizeof(lift_joints))==0);
     assert(current_positions[4]==CLAMP_CLOSE_POSITION);
-    expect_tcp(0,260,60,0);
+    expect_tcp(0,250,100,-.05);
 }
 
 static void rescue_sequence(uint32_t base,uint8_t slot)
@@ -104,18 +150,18 @@ static void rescue_sequence(uint32_t base,uint8_t slot)
     apply_frame(2,5,1);assert(current_positions[4]==CLAMP_CLOSE_POSITION);
     apply_frame(3,2,3);
     assert(current_positions[0]==pick_yaw && current_positions[4]==CLAMP_CLOSE_POSITION);
-    expect_tcp(260,0,60,0);
+    expect_tcp(250,0,100,-.05);
     uint16_t retract_joints[3];memcpy(retract_joints,&current_positions[1],sizeof(retract_joints));
     apply_frame(4,1,1);
     assert(memcmp(retract_joints,&current_positions[1],sizeof(retract_joints))==0);
     assert(current_positions[4]==CLAMP_CLOSE_POSITION);
-    expect_tcp(0,260,60,0);
+    expect_tcp(0,250,100,-.05);
 
     uint32_t travel_start=tick;
     run(WORK_RESCUE,ARM_TRAVEL,slot);
     assert(sent==7 && (uint32_t)(tick-travel_start)==7200U);
-    apply_frame(5,2,3);expect_tcp(0,260,60,0);
-    apply_frame(6,1,1);expect_tcp(0,260,60,0);
+    apply_frame(5,2,3);expect_tcp(0,250,100,-.05);
+    apply_frame(6,1,1);expect_tcp(0,250,100,-.05);
     assert(current_positions[4]==CLAMP_CLOSE_POSITION);
     assert(task_work_arm_poll(WORK_RESCUE,ARM_PLACE,slot,true)==ARM_FAILED && sent==7);
 }
@@ -160,6 +206,10 @@ int main(void)
 {
     bomb_sequence(0);bomb_sequence(UINT32_MAX-1500U);
     for(uint8_t slot=1;slot<=3;++slot) {
+        for(unsigned kind=WORK_BOMB;kind<WORK_COUNT;++kind) {
+            observe_sequence((TaskWorkKind_t)kind,0,slot);
+            observe_sequence((TaskWorkKind_t)kind,UINT32_MAX-1500U,slot);
+        }
         target_sequence(0,slot);target_sequence(UINT32_MAX-1500U,slot);
         rescue_sequence(0,slot);rescue_sequence(UINT32_MAX-1500U,slot);
     }
@@ -168,10 +218,10 @@ int main(void)
     split_wait_retry_cancel(WORK_TARGET,UINT32_MAX-1500U);
     split_wait_retry_cancel(WORK_RESCUE,0);
     split_wait_retry_cancel(WORK_RESCUE,UINT32_MAX-1500U);
-    for(unsigned kind=0;kind<WORK_COUNT;++kind) {
-        reset(0);run((TaskWorkKind_t)kind,ARM_OBSERVE,kind==WORK_QR?0:1);
-        assert(sent==1 && frames[0][4]==4); /* Observations still synchronize all four joints. */
-    }
+    /* QR observation/return retain their own geometry, independently of travel. */
+    reset(0);
+    run(WORK_QR,ARM_OBSERVE,0);apply_frame(0,1,4);expect_tcp(0,260,60,0);
+    run(WORK_QR,ARM_TRAVEL,0);apply_frame(1,1,4);expect_tcp(0,260,60,0);
     reset(0);
     const Roboarm_Servo_t yaw={YAW_SERVO,0};
     assert(app_roboarm_servo_move_direct_it(&yaw,1,3000)==RET_OK);
@@ -184,6 +234,6 @@ int main(void)
     assert(app_roboarm_servo_move_direct_it(&bad,1,3000)==RET_PARAM && sent==before);
     uart_result=RET_BUSY;
     assert(app_roboarm_servo_move_direct_it(&yaw,1,3000)==RET_BUSY && sent==before);
-    puts("PASS: bomb/target/rescue retract split ID2..4 then ID1, rescue pick/clamp retention, FK endpoints, timing/retry/cancel/rollover; observe unchanged");
+    puts("PASS: rescue observe ID1..4 together; bomb/target observe ID1 then ID2..4; retract reverse order, clamp retention, FK endpoints, timing/retry/cancel/rollover; QR unchanged");
     return 0;
 }

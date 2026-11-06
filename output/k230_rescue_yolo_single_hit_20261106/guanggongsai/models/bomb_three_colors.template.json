@@ -1,0 +1,47 @@
+{
+  "model_path": "models/bomb_best.kmodel",
+  "labels": [
+    "red_bomb",
+    "green_bomb",
+    "blue_bomb"
+  ],
+  "raw_size": [
+    640,
+    480
+  ],
+  "annotation_target": "colored_sphere_only_excluding_bottom_tube",
+  "family": "YOLOv8",
+  "input_size": [
+    640,
+    640
+  ],
+  "input_dtype": "uint8",
+  "tensor_layout": "NCHW",
+  "color_order": "RGB",
+  "normalization": "inside kmodel uint8 / 255; no host division",
+  "preprocess": {
+    "kind": "letterbox",
+    "center": true,
+    "fill": 114,
+    "interpolation": "tf_bilinear_half_pixel"
+  },
+  "output_contract": {
+    "kind": "yolov8_xywh_class_probabilities",
+    "boxes": 8400,
+    "output_bytes": [
+      235200
+    ]
+  },
+  "nncase_version": "2.11.0",
+  "contract_verified": true,
+  "confidence_threshold": 0.55,
+  "nms_iou": 0.45,
+  "max_candidates": 96,
+  "max_detections": 12,
+  "model_sha256": "bac8a9acd5af8283b3de95f55e97c680a84e54be502bfab38a33dcc385b854d2",
+  "contract_evidence": [
+    "matching original converter JSON and model SHA256",
+    "native input/output descriptors",
+    "native zero-input output shape [1,7,8400]"
+  ]
+}

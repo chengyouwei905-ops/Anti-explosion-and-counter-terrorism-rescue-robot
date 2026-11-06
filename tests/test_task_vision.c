@@ -27,11 +27,13 @@ static bool imu_ok, config_ready, automatic_reply, laser;
 static bool nonconverging, arm_wait;
 static unsigned laser_starts, arm_stops, pick_calls, place_calls;
 static uint8_t scene_slot = 2U;
+static uint8_t scene_samples = 3U;
 static float picked_x, picked_y, placed_x, placed_y;
 static float scene_height_error;
 static HAL_StatusTypeDef force_tx;
 static uint8_t tx_cmd,tx_seq,peer_seq;
 static uint8_t tx_slot;
+static uint16_t tx_window;
 static uint32_t tx_time;
 static bool reply_pending;
 static unsigned send_count[256];
@@ -50,13 +52,15 @@ HAL_StatusTypeDef HAL_UART_Transmit_IT(UART_HandleTypeDef *u,const uint8_t *p,ui
     assert(proto_vision_crc8(p+2,n-3)==p[n-1]);
     if(proto_vision_is_scan(p[4])) {
         assert(p[2]==4 && n==10 && p[5]==0 && p[6]>=1 && p[6]<=3);
-        assert((p[7]+256U*p[8])>=250U && (p[7]+256U*p[8])<=10000U);
+        assert((p[7]+256U*p[8])>=250U && (p[7]+256U*p[8])<=60000U);
         tx_slot=p[6];
+        tx_window=(uint16_t)(p[7]+256U*p[8]);
         assert(app_chassis_motion_get_state()==MOTION_STATE_IDLE);
-    } else { assert(p[2]==0 && n==6);tx_slot=0; }
+    } else { assert(p[2]==0 && n==6);tx_slot=0;tx_window=0; }
     u->test_tx_ptr=p;u->test_tx_len=n;u->gState=HAL_UART_STATE_BUSY_TX;
     tx_cmd=p[4];tx_seq=p[3];tx_time=elapsed;++send_count[tx_cmd];
-    reply_pending=tx_cmd!=VISION_CMD_CANCEL;
+    assert(tx_cmd!=VISION_CMD_CANCEL);
+    reply_pending=true;
     return HAL_OK;
 }
 HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef *u,uint8_t *p,uint16_t n)
@@ -131,6 +135,7 @@ static uint8_t make_scene_result(uint8_t *p)
 {
     const TaskWorkStatus_t *s=app_task_work_get_status();
     result_header(p,tx_cmd,tx_seq,0,0);
+    if(tx_cmd==VISION_CMD_QR)return 15; /* Task-code ACK; QR no longer reports position. */
     if(proto_vision_is_scan(tx_cmd)) {
         p[6]=tx_slot;
         if(tx_slot!=scene_slot) {p[3]=VISION_FAILURE;p[14]=VISION_REASON_SCAN_NOT_TARGET;}
@@ -145,7 +150,7 @@ static uint8_t make_scene_result(uint8_t *p)
     if(nonconverging) { b[0]=40;b[1]=300; }
     float e[3]={0};
     for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)e[i]+=t.rotation[j][i]*(b[j]-t.translation[j]);
-    p[4]=3;p[6]=s->kind==WORK_QR?0:scene_slot;p[7]=3;
+    p[4]=3;p[6]=s->kind==WORK_QR?0:scene_slot;p[7]=scene_samples;
     unsigned off=15;for(unsigned i=0;i<3;++i){put_float(p+off,e[i]);off+=4;}
     float d=anchor[s->kind][2]-yaw;
     if(s->kind==WORK_QR) {
@@ -174,6 +179,7 @@ static void reset(uint32_t base)
     scene_height_error=0;
     encoder_distance=1000;translation_scale=1;encoder_ready=true;encoder_age=0;
     scene_slot=2U;
+    scene_samples=3U;
     force_tx=HAL_OK;reply_pending=false;memset(send_count,0,sizeof(send_count));peer_seq=0;
     vision_uart=(UART_HandleTypeDef){.gState=HAL_UART_STATE_READY};
     assert(app_vision_init(&vision_uart)==RET_OK);app_chassis_motion_init();task_init();
@@ -221,6 +227,14 @@ static void until_fault(unsigned limit)
     unsigned start=elapsed;while(task_state!=TASK_FAULT&&elapsed-start<limit)step(true);
     assert(task_state==TASK_FAULT && !laser && app_chassis_motion_get_state()==MOTION_STATE_IDLE);
 }
+static void until_retry(TaskWorkError_t error,unsigned limit)
+{
+    until_phase(WORK_RETRY_VISION,limit);
+    const TaskWorkStatus_t *status=app_task_work_get_status();
+    assert(task_running && task_state!=TASK_FAULT && status->error==WORK_ERR_NONE);
+    assert(status->last_retry_error==error && !status->cancel_pending);
+    assert(send_count[VISION_CMD_CANCEL]==0 && !laser);
+}
 static void test_seq_and_events(void)
 {
     reset(0);automatic_reply=false;
@@ -229,10 +243,10 @@ static void test_seq_and_events(void)
     force_tx=HAL_OK;
     assert(app_vision_send_with_seq(0x10,NULL,0,&seq)==RET_OK && seq==vision_uart.test_tx_ptr[3]);
     uint8_t first=seq;
-    assert(app_vision_send_with_seq(0x20,NULL,0,&seq)==RET_BUSY && seq==first);
+    assert(app_vision_send_with_seq(0x21,NULL,0,&seq)==RET_BUSY && seq==first);
     assert(vision_uart.test_tx_ptr[4]==0x10);
     vision_uart.gState=HAL_UART_STATE_READY;
-    assert(app_vision_send_with_seq(0x20,NULL,0,&seq)==RET_OK && seq!=(uint8_t)(first+1));
+    assert(app_vision_send_with_seq(0x21,NULL,0,&seq)==RET_OK && seq!=(uint8_t)(first+1));
     for(unsigned i=0;i<260;++i) {
         vision_uart.gState=HAL_UART_STATE_READY;
         assert(app_vision_send_with_seq(0x10,NULL,0,&seq)==RET_OK && seq==vision_uart.test_tx_ptr[3]);
@@ -268,8 +282,10 @@ static void test_full_course(uint32_t base)
         }
         step(true);
     }
-    if(task_state!=TASK_END)printf("course state=%d phase=%d error=%d t=%u\n",task_state,
-        app_task_work_get_status()->phase,app_task_work_get_status()->error,elapsed);
+    if(task_state!=TASK_END)printf("course state=%d phase=%d error=%d t=%u retries=%u last=%d delta=(%.1f,%.1f) position=(%.1f,%.1f)\n",task_state,
+        app_task_work_get_status()->phase,app_task_work_get_status()->error,elapsed,
+        (unsigned)app_task_work_get_status()->vision_retries,app_task_work_get_status()->last_retry_error,
+        app_task_work_get_status()->alignment.delta_body[0],app_task_work_get_status()->alignment.delta_body[1],px,py);
     assert(task_state==TASK_END && !laser && laser_starts==1);
     assert(send_count[0x10]>=3 && send_count[0x20]==1 && send_count[0x30]==1 && send_count[0x40]==1);
     assert(send_count[0x21]>=1 && send_count[0x31]>=1 && send_count[0x41]>=1);
@@ -287,57 +303,54 @@ static void test_stop_and_errors(void)
     deliver(0x81,last_payload,last_payload_len);step(true);
     assert(task_state==TASK_IDLE && !task_running && !app_task_work_get_status()->request_pending);
     for(unsigned i=0;i<30;++i)step(true);
-    assert(arm_stops==1 && send_count[0x7f]==1 && laser_starts==1);
+    assert(arm_stops==1 && send_count[0x7f]==0 && laser_starts==1);
     assert(hypotf(vx,vy)<.001f && fabsf(omega)<.001f);
     reset(0);enter_work(WORK_QR,true);until_phase(WORK_WAIT_MOTION,5000);
     command("TOTALSTOP!");step(true);
     assert(task_state==TASK_IDLE && app_chassis_motion_get_state()==MOTION_STATE_IDLE);
     reset(UINT32_MAX-1000U);automatic_reply=false;enter_work(WORK_QR,false);
-    until_phase(WORK_WAIT_LOCATE,4000);until_fault(24000);
-    assert(app_task_work_get_status()->error==WORK_ERR_TIMEOUT);
+    until_phase(WORK_WAIT_LOCATE,4000);until_retry(WORK_ERR_TIMEOUT,66000);
     reset(0);automatic_reply=false;enter_work(WORK_RESCUE,false);
-    until_phase(WORK_SCAN_DWELL,4000);
+    until_phase(WORK_WAIT_SCAN,4000);
     uint8_t p[64];result_header(p,tx_cmd,tx_seq,VISION_FAILURE,9);deliver(0x81,p,15);
-    until_fault(20);assert(app_task_work_get_status()->vision_reason==9);
+    until_retry(WORK_ERR_VISION,20);assert(app_task_work_get_status()->vision_reason==9);
     reset(0);automatic_reply=false;force_tx=HAL_ERROR;enter_work(WORK_QR,false);
-    until_fault(4000);assert(app_task_work_get_status()->error==WORK_ERR_TX);
+    until_retry(WORK_ERR_TX,4000);
     assert(!app_task_work_get_status()->request_pending);
     reset(0);automatic_reply=false;force_tx=HAL_BUSY;enter_work(WORK_QR,false);
-    until_fault(5000);assert(app_task_work_get_status()->error==WORK_ERR_TX && send_count[0x10]==0);
+    until_retry(WORK_ERR_TX,5000);assert(send_count[0x10]==0);
     reset(0);automatic_reply=false;enter_work(WORK_QR,false);until_phase(WORK_WAIT_LOCATE,4000);
-    uint8_t n=make_scene_result(p);p[7]=4;deliver(0x81,p,n);until_fault(20);
-    assert(app_task_work_get_status()->error==WORK_ERR_DATA);
+    uint8_t n=make_scene_result(p);p[7]=2;deliver(0x81,p,n);until_retry(WORK_ERR_DATA,20);
     reset(0);automatic_reply=false;enter_work(WORK_QR,false);until_phase(WORK_WAIT_LOCATE,4000);
-    yaw+=.05f;step(true);assert(task_state==TASK_FAULT);
-    assert(app_task_work_get_status()->error==WORK_ERR_OBSERVATION_MOVED);
+    yaw+=.05f;until_retry(WORK_ERR_OBSERVATION_MOVED,20);
     reset(0);enter_work(WORK_QR,true);until_phase(WORK_WAIT_MOTION,5000);
     app_chassis_motion_stop();until_fault(20);
     assert(app_task_work_get_status()->error==WORK_ERR_MOTION);
     reset(0);enter_work(WORK_QR,true);until_phase(WORK_WAIT_LOCATE,4000);
     imu_ok=false;until_fault(20);assert(app_task_work_get_status()->error==WORK_ERR_IMU);
     reset(0);enter_work(WORK_QR,false);px+=400;
-    until_fault(4000);assert(app_task_work_get_status()->error==WORK_ERR_ALIGNMENT);
+    until_retry(WORK_ERR_ALIGNMENT,4000);
 
     reset(0);enter_work(WORK_BOMB,false);nonconverging=true;
-    until_fault(40000);assert(app_task_work_get_status()->error==WORK_ERR_ALIGNMENT);
-    assert(app_task_work_get_status()->corrections==4);
+    until_retry(WORK_ERR_ALIGNMENT,40000);
+    assert(app_task_work_get_status()->corrections==0);
     reset(0);enter_work(WORK_QR,false);arm_wait=true;
     until_fault(5000);assert(app_task_work_get_status()->error==WORK_ERR_ARM);
 
     reset(0);automatic_reply=false;enter_work(WORK_QR,false);
     until_phase(WORK_WAIT_LOCATE,4000);
-    n=make_scene_result(p);elapsed+=23000;deliver(0x81,p,n);
-    until_fault(20);assert(app_task_work_get_status()->error==WORK_ERR_TIMEOUT);
+    n=make_scene_result(p);elapsed+=65000;deliver(0x81,p,n);
+    until_retry(WORK_ERR_TIMEOUT,20);
 
-    /* Start waits for old cancellation TX; no late 0x7F can cancel the new request. */
+    /* Local STOP/start is independent of a busy vision UART; never send 0x7F. */
     reset(0);automatic_reply=false;enter_work(WORK_QR,false);
     until_phase(WORK_WAIT_LOCATE,4000);force_tx=HAL_BUSY;
     command("TOTALSTOP!");step(true);command("TOTALSTART!");
-    for(unsigned i=0;i<100;++i)step(true);
-    assert(task_state==TASK_IDLE && task_total_start_requested && app_task_work_cancel_pending());
+    step(true);
+    assert(task_state==TASK_MOVE1 && task_running && !app_task_work_cancel_pending());
     force_tx=HAL_OK;
     for(unsigned i=0;i<50;++i)step(true);
-    assert(task_state==TASK_MOVE1 && task_running && send_count[0x7f]==1);
+    assert(task_state==TASK_MOVE1 && task_running && send_count[0x7f]==0);
     puts("PASS: UART seq/busy/error, stale/duplicate/observation rejection, remeasurement, total stop, timeouts and missing model");
 }
 static void test_bucket_transport(void)

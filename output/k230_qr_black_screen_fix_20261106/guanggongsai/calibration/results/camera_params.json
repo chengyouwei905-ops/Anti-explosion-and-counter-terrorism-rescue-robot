@@ -1,0 +1,345 @@
+{
+  "image_size": [
+    640,
+    480
+  ],
+  "board_squares": [
+    12,
+    9
+  ],
+  "inner_corners": [
+    11,
+    8
+  ],
+  "square_size_mm": 15.0,
+  "opencv_version": "4.13.0",
+  "model": "four",
+  "distortion_order": [
+    "k1",
+    "k2",
+    "p1",
+    "p2",
+    "k3"
+  ],
+  "total_images": 63,
+  "usable_images": 46,
+  "training_images": [
+    "photo_000004.bmp",
+    "photo_000005.bmp",
+    "photo_000006.bmp",
+    "photo_000007.bmp",
+    "photo_000009.bmp",
+    "photo_000010.bmp",
+    "photo_000011.bmp",
+    "photo_000012.bmp",
+    "photo_000014.bmp",
+    "photo_000015.bmp",
+    "photo_000016.bmp",
+    "photo_000019.bmp",
+    "photo_000020.bmp",
+    "photo_000021.bmp",
+    "photo_000022.bmp",
+    "photo_000024.bmp",
+    "photo_000025.bmp",
+    "photo_000027.bmp",
+    "photo_000029.bmp",
+    "photo_000030.bmp",
+    "photo_000031.bmp",
+    "photo_000032.bmp",
+    "photo_000033.bmp",
+    "photo_000035.bmp",
+    "photo_000037.bmp",
+    "photo_000040.bmp",
+    "photo_000041.bmp",
+    "photo_000042.bmp",
+    "photo_000043.bmp",
+    "photo_000044.bmp",
+    "photo_000045.bmp",
+    "photo_000047.bmp",
+    "photo_000050.bmp",
+    "photo_000053.bmp",
+    "photo_000054.bmp",
+    "photo_000056.bmp",
+    "photo_000057.bmp",
+    "photo_000058.bmp",
+    "photo_000059.bmp",
+    "photo_000063.bmp"
+  ],
+  "validation_images": [
+    "photo_000008.bmp",
+    "photo_000018.bmp",
+    "photo_000028.bmp",
+    "photo_000039.bmp",
+    "photo_000048.bmp",
+    "photo_000061.bmp"
+  ],
+  "rejected_images": [
+    {
+      "name": "photo_000001.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000002.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000003.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000013.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000017.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000023.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000026.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000034.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000036.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000038.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000046.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000049.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000051.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000052.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000055.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000060.bmp",
+      "reason": "full_grid_not_detected"
+    },
+    {
+      "name": "photo_000062.bmp",
+      "reason": "full_grid_not_detected"
+    }
+  ],
+  "K": [
+    [
+      540.2416989968849,
+      0.0,
+      320.0991373894981
+    ],
+    [
+      0.0,
+      719.860920175368,
+      248.3788071458932
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "D": [
+    0.07145190581471761,
+    -0.20636800791222895,
+    -0.0015347107143455678,
+    0.0013981589886586856,
+    0.0
+  ],
+  "training_rms_px": 0.15761414625867903,
+  "validation_rms_px": 0.12418792150191105,
+  "std_intrinsics": [
+    0.3030936621748397,
+    0.40685287718103386,
+    0.35645448802486907,
+    0.403467918013934,
+    0.0010951162266580365,
+    0.0028509763770855935,
+    0.00017835081873300497,
+    0.0002166859789402784,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "radial_derivative_min_full_frame": 0.8727230850192418,
+  "candidates": {
+    "five": {
+      "K": [
+        [
+          539.881039830496,
+          0.0,
+          319.5797283521897
+        ],
+        [
+          0.0,
+          719.2958781358541,
+          248.08204097509707
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "D": [
+        0.09631552192200052,
+        -0.38383527912985727,
+        -0.0014949048591966934,
+        0.0011546480860003703,
+        0.3450844875096745
+      ],
+      "training_rms_px": 0.15440119833984015,
+      "validation_rms_px": 0.1278916857496636,
+      "std_intrinsics": [
+        0.29716102450464094,
+        0.3987773410604907,
+        0.34376745351130705,
+        0.3899979536193466,
+        0.0018551972400408677,
+        0.01108731533170931,
+        0.00017308056710801578,
+        0.0002076296455539334,
+        0.02059019813224347,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radial_derivative_min_full_frame": 0.961351859163271
+    },
+    "four": {
+      "K": [
+        [
+          540.2416989968849,
+          0.0,
+          320.0991373894981
+        ],
+        [
+          0.0,
+          719.860920175368,
+          248.3788071458932
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "D": [
+        0.07145190581471761,
+        -0.20636800791222895,
+        -0.0015347107143455678,
+        0.0013981589886586856,
+        0.0
+      ],
+      "training_rms_px": 0.15761414625867903,
+      "validation_rms_px": 0.12418792150191105,
+      "std_intrinsics": [
+        0.3030936621748397,
+        0.40685287718103386,
+        0.35645448802486907,
+        0.403467918013934,
+        0.0010951162266580365,
+        0.0028509763770855935,
+        0.00017835081873300497,
+        0.0002166859789402784,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radial_derivative_min_full_frame": 0.8727230850192418
+    }
+  },
+  "subset_stability": [
+    {
+      "fx": 540.6732285165539,
+      "fy": 720.1757835723496,
+      "cx": 320.13502252597056,
+      "cy": 249.2408273244452,
+      "D": [
+        0.0749666781745969,
+        -0.2111410280867497,
+        -0.000894815896516113,
+        0.0010313695662335426,
+        0.0
+      ],
+      "rms_px": 0.1561575703202113
+    },
+    {
+      "fx": 539.1427446095884,
+      "fy": 718.4388680560996,
+      "cx": 319.77025340189357,
+      "cy": 248.24553977170038,
+      "D": [
+        0.06657208473884027,
+        -0.2011602927985826,
+        -0.0018850584952344895,
+        0.0012943632380777008,
+        0.0
+      ],
+      "rms_px": 0.15354426803345758
+    },
+    {
+      "fx": 540.7265786312929,
+      "fy": 720.6046869872475,
+      "cx": 320.420414333927,
+      "cy": 247.67193627896407,
+      "D": [
+        0.07175120872260841,
+        -0.20447650377912877,
+        -0.001866766273600381,
+        0.0018649810549660726,
+        0.0
+      ],
+      "rms_px": 0.16119410193217
+    }
+  ],
+  "capture_config": {
+    "firmware": "v1.8-46",
+    "board": "LCKFB-LSPI-K230-1G-CanMV",
+    "source": "/sdcard/photos",
+    "focus_changed": false,
+    "saved_format": "RGB565 BMP",
+    "software_undistortion": false
+  }
+}

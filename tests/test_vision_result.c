@@ -91,6 +91,29 @@ static void test_examples_and_validation(void)
 }
 
 static void near(float x,float y) { assert(fabsf(x-y)<.002f); }
+static void test_measurement_sample_limits(void)
+{
+    VisionResult_t r={.task_cmd=VISION_CMD_QR,.status=VISION_SUCCESS,
+        .flags=VISION_POSITION|VISION_CONTROL_READY,.scatter_mm=12};
+    const uint8_t accepted[]={3,4,5,7,32};
+    const uint8_t rejected[]={0,1,2,33,255};
+    for(unsigned i=0;i<sizeof(accepted)/sizeof(accepted[0]);++i) {
+        r.sample_count=accepted[i];assert(proto_vision_result_control_ready(&r,3,16));
+    }
+    for(unsigned i=0;i<sizeof(rejected)/sizeof(rejected[0]);++i) {
+        r.sample_count=rejected[i];assert(!proto_vision_result_control_ready(&r,3,16));
+    }
+    r.sample_count=5;
+    assert(!proto_vision_result_control_ready(&r,0,16));
+    assert(!proto_vision_result_control_ready(&r,33,16));
+    r.scatter_mm=16;assert(proto_vision_result_control_ready(&r,3,16));
+    r.scatter_mm=16.01f;assert(!proto_vision_result_control_ready(&r,3,16));
+    r.scatter_mm=12;r.xyz_mm[0]=NAN;assert(!proto_vision_result_control_ready(&r,3,16));
+    r.xyz_mm[0]=0;r.flags|=VISION_CANDIDATE;assert(!proto_vision_result_control_ready(&r,3,16));
+    r.flags=VISION_POSITION;assert(!proto_vision_result_control_ready(&r,3,16));
+    r.flags|=VISION_CONTROL_READY;r.status=VISION_OBSERVATION;
+    assert(!proto_vision_result_control_ready(&r,3,16));
+}
 static VisionAlignmentConfig_t config(void)
 {
     VisionAlignmentConfig_t c={
@@ -126,6 +149,11 @@ static void test_transforms(void)
     near(a.delta_body[0],20);near(a.delta_body[1],-30);near(a.delta_yaw,0);
     near(a.chassis_map[0],1270);near(a.chassis_map[1],1960);
     near(a.chassis_from_reference_body[0],-40);
+    r.scatter_mm=20;
+    assert(alg_vision_alignment_compute(&r,&cfg,0,&a));
+    r.scatter_mm=20.01f;
+    assert(!alg_vision_alignment_compute(&r,&cfg,0,&a));
+    r.scatter_mm=1;
     cfg.body_from_tcp.rotation[0][0]=-1;
     assert(!alg_vision_alignment_compute(&r,&cfg,0,&a)); /* 镜像不是旋转 */
     cfg=config();cfg.yaw_mode=VISION_YAW_TARGET_NORMAL;cfg.desired_direction_body[1]=1;
@@ -146,4 +174,4 @@ static void test_transforms(void)
     cfg.min_reference_body[0]=50;assert(!alg_vision_alignment_compute(&r,&cfg,0,&a));
     puts("PASS: K230 examples, strict payload validation, stream framing, arm axes/FK, planar correction and observable yaw");
 }
-int main(void) { test_examples_and_validation(); test_transforms(); return 0; }
+int main(void) { test_examples_and_validation(); test_measurement_sample_limits(); test_transforms(); return 0; }

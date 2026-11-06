@@ -7,7 +7,7 @@
   *              -> proto_vision（数据包：帧头/长度/CRC）
   *                -> app_vision （搬运 + 组包，业务只需注册回调）   <-- 本文件
   *
-  *          本层不做任何业务解释：payload 里装的是什么，由调用方自己决定。
+  *          payload 由调用方解释；发送入口统一禁止K230 CANCEL(0x7F)。
   ******************************************************************************
   */
 
@@ -53,12 +53,14 @@ void app_vision_set_rx_cb(proto_vision_frame_cb_t cb);
   * @param  payload 载荷，len 为 0 时可传 NULL
   * @param  len     载荷字节数（<= PROTO_VISION_MAX_PAYLOAD）
   * @retval RET_OK=已交给中断发送，RET_BUSY=尚未接收；不代表对端已收到。
+  *         CANCEL(0x7F)返回RET_PARAM，不发送。
   */
 int  app_vision_send(uint8_t cmd, const uint8_t *payload, uint8_t len);
 
 /* 非阻塞发送并返回本次实际打包的 SEQ。RET_OK 表示已交给串口中断发送，
  * 不表示对端已收到；失败时不修改 sent_seq，调用方不得建立等待请求。
  * RET_BUSY 时由下一次 poll 重试。仅允许主循环调用。
+ * CANCEL(0x7F)返回RET_PARAM，不发送也不修改sent_seq。
  */
 int app_vision_send_with_seq(uint8_t cmd, const uint8_t *payload, uint8_t len,
                              uint8_t *sent_seq);

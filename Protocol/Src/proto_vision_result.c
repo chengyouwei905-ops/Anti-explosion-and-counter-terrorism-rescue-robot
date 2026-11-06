@@ -84,6 +84,10 @@ bool proto_vision_decode_result(const uint8_t *p, size_t len, VisionResult_t *ou
         *out = r;
         return true;
     }
+    if (r.task_cmd == VISION_CMD_QR && len == 15U && proto_vision_result_qr_ready(&r)) {
+        *out = r;
+        return true;
+    }
     if ((r.flags & VISION_POSITION) == 0U || r.sample_count == 0U ||
         ((r.flags & VISION_QUATERNION) != 0U && r.task_cmd != VISION_CMD_QR)) {
         return false;
@@ -121,15 +125,23 @@ bool proto_vision_decode_result(const uint8_t *p, size_t len, VisionResult_t *ou
     return true;
 }
 
-bool proto_vision_result_control_ready(const VisionResult_t *r,
-                                      uint8_t samples, float max_scatter_mm)
+bool proto_vision_result_qr_ready(const VisionResult_t *r)
 {
-    if (r == NULL || samples == 0U || !isfinite(max_scatter_mm) || max_scatter_mm < 0.0f) {
+    return r != NULL && r->task_cmd == VISION_CMD_QR && r->status == VISION_SUCCESS &&
+           r->flags == 0U && r->slot_id == 0U && r->sample_count == 0U && r->reason == 0U;
+}
+
+bool proto_vision_result_control_ready(const VisionResult_t *r,
+                                      uint8_t min_samples, float max_scatter_mm)
+{
+    if (r == NULL || min_samples == 0U || min_samples > VISION_MEASUREMENT_MAX_SAMPLES ||
+        !isfinite(max_scatter_mm) || max_scatter_mm < 0.0f) {
         return false;
     }
     if (!proto_vision_is_measure(r->task_cmd) || r->status != VISION_SUCCESS ||
         r->reason != 0U || (r->flags & 0x03U) != 0x03U ||
-        (r->flags & VISION_CANDIDATE) != 0U || r->sample_count != samples ||
+        (r->flags & VISION_CANDIDATE) != 0U || r->sample_count < min_samples ||
+        r->sample_count > VISION_MEASUREMENT_MAX_SAMPLES ||
         !isfinite(r->scatter_mm) || r->scatter_mm < 0.0f || r->scatter_mm > max_scatter_mm) {
         return false;
     }

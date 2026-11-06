@@ -1,0 +1,10 @@
+{
+  "command": "python -B tests/test_k230_rescue_single_hit.py",
+  "tests": 44,
+  "result": "PASS",
+  "rescue_scan_single_hit": true,
+  "subsequent_localization_samples": 5,
+  "bbox_width_localization_exercised": true,
+  "hardware_execution": false,
+  "mcu_reflash_required": false
+}

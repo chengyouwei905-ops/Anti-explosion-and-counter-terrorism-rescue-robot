@@ -16,13 +16,15 @@ def parse_task(payload):
 
 class QRTask:
     def __init__(self, calibration, high_resolution_size=None, contrast_retry=False,
-                 contrast_retry_every=3):
+                 contrast_retry_every=3,roi_size=None,roi_reference_size=None):
         if type(contrast_retry_every) is not int or contrast_retry_every<1:
             raise ValueError("INVALID_QR_CONTRAST_RETRY_INTERVAL")
         self.calibration = calibration
         self.contrast_retry=bool(contrast_retry)
         self.contrast_retry_every=contrast_retry_every
         self.missed_detections=0
+        self.roi_size=None if roi_size is None else tuple(roi_size)
+        self.roi_reference_size=None if roi_reference_size is None else tuple(roi_reference_size)
         c = calibration.camera
         self.estimator = QRPoseEstimator(QR_SIZE_MM, c.K, c.D, c.image_size, detector_order="canmv_quirc",
             max_center_disagreement_mm=QR_MAX_CENTER_DISAGREEMENT_MM,
@@ -43,6 +45,25 @@ class QRTask:
                 max_center_disagreement_mm=QR_MAX_CENTER_DISAGREEMENT_MM,
                 max_position_uncertainty_mm=QR_MAX_POSITION_3SIGMA_MM)
         self.last_frame = -1
+        self.detection_roi(self.estimator.image_size)
+        if self.high_resolution_estimator is not None:
+            self.detection_roi(self.high_resolution_estimator.image_size)
+
+    def detection_roi(self,image_size):
+        if self.roi_size is None:return None
+        if len(self.roi_size)!=2 or any(type(v) is not int or v<=0 for v in self.roi_size):
+            raise ValueError("INVALID_QR_ROI_SIZE")
+        iw,ih=image_size
+        width,height=self.roi_size
+        if self.roi_reference_size is not None:
+            if (len(self.roi_reference_size)!=2 or
+                    any(type(v) is not int or v<=0 for v in self.roi_reference_size)):
+                raise ValueError("INVALID_QR_ROI_REFERENCE_SIZE")
+            rw,rh=self.roi_reference_size
+            width=max(1,int(round(width*iw/float(rw))))
+            height=max(1,int(round(height*ih/float(rh))))
+        if width>iw or height>ih:raise ValueError("QR_ROI_OUTSIDE_IMAGE")
+        return ((iw-width)//2,(ih-height)//2,width,height)
 
     def measure(self, raw_gray, frame_id, geometry_confirmed=False, stable=False):
         base = {"ok": False, "frame_id": frame_id, "decoded": False,
@@ -61,7 +82,9 @@ class QRTask:
                 size=(raw_gray.width(),raw_gray.height())
                 if size==self.high_resolution_estimator.image_size:
                     estimator=self.high_resolution_estimator
-            results = estimator.detect(raw_gray, geometry_confirmed=geometry_confirmed)
+            roi=self.detection_roi((raw_gray.width(),raw_gray.height()))
+            base["detection_roi"]=roi
+            results = estimator.detect(raw_gray,roi=roi,geometry_confirmed=geometry_confirmed)
         except Exception as exc:
             base["reason"] = "QR_DETECTION_ERROR:"+str(exc)
             return base
@@ -79,7 +102,7 @@ class QRTask:
                     # lens correction, so original calibrated pixel geometry holds.
                     enhanced=raw_gray.copy()
                     enhanced.histeq(adaptive=False)
-                    results=estimator.detect(enhanced,geometry_confirmed=geometry_confirmed)
+                    results=estimator.detect(enhanced,roi=roi,geometry_confirmed=geometry_confirmed)
                     detection_mode="contrast"
                 except Exception as exc:
                     # Optional enhancement failure must not break raw detection.

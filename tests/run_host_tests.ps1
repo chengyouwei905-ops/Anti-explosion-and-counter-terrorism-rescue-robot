@@ -38,6 +38,10 @@ try {
            Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
         @{ Name="task_stop_scan"; Includes=$taskIncludes;
            Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
+        @{ Name="task_vision_retry"; Includes=$taskIncludes;
+           Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
+        @{ Name="task_qr_decode"; Includes=$taskIncludes;
+           Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
         @{ Name="task_config"; Includes=@("-Itests/work_port_stubs") + $taskIncludes;
            Sources=@("App/Src/app_vision.c", "App/Src/app_task_work.c", "App/Src/app_roboarm.c", "Protocol/Src/proto_roboarm.c", "Bsp/Src/bsp_uart.c", "Common/Src/ring_buffer.c") + $resultSources + $motionSources },
         @{ Name="task_camera_test"; Includes=$taskIncludes;

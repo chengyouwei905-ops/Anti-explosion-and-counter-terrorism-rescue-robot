@@ -27,7 +27,7 @@ typedef struct {
         VisionAlignmentConfig_t alignment;
     } slot[3];
     uint32_t settle_ms;
-    uint32_t scan_dwell_ms; /* 每个停车位的K230识别窗口，ms；非盲目等待/移动计时。 */
+    uint32_t scan_dwell_ms; /* 停车识别窗口250..60000ms；QR不使用，不参与其校验。 */
     uint32_t arm_timeout_ms;
     uint32_t laser_ms;
     float scan_speed, correction_speed, accel; /* accel用于扫描/换位/返回 */
@@ -36,7 +36,7 @@ typedef struct {
     float max_correction_mm, max_correction_yaw;
     float position_tolerance_mm, yaw_tolerance_rad;
     float height_tolerance_mm; /* 高度诊断阈值，不参与底盘到位判定。 */
-    uint8_t max_corrections;
+    uint8_t max_corrections; /* 每批纠偏次数，达到后停稳复测并开始下一批。 */
 } TaskWorkConfig_t;
 
 typedef enum {
@@ -46,7 +46,8 @@ typedef enum {
     WORK_ALIGN, WORK_PICK, WORK_PLACE, WORK_LASER, WORK_TRAVEL_ARM,
     WORK_RETURN, WORK_COMPLETE, WORK_ERROR,
     WORK_MOVE_TO_BUCKET, /* 夹球并抬臂后，移到第二个爆炸物位置 */
-    WORK_RETURN_YAW /* 返回扫描起点位置后恢复进入扫描时的航向 */
+    WORK_RETURN_YAW, /* 撤回扫描位移后恢复进入扫描时的航向 */
+    WORK_RETRY_VISION /* 视觉异常后停稳，保留本轮任务并重新请求 */
 } TaskWorkPhase_t;
 typedef enum {
     WORK_ERR_NONE, WORK_ERR_CONFIG, WORK_ERR_TX, WORK_ERR_TIMEOUT,
@@ -72,12 +73,14 @@ typedef struct {
     bool height_out_of_tolerance;
     bool cancel_pending;
     bool cancel_failed;
+    uint32_t vision_retries; /* 本轮视觉重试次数，饱和计数，不设终止次数。 */
+    TaskWorkError_t last_retry_error; /* 最近一次重试原因；error仅用于终止性故障。 */
 } TaskWorkStatus_t;
 
 void app_task_work_init(void);
 TaskWorkResult_t app_task_work_poll(TaskWorkKind_t kind, uint32_t now);
 void app_task_work_on_frame(const proto_vision_frame_t *frame);
-/* 立即清除请求与结果、关闭激光；异步取消报文由 service 重试，无阻塞等待。 */
+/* 仅本地清除请求与结果、关闭激光并停止机械臂；不向K230发送取消指令。 */
 void app_task_work_cancel(uint32_t now);
 void app_task_work_service(uint32_t now);
 bool app_task_work_cancel_pending(void);
